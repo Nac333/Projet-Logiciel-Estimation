@@ -93,7 +93,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .stage{min-width:0;min-height:0}.stagebar{height:42px;flex-basis:42px;background:#fff;padding:0 12px}.stagebar .document strong{font-size:12px;max-width:350px}
 .scale{font-size:11px;max-width:48%;color:var(--v7-muted)}.canvas-wrap{background:#dfe6e1;min-height:140px;flex:1}
 .hint{max-width:calc(100% - 24px);font-size:11px;line-height:1.45;bottom:56px;padding:8px 12px}.empty-demo{padding:12px 16px}
-.inspector{width:292px;flex-basis:292px;background:#f9fbfa;border-left:1px solid var(--v7-line);overflow:auto;min-width:0}.inspector label{font-size:12px}.inspector .panel-head h2{font-size:17px}
+.inspector{width:292px;flex-basis:292px;background:#f9fbfa;border-left:1px solid var(--v7-line);overflow:auto;min-width:0}.inspector label{font-size:12px}.inspector .panel-head h2{font:700 17px/1.3 Arial,sans-serif}
 .inspector-close{display:block;position:sticky;top:0;margin:8px 8px 0 auto;padding:6px 10px;z-index:2;background:white;border:1px solid #7b8b81;border-radius:4px;color:var(--v7-ink)}
 .validation-bar{display:flex;align-items:center;gap:24px;padding:10px 16px;background:#f8fbf9;border-block:1px solid var(--v7-line);flex-shrink:0;min-width:0}
 .validation-bar>div{min-width:0}.validation-bar span{display:block;color:var(--v7-muted);font-size:11px}.validation-bar strong{font-size:19px;font-variant-numeric:tabular-nums;line-height:1.4}.validation-bar>div:first-child strong{color:var(--v7-accent)}
@@ -123,6 +123,35 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 @media(max-width:520px){#toast{top:158px;bottom:auto;left:12px;right:12px;transform:none;max-width:none;font-size:11px;padding:10px 12px}}
 
 .reopen{display:none}
+
+.inspector .quantity strong{font-family:Arial,sans-serif}
+
+/* Manual ribbon owns its grouped controls, status line and tool colors. */
+:root{--manual-paper:#f4f7f5;--manual-white:#ffffff;--manual-ink:#192b22;--manual-muted:#4b5c52;--manual-border:#7b8b81;--manual-divider:#c6d0ca;--manual-focus:#17583f;--manual-area:#256d54;--manual-line:#25649a;--manual-segment:#8a5c16;--manual-count:#6846a3;--manual-active:#e4efe8;--manual-space:4px}
+.manual-ribbon{display:flex;flex-direction:column;flex-shrink:0;min-width:0;max-width:100%;border-bottom:1px solid var(--manual-divider);background:var(--manual-paper);color:var(--manual-ink);font:12px/1.45 Arial,sans-serif}
+.manual-ribbon-scroll{display:flex;align-items:stretch;gap:0;min-width:0;max-width:100%;padding:6px 12px 4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--manual-border) var(--manual-paper)}
+.manual-group{display:flex;flex-direction:column;flex:0 0 auto;padding:0 10px;border-right:1px solid var(--manual-divider)}
+.manual-group:first-child{padding-left:0}.manual-group:last-child{border-right:0;padding-right:0}
+.manual-group-buttons{display:flex;align-items:stretch;gap:var(--manual-space)}
+.manual-ribbon .manual-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;width:60px;min-width:60px;min-height:58px;padding:6px 3px;max-width:100%;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--manual-ink);font:600 11px/1.25 Arial,sans-serif;cursor:pointer}
+.manual-button svg{width:24px;height:24px;stroke-width:1.8;flex:0 0 auto;color:var(--manual-line)}
+.manual-button.manual-area svg{color:var(--manual-area)}.manual-button.manual-line svg{color:var(--manual-line)}.manual-button.manual-segment svg{color:var(--manual-segment)}.manual-button.manual-count svg{color:var(--manual-count)}
+.manual-ribbon .manual-button:hover:not(:disabled){background:var(--manual-white);border-color:var(--manual-border)}
+.manual-ribbon .manual-button.active{background:var(--manual-active);border-color:var(--manual-area);box-shadow:inset 0 -2px 0 var(--manual-area)}
+.manual-ribbon .manual-button.active.manual-count{border-color:var(--manual-count);box-shadow:inset 0 -2px 0 var(--manual-count)}
+.manual-ribbon .manual-button:disabled{color:#657169;cursor:default;opacity:.58}.manual-ribbon .manual-button:disabled svg{color:#657169}
+.manual-group-label{display:block;text-align:center;margin-top:4px;font-size:9px;font-weight:700;line-height:1.3;letter-spacing:.07em;text-transform:uppercase;color:var(--manual-muted)}
+.manual-status-line{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:34px;padding:3px 16px 5px;border-top:1px solid var(--manual-divider);background:var(--manual-white)}
+.manual-status-line p{min-width:0;margin:0;font-size:11px;line-height:1.45;color:var(--manual-muted)}
+.manual-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.manual-ribbon .manual-actions button{min-height:28px;padding:4px 8px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:600 11px/1.3 Arial,sans-serif;white-space:nowrap;cursor:pointer}
+.manual-ribbon .manual-actions #manualFinish{background:var(--manual-area);color:var(--manual-white);border-color:var(--manual-area)}
+.manual-ribbon .manual-actions button:disabled{background:#e6ece8;color:#657169;border-color:#b1bdb5;cursor:default}
+.manual-ribbon button:focus-visible{outline:3px solid var(--manual-focus);outline-offset:2px}
+@media(max-width:1150px){.manual-ribbon-scroll{padding-inline:8px}.manual-group{padding-inline:8px}.manual-ribbon .manual-button{width:56px;min-width:56px}}
+@media(max-width:779px){.manual-ribbon-scroll{padding-top:4px;padding-bottom:3px}.manual-ribbon .manual-button{min-height:52px;width:54px;min-width:54px;padding-block:4px;font-size:10px}.manual-button svg{width:22px;height:22px}.manual-group-label{font-size:8px;margin-top:3px}.manual-status-line{min-height:32px;padding:4px 10px;gap:8px}.manual-status-line p{font-size:10px}.manual-actions{gap:4px}.manual-ribbon .manual-actions button{font-size:10px;padding:4px 6px}}
+@media(max-width:520px){.manual-status-line{align-items:flex-start;flex-direction:column;gap:4px;min-height:36px}.manual-status-line p{max-width:100%;font-size:10px}.manual-actions{align-self:flex-end}.manual-ribbon .manual-actions button{min-height:28px}.manual-ribbon-scroll{scrollbar-width:thin}.manual-group{padding-inline:6px}}
+@media(prefers-reduced-motion:reduce){.manual-ribbon{scroll-behavior:auto}}
 </style>
 </head>
 <body><div id="root"></div>
@@ -667,7 +696,7 @@ async function inspectPdfScale(page,withWalls=false) {
 /* V7 takeoff workflow. All analysis stays in the browser. */
 function confirmationIssues(item) {
   const reasons=[];
-  if (!S.scales[item.page] || !S.scaleMeta[item.page]?.verified) reasons.push('échelle à vérifier');
+  if (item.kind!=='count'&&(!S.scales[item.page] || !S.scaleMeta[item.page]?.verified)) reasons.push('échelle à vérifier');
   if (hasPendingFixtures(item)) reasons.push('bain ou douche à délimiter');
   if (item.materialNeedsReview) reasons.push('revêtement à choisir');
   if (!Number.isFinite(item.qty) || item.qty<=0) reasons.push('quantité non positive');
@@ -684,7 +713,7 @@ function confirmSelected() {
   remember();
   for (const item of items) item.status='confirmée';
   save();refresh();
-  toast(`${items.length} mesure(s) confirmée(s). Elles alimentent les commandes.`);
+  toast(`${items.length} mesure(s) confirmée(s). Les cotes restent exclues des commandes.`);
 }
 function closeReview() {
   S.reviewOpen=false;S.preview=null;S.previewFocus=null;
@@ -832,6 +861,193 @@ function initV7() {
   lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 }
 
+/* Manual takeoff tools share the same plan coordinates and history as auto takeoff. */
+function unitForItem(item) {
+  return item.kind==='count'?'u':item.kind==='area'?'pi²':'pi';
+}
+function labelForItem(item) {
+  return item.kind==='count'?'Comptage':item.measureOnly?'Cote de référence':item.kind==='area'?mat(item.material).name:'Plinthe / moulure';
+}
+function colorForItem(item) {
+  return item.kind==='count'?'#6846a3':item.measureOnly?'#25649a':item.kind==='area'?mat(item.material).color:'#df5e43';
+}
+function manualButton(id,icon,label,title,tool='',tone='') {
+  return `<button type="button" id="${id}" class="manual-button ${tone}" title="${title}" aria-label="${title}" ${tool?`data-manual-tool="${tool}" aria-pressed="false"`:''}><i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span></button>`;
+}
+function startManualTool(tool) {
+  if(!S.plan)return toast('Ouvrez un plan avant de commencer le relevé manuel.');
+  if(S.loading||S.detectJob)return;
+  if(['area','rectangle','linear','segment','dimension','exclude'].includes(tool)&&!S.scale) {
+    calibrationModal();
+    return;
+  }
+  if(!['select','hand'].includes(tool)&&S.reviewOpen)closeReview();
+  activateTool(tool);
+}
+function initManualUI() {
+  if($('#manualRibbon'))return;
+  const navigation=[
+    manualButton('manualSelect','mouse-pointer-2','Sélection','Sélectionner les mesures · V','select'),
+    manualButton('manualPan','hand','Déplacer','Déplacer le plan · H ou Espace + glisser','hand'),
+    manualButton('manualFit','scan','Cadrer','Afficher toute la feuille · 0'),
+    manualButton('manualZoomIn','zoom-in','Zoom +','Zoomer sur le plan · +'),
+    manualButton('manualZoomOut','zoom-out','Zoom −','Dézoomer sur le plan · −')
+  ].join('');
+  const measure=[
+    manualButton('manualScale','ruler','Échelle','Calibrer avec une cote connue · C','calibrate','manual-line'),
+    manualButton('manualDimension','move-horizontal','Cote','Mesurer une cote de référence, sans commande · D','dimension','manual-line')
+  ].join('');
+  const takeoff=[
+    manualButton('manualArea','pentagon','Surface','Tracer une surface polygonale · S','area','manual-area'),
+    manualButton('manualRectangle','square','Rectangle','Mesurer un rectangle en deux coins · P','rectangle','manual-area'),
+    manualButton('manualLinear','ruler','Ligne','Mesurer une ligne ou une plinthe · L','linear','manual-line'),
+    manualButton('manualSegment','waypoints','Segments','Mesurer des segments indépendants · J','segment','manual-segment'),
+    manualButton('manualCount','list-ordered','Comptage','Compter des éléments par clic, sans échelle · Q','count','manual-count')
+  ].join('');
+  const correction=[
+    manualButton('manualExclude','square-minus','Exclure','Retrancher une zone dans la surface sélectionnée · X','exclude','manual-segment'),
+    manualButton('manualUndo','undo-2','Annuler','Annuler la dernière modification · Ctrl+Z'),
+    manualButton('manualRedo','redo-2','Rétablir','Rétablir la modification · Ctrl+Y')
+  ].join('');
+  $('#workflow').insertAdjacentHTML('afterend',`<section id="manualRibbon" class="manual-ribbon" aria-label="Outils de relevé manuel"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Navigation et mesures manuelles"><div class="manual-group"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group"><div class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé manuel.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  $$('[data-manual-tool]',$('#manualRibbon')).forEach(button=>button.onclick=()=>startManualTool(button.dataset.manualTool));
+  $('#manualFit').onclick=()=>{fitPlan();refresh();};
+  $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
+  $('#manualZoomOut').onclick=()=>zoomAt(S.zoom/1.2);
+  $('#manualUndo').onclick=undoChange;$('#manualRedo').onclick=redoChange;
+  $('#manualFinish').onclick=()=>{finishManualTool();canvas.focus();};
+  $('#manualCancel').onclick=()=>{S.draft=[];S.tool='select';refresh();canvas.focus();};
+  lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
+  refreshManualUI();
+}
+function manualStatusText() {
+  if(!S.plan)return 'Ouvrez un plan pour commencer le relevé manuel.';
+  if(S.loading||S.detectJob)return 'Chargement ou analyse en cours…';
+  const n=S.draft.length,scale=S.scale,point=S.mouseWorld;
+  if(S.tool==='count')return `${n} élément${n>1?'s':''} pointé${n>1?'s':''} · Cliquez chaque élément, puis Terminer ou Entrée. Aucune échelle requise.`;
+  if(S.tool==='rectangle') {
+    const quantity=n&&point&&scale?Math.abs((point.x-S.draft[0].x)*(point.y-S.draft[0].y))*scale*scale:null;
+    return n?`Rectangle : choisissez le coin opposé${quantity!==null?' · aperçu '+fmt(quantity)+' pi²':''}.`:'Rectangle : cliquez le premier coin, puis le coin opposé.';
+  }
+  if(S.tool==='dimension'||S.tool==='segment') {
+    const quantity=n&&point&&scale?dist(S.draft[0],point)*scale:null;
+    const name=S.tool==='dimension'?'Cote de référence':'Segment';
+    if(!n)return name+' : cliquez les deux extrémités'+(S.tool==='dimension'?' · exclue des commandes.':' · chaque paire crée une ligne indépendante.');
+    return name+' : cliquez l’autre extrémité'+(quantity!==null?' · aperçu '+fmt(quantity)+' pi':'')+'.';
+  }
+  if(['area','split','exclude'].includes(S.tool))return `${S.tool==='exclude'?'Exclusion':'Surface'} : ${n} point${n>1?'s':''}${n>=3&&scale?' · '+fmt(area(S.draft)*scale*scale)+' pi²':''} · Cliquez les coins, puis Terminer ou Entrée.`;
+  if(S.tool==='linear')return `Ligne : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+fmt(lineLength(S.draft)*scale)+' pi':''} · Cliquez les points, puis Terminer ou Entrée.`;
+  if(S.tool==='calibrate')return 'Échelle : cliquez les extrémités d’une cote connue, puis saisissez sa longueur.';
+  if(S.tool==='hand')return 'Déplacer : glissez le plan · molette pour zoomer · V pour sélectionner.';
+  return 'Relevé manuel : choisissez Surface, Rectangle, Ligne, Segments ou Comptage. Les cotes restent hors des commandes.';
+}
+function refreshManualUI() {
+  const ribbon=$('#manualRibbon');if(!ribbon)return;
+  const busy=!S.plan||S.loading||!!S.detectJob;
+  $$('[data-manual-tool]',ribbon).forEach(button=>{
+    const tool=button.dataset.manualTool,selected=S.tool===tool;
+    button.setAttribute('aria-pressed',String(selected));
+    button.classList.toggle('active',selected);
+    button.disabled=busy||(tool==='exclude'&&!S.items.some(item=>S.selection.has(item.id)&&item.page===S.page&&item.kind==='area'));
+    if(busy)button.title=!S.plan?'Ouvrez un plan pour utiliser '+button.textContent.trim().toLowerCase()+'.':'Attendez la fin du chargement ou de l’analyse.';
+    else if(tool==='exclude'&&button.disabled)button.title='Sélectionnez d’abord une surface à laquelle retrancher une zone.';
+    else button.title=button.getAttribute('aria-label');
+  });
+  for(const id of ['manualFit','manualZoomIn','manualZoomOut'])$('#'+id).disabled=busy;
+  $('#manualUndo').disabled=busy||!S.history.length;$('#manualRedo').disabled=busy||!S.redo.length;
+  const finishable=['area','linear','split','exclude','rectangle','segment','count','dimension'].includes(S.tool);
+  $('#manualActions').hidden=!finishable;
+  const n=S.draft.length;
+  $('#manualFinish').disabled=busy||(['area','split','exclude'].includes(S.tool)?n<3:S.tool==='count'?n<1:S.tool==='segment'?n===1:n<2);
+  $('#manualCancel').disabled=busy;
+  const text=manualStatusText();if($('#manualStatus').textContent!==text)$('#manualStatus').textContent=text;
+}
+function handleManualClick(point,event) {
+  if(!['rectangle','segment','count','dimension'].includes(S.tool))return false;
+  if(event?.detail>1)return true;
+  if(S.tool!=='count'&&!S.scale){toast('Calibrez le plan avant de mesurer une longueur ou une surface.');return true;}
+  if(S.draft.length&&dist(S.draft.at(-1),point)<=.5)return true;
+  S.draft.push({...point});
+  if(S.tool==='count'){refreshManualUI();return true;}
+  if(S.draft.length===2)finishManualTool();
+  else refreshManualUI();
+  return true;
+}
+function addManualLine(points,dimension=false) {
+  if(!S.scale)return toast('Calibrez le plan avant de mesurer cette ligne.');
+  if(points.length!==2||dist(points[0],points[1])<=.5)return toast('Choisissez deux extrémités distinctes.');
+  const method=dimension?'Cote manuelle':'Segment manuel';
+  const number=S.items.filter(item=>item.method===method).length+1;
+  const item={id:uid(),kind:'linear',name:(dimension?'Cote ':'Segment ')+number,material:'PL-01',points:structuredClone(points),qty:dist(points[0],points[1])*S.scale,waste:dimension?0:5,page:S.page,status:'à valider',method};
+  if(dimension)item.measureOnly=true;
+  pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool=dimension?'select':'segment';refresh();
+  toast(dimension?'Cote de référence ajoutée · exclue des commandes.':'Segment ajouté · cliquez deux points pour le suivant.');
+}
+function finishManualTool() {
+  const tool=S.tool;
+  if(!['rectangle','segment','count','dimension','area','linear','split','exclude'].includes(tool))return false;
+  if(tool==='count') {
+    if(!S.draft.length){toast('Cliquez au moins un élément avant de terminer le comptage.');return true;}
+    const item={id:uid(),kind:'count',name:'Comptage '+(S.items.filter(entry=>entry.kind==='count').length+1),material:'QT-01',points:structuredClone(S.draft),qty:S.draft.length,waste:0,page:S.page,status:'à valider',method:'Comptage manuel'};
+    pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool='select';refresh();toast(item.qty+' élément(s) ajouté(s) au relevé.');
+  } else if(tool==='rectangle') {
+    if(S.draft.length!==2){toast('Cliquez deux coins opposés pour mesurer le rectangle.');return true;}
+    const b=boundsOf(S.draft);
+    if(b.right-b.x<=.5||b.bottom-b.y<=.5){S.draft=S.draft.slice(0,1);refreshManualUI();toast('Choisissez un coin opposé formant un rectangle non nul.');return true;}
+    finishArea([{x:b.x,y:b.y},{x:b.right,y:b.y},{x:b.right,y:b.bottom},{x:b.x,y:b.bottom}],'Rectangle manuel');
+  } else if(tool==='segment'||tool==='dimension') {
+    if(tool==='segment'&&!S.draft.length){S.tool='select';refresh();return true;}
+    if(S.draft.length!==2){toast('Cliquez les deux extrémités avant de terminer.');return true;}
+    addManualLine(S.draft,tool==='dimension');
+  } else if(tool==='linear') {
+    if(S.draft.length<2){toast('Cliquez au moins deux points pour mesurer une ligne.');return true;}
+    finishLine(S.draft);
+  } else {
+    if(S.draft.length<3){toast('Cliquez au moins trois coins avant de terminer la surface.');return true;}
+    finishArea(S.draft);
+  }
+  return true;
+}
+function drawManualPoint(context,point,label,color,active=false) {
+  const radius=(active?8:7)/S.zoom;
+  context.beginPath();context.arc(point.x,point.y,radius,0,Math.PI*2);context.fillStyle=color;context.fill();
+  context.lineWidth=(active?2.5:1.5)/S.zoom;context.strokeStyle='#ffffff';context.stroke();
+  context.fillStyle='#ffffff';context.font=`700 ${10/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';context.fillText(String(label),point.x,point.y+.25/S.zoom);
+}
+function drawCountItem(context,item,active) {
+  context.save();
+  item.points.forEach((point,index)=>drawManualPoint(context,point,index+1,colorForItem(item),active));
+  if(item.points.length){const first=item.points[0];context.font=`600 ${12/S.zoom}px Arial`;context.textAlign='left';context.textBaseline='alphabetic';context.lineWidth=3/S.zoom;context.strokeStyle='#ffffff';const label=item.name+' · '+fmt(item.qty,0)+' u';context.strokeText(label,first.x+12/S.zoom,first.y-12/S.zoom);context.fillStyle=colorForItem(item);context.fillText(label,first.x+12/S.zoom,first.y-12/S.zoom);}
+  context.restore();
+}
+function drawManualLineDecorations(context,item) {
+  if(!item.measureOnly||item.points.length<2)return;
+  const a=item.points[0],b=item.points.at(-1),length=dist(a,b);if(!length)return;
+  const nx=-(b.y-a.y)/length,ny=(b.x-a.x)/length,tick=6/S.zoom;
+  context.save();context.strokeStyle=colorForItem(item);context.lineWidth=1.5/S.zoom;
+  for(const point of [a,b]){context.beginPath();context.moveTo(point.x-nx*tick,point.y-ny*tick);context.lineTo(point.x+nx*tick,point.y+ny*tick);context.stroke();}
+  const x=(a.x+b.x)/2+nx*12/S.zoom,y=(a.y+b.y)/2+ny*12/S.zoom,label=fmt(item.qty,2)+' pi';
+  context.font=`700 ${12/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';context.lineWidth=4/S.zoom;context.strokeStyle='#ffffff';context.strokeText(label,x,y);context.fillStyle=colorForItem(item);context.fillText(label,x,y);context.restore();
+}
+function drawManualGuides(context) {
+  if(!S.draft.length)return;
+  context.save();
+  if(S.tool==='count')S.draft.forEach((point,index)=>drawManualPoint(context,point,index+1,'#6846a3'));
+  else if(['rectangle','segment','dimension'].includes(S.tool)) {
+    const first=S.draft[0],last=S.mouseWorld||first,color=S.tool==='rectangle'?'#256d54':'#25649a';
+    context.strokeStyle=color;context.fillStyle=color+'18';context.lineWidth=1.5/S.zoom;context.setLineDash([6/S.zoom,4/S.zoom]);
+    context.beginPath();
+    if(S.tool==='rectangle'){const b=boundsOf([first,last]);context.rect(b.x,b.y,b.right-b.x,b.bottom-b.y);context.fill();context.stroke();}
+    else{context.moveTo(first.x,first.y);context.lineTo(last.x,last.y);context.stroke();}
+    context.setLineDash([]);drawManualPoint(context,first,'1',color);
+  }
+  context.restore();
+  // Drawing reads the current pointer even when no takeoff state is committed.
+  if(['rectangle','segment','dimension'].includes(S.tool)){
+    const status=$('#manualStatus'),text=manualStatusText();if(status&&status.textContent!==text)status.textContent=text;
+  }
+}
+
 
 const MATERIALS = [
   ['VP-01','Vinyle commercial','#e1b84b',6], ['CER-01','Céramique 24 x 24','#4c9e8d',10], ['CER-12X24','Céramique 12 x 24','#52a6bb',12],
@@ -862,16 +1078,75 @@ function demoPlan(){const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="12
 function toast(t){const e=$('#toast');e.innerHTML=`<i data-lucide="check"></i>${esc(t)}`;e.hidden=false;lucide.createIcons();clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left-S.pan.x)/S.zoom,y:(e.clientY-r.top-S.pan.y)/S.zoom}}
 function finishLine(points){if(!S.scale)return toast('Calibrez d’abord le plan.');const qty=points.slice(1).reduce((s,p,i)=>s+dist(points[i],p),0)*S.scale,item={id:uid(),kind:'linear',name:`Plinthe ${S.items.filter(i=>i.kind==='linear').length+1}`,material:'PL-01',points:[...points],qty,waste:5,page:S.page,status:'à valider',method:'Tracé linéaire'};if(!S.scaleMeta[S.page]?.verified)item.status='à valider';pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool='select';refresh()}
-function draw(){const d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;if(canvas.width!==w*d||canvas.height!==h*d){canvas.width=w*d;canvas.height=h*d}ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#dfe2df';ctx.fillRect(0,0,w,h);ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent'}S.items.filter(i=>i.page===S.page).forEach(i=>{const active=S.selection.has(i.id),color=i.kind==='linear'?'#df5e43':mat(i.material).color;if(i.kind==='area'){ctx.save();clipItem(ctx,i);ctx.fillStyle=color+'4d';const b=boundsOf(i.points);ctx.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);ctx.restore();traceItem(ctx,i)}else{ctx.beginPath();i.points.forEach((p,j)=>j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y))}ctx.strokeStyle=active?'#101713':color;ctx.lineWidth=(active?4:2)/S.zoom;ctx.stroke();if(i.kind==='area'){const x=i.points.reduce((s,p)=>s+p.x,0)/i.points.length,y=i.points.reduce((s,p)=>s+p.y,0)/i.points.length;ctx.fillStyle='#18201c';ctx.font=`${15/S.zoom}px Arial`;ctx.textAlign='center';ctx.fillText(`${i.material} · ${hasPendingFixtures(i)?'À délimiter':fmt(i.qty)} pi²`,x,y)}});if(S.draft.length){ctx.beginPath();S.draft.forEach((p,j)=>j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);S.draft.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke()})}drawTileGrids(ctx);drawGuides(ctx);drawFixtureGuides(ctx);drawReference(ctx);ctx.restore();if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Déposez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18)}requestAnimationFrame(draw)}requestAnimationFrame(draw);
+function draw() {
+  const d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;
+  if(canvas.width!==w*d||canvas.height!==h*d){canvas.width=w*d;canvas.height=h*d;}
+  ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#dfe2df';ctx.fillRect(0,0,w,h);
+  ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);
+  if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';}
+  for(const item of S.items.filter(item=>item.page===S.page)) {
+    const active=S.selection.has(item.id),color=colorForItem(item);ctx.save();
+    if(item.kind==='count'){drawCountItem(ctx,item,active);ctx.restore();continue;}
+    if(item.kind==='area') {
+      ctx.save();clipItem(ctx,item);ctx.fillStyle=color+'4d';const b=boundsOf(item.points);ctx.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);ctx.restore();traceItem(ctx,item);
+    }else {ctx.beginPath();item.points.forEach((point,index)=>index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));}
+    ctx.strokeStyle=active?'#101713':color;ctx.lineWidth=(active?4:2)/S.zoom;ctx.stroke();
+    if(item.kind==='area'&&active&&S.selection.size===1) {
+      const x=item.points.reduce((sum,p)=>sum+p.x,0)/item.points.length,y=item.points.reduce((sum,p)=>sum+p.y,0)/item.points.length;
+      ctx.fillStyle='#18201c';ctx.font=`${15/S.zoom}px Arial`;ctx.textAlign='center';ctx.fillText(`${item.material} · ${hasPendingFixtures(item)?'À délimiter':fmt(item.qty)} pi²`,x,y);
+    }else drawManualLineDecorations(ctx,item);
+    ctx.restore();
+  }
+  if(S.draft.length&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
+    ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
+    for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
+  }
+  drawTileGrids(ctx);drawGuides(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawReference(ctx);ctx.restore();
+  if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+function itemQuantityText(item,withWaste=false) {
+  if(hasPendingFixtures(item))return 'À délimiter';
+  const value=withWaste?item.qty*(1+item.waste/100):item.qty;
+  return fmt(value,item.kind==='count'?0:1)+' '+unitForItem(item);
+}
 function totals(){return MATERIALS.map(m=>{const r=S.items.filter(i=>i.kind==='area'&&isConfirmed(i)&&i.material===m.code);return{...m,count:r.length,net:r.reduce((s,i)=>s+i.qty,0),total:r.reduce((s,i)=>s+i.qty*(1+i.waste/100),0)}}).filter(i=>i.count)}
-function renderInspectorBase(){const e=$('#inspector');if(S.selection.size>1)return renderMultipleInspector(e);const it=S.items.find(i=>i.id===S.selected);if(it){e.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>Zone sélectionnée</h2></div><button class="icon-btn closePanel"><i data-lucide="panel-right-close"></i></button></div><label>Nom de la pièce<input id="itemName" value="${esc(it.name)}"></label>${it.kind==='area'?`<label>Fini<select id="itemMaterial">${MATERIALS.map(m=>`<option ${m.code===it.material?'selected':''} value="${m.code}">${m.code} · ${m.name}</option>`).join('')}</select></label>`:''}<div class="quantity"><span>QUANTITÉ NETTE</span><strong>${hasPendingFixtures(it)?'À délimiter':fmt(it.qty)} <small>${it.kind==='area'?'pi²':'pi lin.'}</small></strong></div><label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" value="${it.waste}"><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${hasPendingFixtures(it)?'À délimiter':fmt(it.qty*(1+it.waste/100))} ${it.kind==='area'?'pi²':'pi lin.'}</b></div>${it.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${fmt(perimeter(it.points)*S.scale)} pi</b></div>`:''}<label>Statut<select id="itemStatus">${['confirmée','estimée','à valider'].map(x=>`<option ${x===it.status?'selected':''}>${x}</option>`).join('')}</select></label><div class="status-note"><i data-lucide="check"></i><span>Mesuré sur la page ${it.page}<small>${esc(it.method)}${S.scaleMeta[it.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer la mesure</button>`;$('#itemName').onchange=x=>updateItem(it.id,{name:x.target.value});if($('#itemMaterial'))$('#itemMaterial').onchange=x=>updateItem(it.id,{material:x.target.value});$('#itemWaste').onchange=x=>updateItem(it.id,{waste:+x.target.value});$('#itemStatus').onchange=x=>updateItem(it.id,{status:x.target.value});$('#deleteItem').onclick=deleteSelection}
- else{const ts=totals(),lin=S.items.filter(i=>i.kind==='linear'&&isConfirmed(i)).reduce((s,i)=>s+i.qty*(1+i.waste/100),0);e.innerHTML=`<div class="panel-head"><div><span>BIBLIOTHÈQUE</span><h2>Finis et assemblages</h2></div><button class="icon-btn closePanel"><i data-lucide="panel-right-close"></i></button></div><div class="panel-section"><span>MATÉRIAU ACTIF</span><div class="library-list">${MATERIALS.map(m=>`<div class="library-item ${m.code===S.material?'active':''}" data-material="${m.code}"><i style="background:${m.color}"></i><span><b>${m.code}</b><small>${m.name}</small></span><em>${m.waste}%</em></div>`).join('')}</div></div><div class="panel-section"><span>SOMMAIRE DU TAKEOFF</span>${ts.length?ts.map(t=>`<div class="mini-total"><i style="background:${t.color}"></i><div><b>${t.code}</b><small>${t.count} zone${t.count>1?'s':''}</small></div><strong>${fmt(t.total)} pi²</strong></div>`).join(''):'<p class="empty-copy">Les quantités apparaîtront ici après la première mesure.</p>'}${lin?`<div class="mini-total"><i style="background:#df5e43"></i><div><b>PLINTHES</b><small>linéaire</small></div><strong>${fmt(lin)} pi</strong></div>`:''}</div>${!S.scale?'<div class="warning"><i data-lucide="triangle-alert"></i><div><b>Calibration requise</b><span>Choisissez Calibrer et mesurez une cote connue.</span></div></div>':''}`;$$('.library-item',e).forEach(x=>x.onclick=()=>{S.material=x.dataset.material;renderInspector()})}
- $$('.closePanel',e).forEach(b=>b.onclick=()=>{e.hidden=true;$('#reopen').hidden=false});lucide.createIcons({attrs:{width:17,height:17}})}
-function takeoffDrawer(){const ts=totals(),lin=S.items.filter(i=>i.kind==='linear'&&isConfirmed(i)).reduce((s,i)=>s+i.qty*(1+i.waste/100),0),o=$('#overlay');o.innerHTML=`<div class="drawer-back"><section class="takeoff"><header><div><span>TAKEOFF</span><h2>Quantités du projet</h2></div><button class="icon-btn" id="closeDrawer"><i data-lucide="x"></i></button></header><div class="takeoff-summary"><div><span>Surface confirmée avec perte</span><strong>${fmt(ts.reduce((s,t)=>s+t.total,0))} pi²</strong></div><div><span>Linéaire total</span><strong>${fmt(lin)} pi</strong></div><div><span>Zones mesurées</span><strong>${S.items.length}</strong></div></div><div class="search"><i data-lucide="search"></i><input id="searchRows" placeholder="Rechercher une pièce ou un fini"></div><div class="table-wrap"><table><thead><tr><th>Pièce / zone</th><th>Fini</th><th>Net</th><th>Perte</th><th>Total</th><th>Statut</th></tr></thead><tbody>${S.items.map(i=>`<tr data-id="${i.id}" data-search="${esc((i.name+i.material).toLowerCase())}"><td><b>${esc(i.name)}</b><small>Page ${i.page}</small></td><td>${i.material}</td><td>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty)} ${i.kind==='area'?'pi²':'pi'}</td><td>${i.waste}%</td><td><b>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty*(1+i.waste/100))}</b></td><td><span class="badge ${i.status.replace('à ','')}">${i.status}</span></td></tr>`).join('')}</tbody></table></div><footer><p>Les mesures à valider restent visibles dans ce rapport. Seules les mesures confirmées avec échelle vérifiée alimentent les commandes et les totaux confirmés.</p><button class="primary" id="drawerExport"><i data-lucide="download"></i> Exporter Excel</button></footer></section></div>`;lucide.createIcons();$('#closeDrawer').onclick=()=>o.innerHTML='';$('.drawer-back').onclick=e=>{if(e.target.classList.contains('drawer-back'))o.innerHTML=''};$$('tbody tr',o).forEach(r=>r.onclick=async()=>{const item=S.items.find(i=>i.id===r.dataset.id);o.innerHTML='';if(item&&item.page!==S.page&&S.pdf)await showPage(item.page);if(item){setSelection([item.id]);refresh();}});$('#searchRows').oninput=e=>$$('tbody tr',o).forEach(r=>r.hidden=!r.dataset.search.includes(e.target.value.toLowerCase()));$('#drawerExport').onclick=exportExcel}
+function renderInspectorBase() {
+  const host=$('#inspector');if(S.selection.size>1)return renderMultipleInspector(host);
+  const item=S.items.find(item=>item.id===S.selected);
+  if(item) {
+    host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div><button class="icon-btn closePanel" aria-label="Fermer les propriétés"><i data-lucide="panel-right-close"></i></button></div>
+      <label>Nom du relevé<input id="itemName" maxlength="300" value="${esc(item.name)}"></label>
+      ${item.kind==='area'?`<label>Fini<select id="itemMaterial">${MATERIALS.map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
+      <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':fmt(item.qty,item.kind==='count'?0:1)} <small>${unitForItem(item)}</small></strong></div>
+      ${item.kind!=='count'&&!item.measureOnly?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${item.waste}"><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
+      ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${fmt(perimeter(item.points)*S.scales[item.page])} pi</b></div>`:''}
+      ${item.measureOnly?'<p class="selection-help">Cote de référence : exclue des commandes et des plinthes.</p>':''}
+      <label>Statut<select id="itemStatus">${['confirmée','estimée','à valider'].map(status=>`<option ${status===item.status?'selected':''}>${status}</option>`).join('')}</select></label>
+      <div class="status-note"><i data-lucide="check"></i><span>Page ${item.page}<small>${esc(item.method)}${item.kind==='count'?' · échelle non requise':S.scaleMeta[item.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer le relevé</button>`;
+    $('#itemName').onchange=event=>updateItem(item.id,{name:event.target.value});
+    if($('#itemMaterial'))$('#itemMaterial').onchange=event=>updateItem(item.id,{material:event.target.value});
+    if($('#itemWaste'))$('#itemWaste').onchange=event=>updateItem(item.id,{waste:+event.target.value});
+    $('#itemStatus').onchange=event=>updateItem(item.id,{status:event.target.value});$('#deleteItem').onclick=deleteSelection;
+  } else {
+    const ts=totals(),lin=S.items.filter(item=>item.kind==='linear'&&!item.measureOnly&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty*(1+item.waste/100),0),count=S.items.filter(item=>item.kind==='count'&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty,0);
+    host.innerHTML=`<div class="panel-head"><div><span>BIBLIOTHÈQUE</span><h2>Finis et assemblages</h2></div><button class="icon-btn closePanel" aria-label="Fermer les propriétés"><i data-lucide="panel-right-close"></i></button></div><div class="panel-section"><span>MATÉRIAU ACTIF</span><div class="library-list">${MATERIALS.map(material=>`<div class="library-item ${material.code===S.material?'active':''}" data-material="${material.code}" role="button" tabindex="0"><i style="background:${material.color}"></i><span><b>${material.code}</b><small>${esc(material.name)}</small></span><em>${material.waste}%</em></div>`).join('')}</div></div><div class="panel-section"><span>RELEVÉ CONFIRMÉ</span>${ts.map(total=>`<div class="mini-total"><i style="background:${total.color}"></i><div><b>${total.code}</b><small>${total.count} zone(s)</small></div><strong>${fmt(total.total)} pi²</strong></div>`).join('')}${lin?`<p>Plinthes : <b>${fmt(lin)} pi</b></p>`:''}${count?`<p>Comptage : <b>${fmt(count,0)} u</b></p>`:''}${!ts.length&&!lin&&!count?'<p class="empty-copy">Tracez une surface, une ligne ou comptez les éléments avec le ruban manuel.</p>':''}</div>${!S.scale?'<div class="warning"><i data-lucide="triangle-alert"></i><div><b>Échelle à régler pour les mesures</b><span>Le comptage reste utilisable sans calibration.</span></div></div>':''}`;
+    $$('.library-item',host).forEach(button=>{button.onclick=()=>{S.material=button.dataset.material;renderInspector();};button.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();button.click();}};});
+  }
+  $$('.closePanel',host).forEach(button=>button.onclick=()=>{host.hidden=true;$('#reopen').hidden=false;});lucide.createIcons({attrs:{width:17,height:17}});
+}
+function takeoffDrawer() {
+  const ts=totals(),lin=S.items.filter(item=>item.kind==='linear'&&!item.measureOnly&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty*(1+item.waste/100),0),count=S.items.filter(item=>item.kind==='count'&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty,0),overlay=$('#overlay');
+  overlay.innerHTML=`<div class="drawer-back"><section class="takeoff"><header><div><span>RELEVÉ</span><h2>Quantités du projet</h2></div><button class="icon-btn" id="closeDrawer" aria-label="Fermer le rapport"><i data-lucide="x"></i></button></header><div class="takeoff-summary"><div><span>Surface confirmée avec perte</span><strong>${fmt(ts.reduce((sum,total)=>sum+total.total,0))} pi²</strong></div><div><span>Plinthes confirmées</span><strong>${fmt(lin)} pi</strong></div><div><span>Éléments confirmés</span><strong>${fmt(count,0)} u</strong></div></div><div class="search"><i data-lucide="search"></i><input id="searchRows" placeholder="Rechercher une pièce ou un fini" aria-label="Rechercher dans le rapport"></div><div class="table-wrap"><table><thead><tr><th>Pièce / relevé</th><th>Type / référence</th><th>Net</th><th>Perte</th><th>Total</th><th>Statut</th></tr></thead><tbody>${S.items.map(item=>`<tr data-id="${item.id}" data-search="${esc((item.name+item.material).toLowerCase())}"><td><b>${esc(item.name)}</b><small>Page ${item.page}</small></td><td>${esc(labelForItem(item))}<small>${esc(item.material)}</small></td><td>${itemQuantityText(item)}</td><td>${item.waste}%</td><td>${itemQuantityText(item,true)}</td><td>${esc(item.status)}${item.measureOnly?'<small>Référence · hors commandes</small>':''}</td></tr>`).join('')}</tbody></table></div><footer><p>Les surfaces et longueurs demandent une échelle vérifiée. Le comptage donne des unités sans échelle. Les cotes restent hors commandes ; les autres relevés doivent être confirmés avant approvisionnement.</p><button class="primary" id="drawerExport"><i data-lucide="download"></i> Exporter Excel</button></footer></section></div>`;
+  lucide.createIcons();$('#closeDrawer').onclick=()=>overlay.innerHTML='';$('.drawer-back').onclick=event=>{if(event.target.classList.contains('drawer-back'))overlay.innerHTML='';};
+  $$('tbody tr',overlay).forEach(row=>row.onclick=async()=>{const item=S.items.find(item=>item.id===row.dataset.id);overlay.innerHTML='';if(item&&item.page!==S.page&&S.pdf)await showPage(item.page);if(item){setSelection([item.id]);refresh();}});
+  $('#searchRows').oninput=event=>$$('tbody tr',overlay).forEach(row=>row.hidden=!row.dataset.search.includes(event.target.value.toLowerCase()));$('#drawerExport').onclick=exportExcel;
+}
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 function sheetXml(rows){return`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{let col='',n=ci+1;while(n){col=String.fromCharCode(65+(n-1)%26)+col;n=Math.floor((n-1)/26);}return typeof v==='number'?`<c r="${col}${ri+1}"><v>${v}</v></c>`:`<c r="${col}${ri+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`}).join('')}</row>`).join('')}</sheetData></worksheet>`}
-async function exportExcel(){const rows=S.items.map(i=>[pageName(i.page),i.name,i.material,i.kind==='area'?mat(i.material).name:'Plinthe / moulure',hasPendingFixtures(i)?'À délimiter':+i.qty.toFixed(2),i.waste,hasPendingFixtures(i)?'À délimiter':+(i.qty*(1+i.waste/100)).toFixed(2),i.kind==='area'?'pi²':'pi lin.',i.page,i.method,i.status,S.scaleMeta[i.page]?.verified?'Échelle vérifiée':'Échelle à vérifier']),summary=[['Type','Code','Quantité nette','Quantité totale','Unité'],...totals().map(t=>[t.name,t.code,+t.net.toFixed(2),+t.total.toFixed(2),'pi²'])],detail=[['Niveau','Pièce / zone','Code de fini','Type','Quantité nette','Perte (%)','Quantité totale','Unité','Page source','Méthode','Statut','Note'],...rows],controls=[['Contrôle','Valeur'],['Échelle',S.scale?`1 px = ${S.scale.toFixed(5)} pi`:'À calibrer'],['Plan',S.fileName],['Bains/douches à délimiter',S.items.filter(hasPendingFixtures).map(i=>'Page '+i.page+' · '+i.name).join(' / ')||'Aucun équipement signalé en attente'],['Pages analysées',[...new Set(S.items.map(i=>i.page))].join(', ')||'Aucune'],...Object.entries(S.scales).map(([page,scale])=>['Échelle page '+page,(S.scaleMeta[page]?.label||'Cote manuelle')+' · '+(S.scaleMeta[page]?.verified?'vérifiée':'à vérifier')+' · 1 px = '+scale.toFixed(7)+' pi'])],sheets=[['Résumé',summary],['Détail par pièce',detail],['Plinthes et moulures',[detail[0],...rows.filter(r=>r[7]==='pi lin.')]],['Contrôles',controls],['Calepinage',[['Feuille','Pièce','Format','Angle (degrés)','Joint (po)','Départ X depuis bord gauche (pi)','Départ Y depuis bord haut (pi)','Minimum avec perte (hors réemploi)'],...S.items.filter(i=>i.kind==='area'&&i.material.startsWith('CER')).map(i=>{const f=tileLayout(i),scale=S.scales[i.page];return [pageName(i.page),i.name,mat(i.material).name,f.angle,f.joint,+(f.origin.x*scale).toFixed(4),+(f.origin.y*scale).toFixed(4),hasPendingFixtures(i)?'À délimiter':Math.ceil(i.qty*(1+i.waste/100)/(i.material==='CER-12X24'?2:4))];})]],...estimationSheets(),...fixtureExportSheets()],zip=new JSZip();zip.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);zip.folder('_rels').file('.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);const xl=zip.folder('xl');xl.file('workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${esc(s[0])}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`);xl.folder('_rels').file('workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`);const ws=xl.folder('worksheets');sheets.forEach((s,i)=>ws.file(`sheet${i+1}.xml`,sheetXml(s[1])));const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${S.project.replace(/[^a-z0-9]/gi,'_')}_takeoff.xlsx`;a.click();toast('Classeur Excel exporté.')}
+async function exportExcel(){const rows=S.items.map(i=>[pageName(i.page),i.name,i.material,labelForItem(i),hasPendingFixtures(i)?'À délimiter':+i.qty.toFixed(2),i.waste,hasPendingFixtures(i)?'À délimiter':+(i.qty*(1+i.waste/100)).toFixed(2),unitForItem(i),i.page,i.method,i.status,i.measureOnly?'Référence · exclue des commandes':i.kind==='count'?'Comptage · échelle non requise':S.scaleMeta[i.page]?.verified?'Échelle vérifiée':'Échelle à vérifier']),summary=[['Type','Code','Quantité nette','Quantité totale','Unité'],...totals().map(t=>[t.name,t.code,+t.net.toFixed(2),+t.total.toFixed(2),'pi²'])],detail=[['Niveau','Pièce / zone','Code de fini','Type','Quantité nette','Perte (%)','Quantité totale','Unité','Page source','Méthode','Statut','Note'],...rows],controls=[['Contrôle','Valeur'],['Échelle',S.scale?`1 px = ${S.scale.toFixed(5)} pi`:'À calibrer'],['Plan',S.fileName],['Bains/douches à délimiter',S.items.filter(hasPendingFixtures).map(i=>'Page '+i.page+' · '+i.name).join(' / ')||'Aucun équipement signalé en attente'],['Pages analysées',[...new Set(S.items.map(i=>i.page))].join(', ')||'Aucune'],...Object.entries(S.scales).map(([page,scale])=>['Échelle page '+page,(S.scaleMeta[page]?.label||'Cote manuelle')+' · '+(S.scaleMeta[page]?.verified?'vérifiée':'à vérifier')+' · 1 px = '+scale.toFixed(7)+' pi'])],sheets=[['Résumé',summary],['Détail par pièce',detail],['Plinthes et moulures',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='linear'&&!S.items[index].measureOnly)]],['Comptages',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='count')]],['Cotes de référence',[detail[0],...rows.filter((row,index)=>S.items[index].measureOnly)]],['Contrôles',controls],['Calepinage',[['Feuille','Pièce','Format','Angle (degrés)','Joint (po)','Départ X depuis bord gauche (pi)','Départ Y depuis bord haut (pi)','Minimum avec perte (hors réemploi)'],...S.items.filter(i=>i.kind==='area'&&i.material.startsWith('CER')).map(i=>{const f=tileLayout(i),scale=S.scales[i.page];return [pageName(i.page),i.name,mat(i.material).name,f.angle,f.joint,+(f.origin.x*scale).toFixed(4),+(f.origin.y*scale).toFixed(4),hasPendingFixtures(i)?'À délimiter':Math.ceil(i.qty*(1+i.waste/100)/(i.material==='CER-12X24'?2:4))];})]],...estimationSheets(),...fixtureExportSheets()],zip=new JSZip();zip.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);zip.folder('_rels').file('.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);const xl=zip.folder('xl');xl.file('workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${esc(s[0])}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`);xl.folder('_rels').file('workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`);const ws=xl.folder('worksheets');sheets.forEach((s,i)=>ws.file(`sheet${i+1}.xml`,sheetXml(s[1])));const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${S.project.replace(/[^a-z0-9]/gi,'_')}_takeoff.xlsx`;a.click();toast('Classeur Excel exporté.')}
 
 
 /* Calibration and selection: all coordinates remain in the rendered plan. */
@@ -944,7 +1219,7 @@ function applyScale(scale, meta, allPages = false) {
       S.scaleMeta[page].fromPage = S.page;
     }
     recalculatePage(page);
-    S.items = S.items.map(i => i.page === page ? {...i,status:'à valider'} : i);
+    S.items = S.items.map(i => i.page === page&&i.kind!=='count' ? {...i,status:'à valider'} : i);
     if(S.reviewByPage)delete S.reviewByPage[page];
   }
   S.scale = S.scales[S.page]; save(); refresh();
@@ -1071,7 +1346,7 @@ function closeCalibration() {
 function calibrationModal(initialMode) {
   if (!S.plan || S.loading) return toast('Ouvrez une feuille avant de régler son échelle.');
   S.dialogReturnFocus = document.activeElement;
-  const info = S.pageInfo[S.page] || {candidates:[],ambiguous:false}, meta = S.scaleMeta[S.page];
+  const info = {candidates:[],ambiguous:false,...S.pageInfo[S.page]}, meta = S.scaleMeta[S.page];
   const hasLine = S.draft.length === 2 && dist(...S.draft) > 1;
   const pixels = hasLine ? dist(...S.draft) : 0;
   const mode = initialMode || (hasLine ? 'imperial' : S.pdf && info.candidates.length ? 'automatic' : 'imperial');
@@ -1170,14 +1445,14 @@ function distanceToSegment(p,a,b) {
   return dist(p,{x:a.x+t*dx,y:a.y+t*dy});
 }
 function hitItem(point) {
-  return [...S.items].reverse().find(item => item.page === S.page && (item.kind === 'area' ? insideItem(point,item) :
-    item.points.slice(1).some((p,i) => distanceToSegment(point,item.points[i],p) <= 8/S.zoom)));
+  return [...S.items].reverse().find(item=>item.page===S.page&&(item.kind==='area'?insideItem(point,item):item.kind==='count'?
+    item.points.some(marker=>dist(marker,point)<=10/S.zoom):item.points.slice(1).some((p,index)=>distanceToSegment(point,item.points[index],p)<=8/S.zoom)));
 }
 function renderMultipleInspector(element) {
   const selected=S.items.filter(i=>S.selection.has(i.id) && i.page===S.page);
   const surfaces=selected.filter(i=>i.kind==='area'&&!hasPendingFixtures(i)).reduce((sum,i)=>sum+i.qty,0);
-  const lengths=selected.filter(i=>i.kind==='linear').reduce((sum,i)=>sum+i.qty,0);
-  element.innerHTML=`<div class="panel-head"><div><span>SÉLECTION MULTIPLE</span><h2>${selected.length} mesures sélectionnées</h2></div></div><div class="panel-section"><p class="selection-help">Ctrl/Cmd+clic pour ajouter ou retirer une mesure. Maj+clic dans la liste pour sélectionner une plage.</p><div class="total-line"><span>Surfaces nettes</span><b>${fmt(surfaces)} pi²</b></div><div class="total-line"><span>Longueurs nettes</span><b>${fmt(lengths)} pi</b></div></div><div class="panel-section"><button type="button" class="selection-action" id="clearSelection">Désélectionner · Échap</button><button type="button" class="selection-action danger" id="deleteItem">Supprimer la sélection · Suppr</button><p class="selection-help">Ctrl/Cmd+Z : annuler<br>Ctrl/Cmd+Y ou Ctrl/Cmd+Maj+Z : rétablir</p></div>`;
+  const lengths=selected.filter(i=>i.kind==='linear'&&!i.measureOnly).reduce((sum,i)=>sum+i.qty,0),counts=selected.filter(i=>i.kind==='count').reduce((sum,i)=>sum+i.qty,0);
+  element.innerHTML=`<div class="panel-head"><div><span>SÉLECTION MULTIPLE</span><h2>${selected.length} mesures sélectionnées</h2></div></div><div class="panel-section"><p class="selection-help">Ctrl/Cmd+clic pour ajouter ou retirer une mesure. Maj+clic dans la liste pour sélectionner une plage.</p><div class="total-line"><span>Surfaces nettes</span><b>${fmt(surfaces)} pi²</b></div><div class="total-line"><span>Longueurs nettes</span><b>${fmt(lengths)} pi</b></div><div class="total-line"><span>Éléments comptés</span><b>${fmt(counts,0)} u</b></div></div><div class="panel-section"><button type="button" class="selection-action" id="clearSelection">Désélectionner · Échap</button><button type="button" class="selection-action danger" id="deleteItem">Supprimer la sélection · Suppr</button><p class="selection-help">Ctrl/Cmd+Z : annuler<br>Ctrl/Cmd+Y ou Ctrl/Cmd+Maj+Z : rétablir</p></div>`;
   $('#clearSelection').onclick=()=>{setSelection([]);refresh();}; $('#deleteItem').onclick=deleteSelection;
 }
 function refreshBase() {
@@ -1214,8 +1489,8 @@ function refreshBase() {
   $('#deleteSelection').disabled=!S.selection.size || S.loading;
   const visible=S.items.filter(i=>i.page===S.page), surface=visible.filter(i=>i.kind==='area'&&!hasPendingFixtures(i)).reduce((sum,i)=>sum+i.qty*(1+i.waste/100),0);
   $('#gridSummary').textContent=`${visible.length} zone${visible.length!==1?'s':''} · ${fmt(surface)} pi²${visible.some(hasPendingFixtures)?' · bain/douche à délimiter':''}${S.selection.size?' · '+S.selection.size+' sélectionnée(s)':''}`;
-  $('#measureTree').innerHTML=visible.length ? visible.map(i=>`<div class="measure-row ${S.selection.has(i.id)?'active':''}" data-item="${i.id}" tabindex="0" role="button" aria-pressed="${S.selection.has(i.id)}"><i style="background:${i.kind==='area'?mat(i.material).color:'#df5e43'}"></i><span><b>${esc(i.name)}</b><small>${esc(i.material)} · ${esc(i.status)}</small></span><strong>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty)} ${i.kind==='area'?'pi²':'pi'}</strong></div>`).join('') : '<p>Aucune quantité mesurée</p>';
-  $('#gridRows').innerHTML=visible.length ? visible.map(i=>`<tr class="${S.selection.has(i.id)?'selected':''}" data-item="${i.id}" tabindex="0" aria-selected="${S.selection.has(i.id)}"><td><b>${esc(i.name)}</b></td><td>${esc(i.material)}</td><td>${i.kind==='area'?mat(i.material).name:'Plinthe / moulure'}</td><td>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty)} ${i.kind==='area'?'pi²':'pi'}</td><td>${fmt(i.waste)}%</td><td><b>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty*(1+i.waste/100))}</b></td><td><span class="badge ${esc(i.status.replace('à ',''))}">${esc(i.status)}</span></td></tr>`).join('') : '<tr><td colspan="7" class="grid-empty">Tracez une surface ou lancez la détection pour commencer.</td></tr>';
+  $('#measureTree').innerHTML=visible.length ? visible.map(i=>`<div class="measure-row ${S.selection.has(i.id)?'active':''}" data-item="${i.id}" tabindex="0" role="button" aria-pressed="${S.selection.has(i.id)}"><i style="background:${colorForItem(i)}"></i><span><b>${esc(i.name)}</b><small>${esc(i.material)} · ${esc(i.status)}</small></span><strong>${itemQuantityText(i)}</strong></div>`).join('') : '<p>Aucune quantité mesurée</p>';
+  $('#gridRows').innerHTML=visible.length ? visible.map(i=>`<tr class="${S.selection.has(i.id)?'selected':''}" data-item="${i.id}" tabindex="0" aria-selected="${S.selection.has(i.id)}"><td><b>${esc(i.name)}</b></td><td>${esc(i.material)}</td><td>${labelForItem(i)}</td><td>${itemQuantityText(i)}</td><td>${fmt(i.waste)}%</td><td><b>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty*(1+i.waste/100))}</b></td><td><span class="badge ${esc(i.status.replace('à ',''))}">${esc(i.status)}</span></td></tr>`).join('') : '<tr><td colspan="7" class="grid-empty">Tracez une surface ou lancez la détection pour commencer.</td></tr>';
   bindMeasureRowEvents(); renderInspector();
 }
 
@@ -1432,6 +1707,7 @@ function deleteSelection() {
 }
 function updateItem(id,patch) {
   const item=S.items.find(i=>i.id===id);if(!item)return;
+  if((item.kind==='count'||item.measureOnly)&&'waste'in patch)patch={...patch,waste:0};
   if('waste'in patch&&(!Number.isFinite(patch.waste)||patch.waste<0||patch.waste>1000))return toast('Entrez une perte entre 0 et 1 000 %.');
   if('material'in patch)patch={...patch,materialNeedsReview:false};
   const changed=['material','waste','bathroom','points','holes'].some(key=>key in patch&&patch[key]!==item[key]);
@@ -1443,8 +1719,14 @@ function updateItem(id,patch) {
   if(hasPendingFixtures(item))item.status='à valider';save();refresh();
 }
 function recalculatePage(page) {
-  const scale=S.scales[page];if(!Number.isFinite(scale)||scale<=0)return;
-  S.items=S.items.map(item=>{if(item.page!==page)return item;const qty=item.kind==='area'?netArea(item)*scale*scale:lineLength(item.points)*scale;const changed=!Number.isFinite(item.qty)||Math.abs(qty-item.qty)>Math.max(1e-7,Math.abs(qty)*1e-9);return {...item,qty,status:changed?'à valider':item.status};});S.detectorCache=null;
+  const scale=S.scales[page];
+  S.items=S.items.map(item=>{
+    if(item.page!==page)return item;
+    if(item.kind!=='count'&&(!Number.isFinite(scale)||scale<=0))return item;
+    const qty=item.kind==='count'?item.points.length:item.kind==='area'?netArea(item)*scale*scale:lineLength(item.points)*scale;
+    const changed=!Number.isFinite(item.qty)||Math.abs(qty-item.qty)>Math.max(1e-7,Math.abs(qty)*1e-9);
+    return {...item,qty,status:changed?'à valider':item.status};
+  });S.detectorCache=null;
 }
 
 function zoomAt(next,x=canvas.clientWidth/2,y=canvas.clientHeight/2) {
@@ -1472,6 +1754,7 @@ function activateTool(tool) {
   S.fixtureDrawing=null;S.fixtureEditing=null;
   if(tool==='calibrate')return calibrationModal();
   if(tool==='tileOrigin')return activateOrigin();
+  if(['rectangle','segment','dimension'].includes(tool)&&!S.scale)return calibrationModal();
   if(['split','exclude','edit'].includes(tool)) {
     const parent=S.items.find(i=>i.id===S.selected&&i.page===S.page&&i.kind==='area');
     if(!parent)return toast('Sélectionnez une surface avant d’utiliser cet outil.');
@@ -1488,7 +1771,7 @@ function closeDialog() {if(S.detectJob)S.detectJob.cancelled=true;$('#overlay').
 function helpDialog() {
   const rows=[
     ['Molette','Zoom centré sur le pointeur'],['Bouton central / Espace + glisser','Déplacer le plan'],
-    ['V / H','Sélection / main'],['S / L','Surface / ligne (plinthe ou céramique murale via F5)'],['A','Détecter une pièce au clic'],
+    ['V / H','Sélection / main'],['P / J / Q / D','Rectangle / segments / comptage / cote de référence'],['S / L','Surface / ligne (plinthe ou céramique murale via F5)'],['A','Détecter une pièce au clic'],
     ['Ctrl/Cmd + Maj + A','Détecter les pièces de la feuille'],['C','Échelle et calibration'],['B','Fermer un passage : 2 points'],
     ['R','Cadre de détection : 2 coins'],['E','Modifier les coins de la surface sélectionnée'],['F / X','Sous-zone / exclusion intérieure'],
     ['T','Choisir le départ de céramique sur le plan'],['Flèches dans l’outil T','Déplacer le départ de 1 po; Maj : 12 po'],
@@ -1515,6 +1798,7 @@ function keyboard(event) {
     return;
   }
   if(event.target.closest?.('input,select,textarea,[contenteditable="true"],[contenteditable=""]'))return;
+  if(event.target.closest?.('button')&&(key==='enter'||key===' '))return;
   if(S.dragging){if(key==='escape'){event.preventDefault();const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);S.dragged=true;}return;}
   if(S.loading)return;
   if(modifier) {
@@ -1533,6 +1817,7 @@ function keyboard(event) {
   }
   if(key==='escape'){event.preventDefault();if(S.reviewOpen)closeReview();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();return;}
   if(key==='enter') {
+    if(finishManualTool()){event.preventDefault();return;}
     const row=event.target.closest?.('[data-item]');
     if(row)openItemEditor(row.dataset.item);
     else if(S.tool==='fixturePolygon'&&S.draft.length>=3)finishFixtureDrawing();
@@ -1560,8 +1845,8 @@ function keyboard(event) {
     }else {const step=event.shiftKey?150:40;S.pan={x:S.pan.x-dx*step,y:S.pan.y-dy*step};}
     return;
   }
-  const extra={h:'hand',b:'divider',r:'region',t:'tileOrigin',e:'edit',x:'exclude'},tool=extra[key]||TOOLS.find(t=>t[3].toLowerCase()===key)?.[0];
-  if(tool){event.preventDefault();activateTool(tool);}
+  const extra={q:'count',p:'rectangle',j:'segment',d:'dimension',h:'hand',b:'divider',r:'region',t:'tileOrigin',e:'edit',x:'exclude'},tool=extra[key]||TOOLS.find(t=>t[3].toLowerCase()===key)?.[0];
+  if(tool){event.preventDefault();if(['count','rectangle','segment','dimension'].includes(tool))startManualTool(tool);else activateTool(tool);}
 }
 function snapPoint(point,event) {
   if(event.shiftKey&&S.draft.length) {
@@ -1576,7 +1861,7 @@ function drawGuides(context) {
   if(S.preview?.page===S.page)for(const item of S.preview.items)if(item.selected||item.needsSeparation||S.preview.items.indexOf(item)===S.previewFocus) {
     if(item.selected){context.save();clipItem(context,item);context.fillStyle=mat(item.material).color+'44';const b=boundsOf(item.points);context.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);context.restore();}traceItem(context,item);context.strokeStyle=item.needsSeparation?'#b73f24':S.preview.items.indexOf(item)===S.previewFocus?'#101713':mat(item.material).color;context.lineWidth=(S.preview.items.indexOf(item)===S.previewFocus?4:2)/S.zoom;context.stroke();
   }
-  if(S.draft.length&&S.mouseWorld) {
+  if(S.draft.length&&S.mouseWorld&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
     context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(S.mouseWorld.x,S.mouseWorld.y);context.stroke();
   }
   context.setLineDash([]);
@@ -1644,38 +1929,41 @@ function refresh() {
   $('#toggleTileGrid').setAttribute('aria-pressed',String(S.tileGrid));
   for(const id of ['aiAnalyze','aiReview'])$('#'+id).disabled=!S.plan||S.loading;
   $('#hint').hidden=!S.plan||S.tool==='select';
-  refreshWorkflow();
+  refreshWorkflow();refreshManualUI();
 }
 function downloadBlob(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 function exportProject() {
   save();if(!S.plan)return toast('Ouvrez un plan avant de sauvegarder un relevé.');
-  const data={format:'quantif-plancher',version:7,documentKey:S.documentKey,fileName:S.fileName,pages:S.pages,project:S.project,
+  const data={format:'quantif-plancher',version:8,documentKey:S.documentKey,fileName:S.fileName,pages:S.pages,project:S.project,
     items:S.items,scales:S.scales,scaleMeta:S.scaleMeta,sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,estimation:S.estimation};
   downloadBlob(new Blob([JSON.stringify(data)],{type:'application/json'}),S.project.replace(/[^a-z0-9_-]/gi,'_')+'.quantif.json');
   toast('Relevé sauvegardé. Le PDF devra être rouvert pour le restaurer.');
 }
 function validateProject(data) {
-  if(data.format!=='quantif-plancher'||![4,5,6,7].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V7 valide.');
+  if(data.format!=='quantif-plancher'||![4,5,6,7,8].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V8 valide.');
   if(data.documentKey!==S.documentKey||data.pages!==S.pages)throw new Error('Ouvrez le PDF ou l’image d’origine avant de restaurer ce relevé.');
   if(data.version>=5)validateEstimation(data.estimation);
-  const points=ring=>Array.isArray(ring)&&ring.length>=2&&ring.length<=20000&&ring.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<100000&&Math.abs(p.y)<100000);
+  const points=(ring,min=2)=>Array.isArray(ring)&&ring.length>=min&&ring.length<=20000&&ring.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<100000&&Math.abs(p.y)<100000);
   const ids=new Set();
   for(const item of data.items) {
-    if(!/^[a-z0-9_-]{1,60}$/i.test(item.id)||ids.has(item.id)||!Number.isInteger(item.page)||item.page<1||item.page>S.pages||!['area','linear'].includes(item.kind)||!points(item.points)||
+    const minPoints=item.kind==='count'?1:item.kind==='area'?3:2;
+    if(!/^[a-z0-9_-]{1,60}$/i.test(item.id)||ids.has(item.id)||!Number.isInteger(item.page)||item.page<1||item.page>S.pages||!['area','linear','count'].includes(item.kind)||!points(item.points,minPoints)||
       !['confirmée','estimée','à valider'].includes(item.status)||!Number.isFinite(item.waste)||item.waste<0||item.waste>1000||
       typeof item.name!=='string'||item.name.length>300||typeof item.method!=='string'||item.method.length>300||
-      !(item.kind==='linear'?item.material==='PL-01':MATERIALS.some(m=>m.code===item.material)))throw new Error('Le relevé contient une mesure invalide.');
-    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);
-    ids.add(item.id);
-    if((item.holes&&!Array.isArray(item.holes))||!getHoles(item).every(points))throw new Error('Une exclusion est invalide.');
+      !(item.kind==='count'?item.material==='QT-01':item.kind==='linear'?item.material==='PL-01':MATERIALS.some(material=>material.code===item.material)))throw new Error('Le relevé contient une mesure invalide.');
+    if(item.measureOnly!==undefined&&(typeof item.measureOnly!=='boolean'||item.measureOnly&&item.kind!=='linear'))throw new Error('Une cote de référence doit être une ligne.');
+    if((item.kind==='count'||item.measureOnly)&&item.waste!==0)throw new Error('Les comptages et les cotes ne portent pas de perte.');
+    if(item.kind==='count'&&(item.holes?.length||Object.keys(item.subzones||{}).length||item.layout||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId))throw new Error('Un comptage ne porte pas d’exclusion ou de calepinage.');
+    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);ids.add(item.id);
+    if((item.holes&&!Array.isArray(item.holes))||!getHoles(item).every(ring=>points(ring,3)))throw new Error('Une exclusion est invalide.');
     if(item.layout&&(!points([item.layout.origin,item.layout.origin])||!Number.isFinite(item.layout.angle)||!Number.isFinite(item.layout.joint)||item.layout.joint<0||item.layout.joint>1))throw new Error('Un départ de céramique est invalide.');
   }
   for(const [page,scale]of Object.entries(data.scales||{}))if(!/^\d+$/.test(page)||+page<1||+page>S.pages||!Number.isFinite(scale)||scale<=0)throw new Error('Une échelle est invalide.');
-  for(const item of data.items)if(!data.scales?.[item.page])throw new Error('L’échelle d’une mesure manque.');
-  for(const [page,list]of Object.entries(data.dividers||{}))if(!/^\d+$/.test(page)||+page<1||+page>S.pages||!Array.isArray(list)||list.length>500||!list.every(d=>points(d.points)&&d.points.length===2))throw new Error('Une séparation est invalide.');
-  for(const rect of Object.values(data.detectBounds||{}))if(!['x','y','right','bottom'].every(k=>Number.isFinite(rect[k])))throw new Error('Un cadre est invalide.');
+  for(const item of data.items)if(item.kind!=='count'&&!data.scales?.[item.page])throw new Error('L’échelle d’une mesure manque.');
+  for(const [page,list]of Object.entries(data.dividers||{}))if(!/^\d+$/.test(page)||+page<1||+page>S.pages||!Array.isArray(list)||list.length>500||!list.every(divider=>points(divider.points)&&divider.points.length===2))throw new Error('Une séparation est invalide.');
+  for(const rect of Object.values(data.detectBounds||{}))if(!['x','y','right','bottom'].every(key=>Number.isFinite(rect[key])))throw new Error('Un cadre est invalide.');
   return data;
 }
 async function importProject(file) {
@@ -1687,7 +1975,7 @@ async function importProject(file) {
     S.items=data.items;S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings=data.settings;
-    S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;
+    S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
 }
@@ -2013,6 +2301,7 @@ function fixtureExportSheets() {
 function catalogDefaults() {
   const defs={};
   for(const m of MATERIALS)defs[m.code]={name:m.name,unit:'pi²',pack:'boîte',coverage:null,price:null,labor:null,components:[]};
+  defs['QT-01']={name:'Éléments comptés',unit:'u',pack:'unité',coverage:1,price:null,labor:null,components:[]};
   defs['PL-01']={name:'Plinthe / moulure manuelle',unit:'pi',pack:'barre',coverage:null,price:null,labor:null,components:[]};
   for(const m of MATERIALS)defs['PL-'+m.code]={...defs['PL-01'],name:'Plinthe associée · '+m.code,components:[]};
   defs['MUR-01']={...defs['CER-01'],name:'Céramique murale / dosseret',components:[]};
@@ -2021,8 +2310,8 @@ function catalogDefaults() {
 function profile(code) { return {...catalogDefaults()[code],...(S.estimation?.catalog?.[code]||{})}; }
 function workOf(item) {
   const w=item.work||{};
-  return {included:w.included!==false,block:w.block||'',level:w.level||'',unit:w.unit||'',type:w.type||'',repeat:w.repeat||1,
-    lineRole:w.lineRole||'baseboard',baseboard:{enabled:false,code:item.kind==='linear'?'PL-01':'PL-'+item.material,deductions:0,waste:5,...w.baseboard},
+  return {included:!item.measureOnly&&w.included!==false,block:w.block||'',level:w.level||'',unit:w.unit||'',type:w.type||'',repeat:w.repeat||1,
+    lineRole:w.lineRole||'baseboard',baseboard:{enabled:false,code:item.kind==='area'?'PL-'+item.material:'PL-01',deductions:0,waste:5,...w.baseboard},
     wall:{height:48,openings:0,waste:10,...w.wall}};
 }
 function finiteRange(n,min,max) { return typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max; }
@@ -2041,7 +2330,7 @@ function validateEstimation(value) {
   for(const [code,p]of Object.entries(value.catalog)) {
     if(!Object.hasOwn(defs,code)||!p||typeof p!=='object'||typeof p.name!=='string'||!p.name.trim()||p.name.length>120||p.unit!==defs[code].unit||typeof p.pack!=='string'||!p.pack.trim()||p.pack.length>30)throw new Error('Référence ou unité de catalogue invalide.');
     for(const k of ['coverage','price','labor'])if(p[k]!==null&&!finiteRange(p[k],k==='coverage'?0.000001:0,1e9))throw new Error('Rendement ou prix invalide.');
-    if(!Array.isArray(p.components)||p.components.length>3||(p.unit==='pi'&&p.components.length))throw new Error('Trois consommables au maximum par surface.');
+    if(!Array.isArray(p.components)||p.components.length>3||(p.unit!=='pi²'&&p.components.length))throw new Error('Trois consommables au maximum par surface.');
     for(const c of p.components) {
       if(!c||typeof c.name!=='string'||!c.name.trim()||c.name.length>120||typeof c.pack!=='string'||!c.pack.trim()||c.pack.length>30||!finiteRange(c.waste,0,1000))throw new Error('Consommable invalide.');
       for(const k of ['coverage','price'])if(c[k]!==null&&!finiteRange(c[k],k==='coverage'?0.000001:0,1e9))throw new Error('Rendement ou prix du consommable invalide.');
@@ -2062,6 +2351,7 @@ function setProfile(code,value) {
   remember();S.estimation.catalog[code]=structuredClone(value);save();refresh();
 }
 function measureForEstimate(item) {
+  if(item.kind==='count')return item.points.length;
   const scale=S.scales[item.page];
   if(!Number.isFinite(scale)||scale<=0||hasPendingFixtures(item))return null;
   return item.kind==='area'?Math.max(0,netArea(item))*scale*scale:lineLength(item.points)*scale;
@@ -2069,10 +2359,10 @@ function measureForEstimate(item) {
 function estimateLines() {
   const result=[];
   for(const item of S.items) {
-    const w=workOf(item);if(!w.included||!isConfirmed(item))continue;
+    const w=workOf(item);if(item.measureOnly||!w.included||!isConfirmed(item))continue;
     const measured=measureForEstimate(item),scale=S.scales[item.page],issues=[];
     if(measured===null)issues.push(hasPendingFixtures(item)?'Bain/douche à délimiter':'Échelle manquante');
-    else if(!S.scaleMeta[item.page]?.verified)issues.push('Échelle à vérifier');
+    else if(item.kind!=='count'&&!S.scaleMeta[item.page]?.verified)issues.push('Échelle à vérifier');
     if(item.status!=='confirmée')issues.push('Mesure '+item.status);
     if(w.repeat>1)issues.push('Répétition ×'+w.repeat+' à confirmer');
     const emit=(category,code,base,waste,extra=[])=>result.push({id:item.id,page:item.page,name:item.name,category,code,
@@ -2087,7 +2377,8 @@ function estimateLines() {
         if(S.items.some(i=>i.kind==='linear'&&i.page===item.page&&i.name.trim().toLowerCase()===item.name.trim().toLowerCase()&&workOf(i).lineRole!=='wall'&&workOf(i).included))extra.push('Ligne manuelle de même nom : doublon possible');
         emit('Plinthe liée',w.baseboard.code,outer===null||w.baseboard.deductions>outer+1e-7?null:Math.max(0,outer-w.baseboard.deductions),w.baseboard.waste,extra);
       }
-    } else if(w.lineRole==='wall') {
+    } else if(item.kind==='count')emit('Comptage','QT-01',measured,0);
+    else if(w.lineRole==='wall') {
       const gross=measured===null?null:measured*w.wall.height/12;
       emit('Mur / dosseret','MUR-01',gross===null||w.wall.openings>gross+1e-7?null:Math.max(0,gross-w.wall.openings),w.wall.waste,
         gross!==null&&w.wall.openings>gross+1e-7?['Ouvertures supérieures à la surface brute']:[]);
@@ -2137,7 +2428,7 @@ function estimationSheets() {
   const cat=[['Référence','Description','Unité de besoin','Rendement / emballage','Emballage','Prix / emballage','Pose / unité nette','Consommable 1','Rendement 1','Perte 1 (%)','Prix 1','Consommable 2','Rendement 2','Perte 2 (%)','Prix 2','Consommable 3','Rendement 3','Perte 3 (%)','Prix 3'],
     ...Object.keys(catalogDefaults()).map(code=>{const p=profile(code);return [code,p.name,p.unit,v(p.coverage),p.pack,v(p.price),v(p.labor),...[0,1,2].flatMap(i=>p.components[i]?[p.components[i].name,v(p.components[i].coverage),p.components[i].waste,v(p.components[i].price)]:['','','',''])];})];
   const units=new Map();
-  for(const i of S.items){const w=workOf(i);if(!w.included)continue;const key=JSON.stringify([w.block,w.level,w.unit,w.type]);if(!units.has(key))units.set(key,{scope:[w.block,w.level,w.unit,w.type],repeats:new Set(),ids:new Set()});const u=units.get(key);u.repeats.add(w.repeat);u.ids.add(i.id);}
+  for(const i of S.items){const w=workOf(i);if(i.measureOnly||!w.included)continue;const key=JSON.stringify([w.block,w.level,w.unit,w.type]);if(!units.has(key))units.set(key,{scope:[w.block,w.level,w.unit,w.type],repeats:new Set(),ids:new Set()});const u=units.get(key);u.repeats.add(w.repeat);u.ids.add(i.id);}
   const scope=[['Bloc','Étage','Unité / modèle','Type','Répétitions déclarées par zone','Zones incluses','Contrôle'],...Array.from(units.values(),u=>[...u.scope,[...u.repeats].join(' / '),u.ids.size,u.repeats.size>1?'Multiplicateurs différents dans la même unité : vérifier':'Les répétitions ne sont pas un comptage automatique de logements.'])];
   return [['Approvisionnement',orders],['Dérivés et répétitions',detail],['Assemblages',cat],['Portée des unités',scope]];
 }
@@ -2146,12 +2437,23 @@ function quantityOrUnknown(n,unit='') {return n===null?'À vérifier':fmt(n,2)+(
 function moneyOrUnknown(n) {return n===null?'À saisir':fmt(n,2)+' $';}
 function estimateInspector(host,item) {
   const single=S.selection.size===1&&item;
-  host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Pose et approvisionnement · V5</h3>${single?`<p>${workOf(item).included?'Incluse dans l’estimation':'Exclue de l’estimation'} · répétition ×${workOf(item).repeat}${item.kind==='linear'&&workOf(item).lineRole==='wall'?' · céramique murale':''}</p><button type="button" id="workSheetBtn" class="selection-action">Fiche de pose : plinthes, murs et unité</button>`:'<p>Les surfaces du plan restent des mesures uniques. Les répétitions et composants apparaissent dans l’estimation.</p>'}<button type="button" id="estimateInspectorBtn" class="selection-action">Estimation et commandes</button><button type="button" id="catalogInspectorBtn" class="selection-action">Configurer les assemblages</button></section>`);
+  host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Pose et approvisionnement · V5</h3>${single?`<p>${item.measureOnly?'Cote de référence · hors commandes':workOf(item).included?'Incluse dans l’estimation':'Exclue de l’estimation'} · répétition ×${workOf(item).repeat}${item.kind==='linear'&&workOf(item).lineRole==='wall'?' · céramique murale':''}</p><button type="button" id="workSheetBtn" class="selection-action">Fiche de pose : plinthes, murs et unité</button>`:'<p>Les surfaces du plan restent des mesures uniques. Les répétitions et composants apparaissent dans l’estimation.</p>'}<button type="button" id="estimateInspectorBtn" class="selection-action">Estimation et commandes</button><button type="button" id="catalogInspectorBtn" class="selection-action">Configurer les assemblages</button></section>`);
   if(single)$('#workSheetBtn').onclick=()=>workDialog(item.id);
-  $('#estimateInspectorBtn').onclick=estimateDialog;$('#catalogInspectorBtn').onclick=()=>catalogDialog(single&&item.kind==='area'?item.material:'VP-01');
+  $('#estimateInspectorBtn').onclick=estimateDialog;$('#catalogInspectorBtn').onclick=()=>catalogDialog(single&&item.kind==='count'?'QT-01':single&&item.kind==='area'?item.material:'VP-01');
+}
+function countWorkDialog(id) {
+  const item=S.items.find(item=>item.id===id&&item.kind==='count');if(!item)return;
+  const work=workOf(item);
+  openDialog('Fiche de comptage · '+item.name,`<form id="workForm"><p>${fmt(item.points.length,0)} élément(s) pointé(s) · unité u · aucune échelle requise.</p><label class="v5-check"><input id="workIncluded" type="checkbox" ${work.included?'checked':''}> Inclure ce comptage dans l’estimation après confirmation</label><div class="v4-fields">${[['workBlock','Bloc',work.block],['workLevel','Étage',work.level],['workUnit','Unité / modèle',work.unit],['workType','Type d’unité',work.type]].map(([field,label,value])=>`<label>${label}<input id="${field}" maxlength="80" value="${esc(value)}"></label>`).join('')}<label>Répétitions<input id="workRepeat" type="number" min="1" max="999" step="1" value="${work.repeat}" required></label></div><p>Les unités sont séparées des longueurs et surfaces. Aucun périmètre, perte ou consommable surfacique n’est appliqué.</p><p id="workError" class="v4-error" role="alert"></p><div class="modal-actions"><button id="cancelWork" type="button">Annuler</button><button type="submit" class="primary">Enregistrer la fiche</button></div></form>`);
+  $('#cancelWork').onclick=closeDialog;
+  $('#workForm').onsubmit=event=>{event.preventDefault();try{
+    setWork(id,{...work,included:$('#workIncluded').checked,block:$('#workBlock').value.trim(),level:$('#workLevel').value.trim(),unit:$('#workUnit').value.trim(),type:$('#workType').value.trim(),repeat:Number($('#workRepeat').value)});closeDialog();toast('Fiche de comptage enregistrée.');
+  }catch(error){$('#workError').textContent=error.message;}};
 }
 function workDialog(id) {
   const item=S.items.find(i=>i.id===id);if(!item)return;
+  if(item.kind==='count')return countWorkDialog(id);
+  if(item.measureOnly)return openDialog('Cote de référence',`<p>${esc(item.name)} · ${itemQuantityText(item)}</p><p>Cette mesure sert de référence et reste exclue des commandes.</p>`);
   const w=workOf(item),measure=measureForEstimate(item),linear=item.kind==='linear';
   openDialog('Fiche de pose · '+item.name,`<form id="workForm"><p>Source : ${esc(pageName(item.page))} · ${quantityOrUnknown(measure,linear?'pi':'pi²')}. La géométrie du plan reste mesurée une seule fois.</p>
     <label class="v5-check"><input id="workIncluded" type="checkbox" ${w.included?'checked':''}> Inclure cette zone dans l’estimation</label>
@@ -2177,7 +2479,7 @@ function nullableField(id,min=0) {
 }
 function catalogDialog(code='VP-01') {
   if(!Object.hasOwn(catalogDefaults(),code))code='VP-01';
-  const p=profile(code),linear=p.unit==='pi';
+  const p=profile(code),linear=p.unit!=='pi²';
   const input=(id,label,value,min=0)=>`<label>${label}<input id="${id}" type="number" step="any" min="${min}" value="${value??''}" placeholder="À saisir"></label>`;
   openDialog('Assemblages de revêtement',`<label>Référence à configurer<select id="catalogCode">${Object.keys(catalogDefaults()).map(c=>`<option value="${c}" ${c===code?'selected':''}>${c} · ${esc(profile(c).name)}</option>`).join('')}</select></label><p>Ces paramètres s’appliquent à toutes les zones de cette référence, dans ce projet. Enregistrez avant de changer de référence.</p>
     <form id="catalogForm"><div class="v4-fields"><label>Description<input id="catalogName" value="${esc(p.name)}" maxlength="120" required></label><label>Nom de l’emballage<input id="catalogPack" value="${esc(p.pack)}" maxlength="30" required></label>
@@ -2194,8 +2496,8 @@ function catalogDialog(code='VP-01') {
 }
 function estimateDialog() {
   const lines=estimateLines(),rows=purchaseRows(lines),t=estimateTotals(rows,lines);
-  openDialog('Estimation et commandes',`<p id="estimatePendingNote">${S.items.filter(item=>!isConfirmed(item)).length} mesure(s) à valider exclue(s) des commandes.</p><p>Seules les mesures confirmées avec échelle vérifiée sont incluses. Les quantités ci-dessous incluent les répétitions déclarées. Les mesures uniques restent dans la grille du plan et les cinq premières feuilles Excel.</p><div class="v5-stats"><div><span>Sol net prévu</span><b>${quantityOrUnknown(t.floorUnknown?null:t.floor,'pi²')}</b></div><div><span>Murs / dosserets</span><b>${quantityOrUnknown(t.wallUnknown?null:t.wall,'pi²')}</b></div><div><span>Plinthes prévues</span><b>${quantityOrUnknown(t.linearUnknown?null:t.linear,'pi')}</b></div><div><span>${t.incomplete?'Sous-total connu · incomplet':'Coût estimé hors taxes'}</span><b>${fmt(t.knownCost,2)} $</b></div></div>
-    <div class="v5-toolbar"><label>Regrouper avant d’arrondir<select id="purchaseGroup"><option value="project" ${S.estimation.group==='project'?'selected':''}>Projet entier · réserve commune</option><option value="floor" ${S.estimation.group==='floor'?'selected':''}>Bloc + étage · commandes séparées</option></select></label><button type="button" id="orderCatalog">Configurer les assemblages</button><button type="button" id="orderExport" class="primary">Exporter Excel · 10 feuilles</button></div>
+  openDialog('Estimation et commandes',`<p id="estimatePendingNote">${S.items.filter(item=>!item.measureOnly&&!isConfirmed(item)).length} mesure(s) à valider exclue(s) des commandes.</p><p>Seuls les relevés confirmés sont inclus ; surfaces et longueurs exigent une échelle vérifiée. Les cotes restent hors commandes. Les quantités ci-dessous incluent les répétitions déclarées. Les mesures uniques restent dans la grille du plan et les feuilles de mesures Excel.</p><div class="v5-stats"><div><span>Sol net prévu</span><b>${quantityOrUnknown(t.floorUnknown?null:t.floor,'pi²')}</b></div><div><span>Murs / dosserets</span><b>${quantityOrUnknown(t.wallUnknown?null:t.wall,'pi²')}</b></div><div><span>Plinthes prévues</span><b>${quantityOrUnknown(t.linearUnknown?null:t.linear,'pi')}</b></div><div><span>${t.incomplete?'Sous-total connu · incomplet':'Coût estimé hors taxes'}</span><b>${fmt(t.knownCost,2)} $</b></div></div>
+    <div class="v5-toolbar"><label>Regrouper avant d’arrondir<select id="purchaseGroup"><option value="project" ${S.estimation.group==='project'?'selected':''}>Projet entier · réserve commune</option><option value="floor" ${S.estimation.group==='floor'?'selected':''}>Bloc + étage · commandes séparées</option></select></label><button type="button" id="orderCatalog">Configurer les assemblages</button><button type="button" id="orderExport" class="primary">Exporter Excel</button></div>
     <p>Commander = arrondi supérieur du besoin regroupé ÷ couverture par emballage. Coût matière = emballages entiers × prix ; pose = net prévu × tarif. Montants en $, hors taxes et transport. ${t.checks?`${t.checks} poste(s) présentent des données ou contrôles à compléter.`:''}</p>
     <div class="v5-order-table"><table><thead><tr><th>Groupe / référence</th><th>Poste</th><th>Net prévu</th><th>Besoin avec perte</th><th>Couverture</th><th>Commander</th><th>Matière</th><th>Pose</th><th>Contrôles</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td><small>${esc(orderGroupLabel(r.group))}</small><b>${esc(r.code)}</b><small>${esc(r.name)}</small></td><td>${esc(r.category)}</td><td>${quantityOrUnknown(r.net,r.unit)}</td><td>${quantityOrUnknown(r.demand,r.unit)}</td><td>${r.coverage===null?'À saisir':fmt(r.coverage,3)+' '+r.unit+' / '+esc(r.pack)}</td><td><b>${r.packs===null?'À compléter':fmt(r.packs,0)+' '+esc(r.pack)+(r.packs>1?'(s)':'')}</b></td><td>${moneyOrUnknown(r.materialCost)}</td><td>${r.category==='Consommable'?'Incluse dans la pose du fini':moneyOrUnknown(r.laborCost)}</td><td>${r.issues.length?esc(r.issues.join(' · ')):'Paramètres renseignés'}</td></tr>`).join(''):'<tr><td colspan="9">Aucune mesure confirmée incluse. Révisez puis confirmez les surfaces dans le tableau du plan.</td></tr>'}</tbody></table></div>
     <details class="v5-sources"><summary>Sources et répétitions · ${lines.length} poste(s) dérivé(s)</summary><div class="v5-order-table"><table><thead><tr><th>Page</th><th>Zone</th><th>Localisation</th><th>Poste</th><th>Mesure unique</th><th>Répétitions</th><th>Net prévu</th><th>Contrôles</th></tr></thead><tbody>${lines.map(l=>`<tr><td>${l.page}</td><td>${esc(l.name)}</td><td>${esc([l.block,l.level,l.unit,l.type].filter(Boolean).join(' / ')||'Non renseignée')}</td><td>${esc(l.category)}</td><td>${quantityOrUnknown(l.measured,profile(l.code).unit)}</td><td>×${l.repeat}</td><td>${quantityOrUnknown(l.net,profile(l.code).unit)}</td><td>${esc(l.issues.join(' · '))}</td></tr>`).join('')}</tbody></table></div></details>
@@ -2233,6 +2535,7 @@ canvas.onclick=event=>{
   if(!S.plan||S.loading||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
   const point=snapPoint(canvasPoint(event),event);
+  if(handleManualClick(point,event))return;
   if(['fixtureBox','fixturePolygon'].includes(S.tool)){if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);if(S.tool==='fixtureBox'&&S.draft.length===2)finishFixtureDrawing();}
   else if(S.tool==='select'){const hit=hitItem(point);if(hit)selectItem(hit.id,event);else if(!(event.ctrlKey||event.metaKey||event.shiftKey)){setSelection([]);refresh();}}
   else if(S.tool==='tileOrigin')setTileOrigin(S.selected,point);
@@ -2242,9 +2545,11 @@ canvas.onclick=event=>{
     if(S.tool==='calibrate'&&S.draft.length===2){if(dist(...S.draft)<2){S.draft.pop();toast('Choisissez deux points distincts.');}else calibrationModal(S.calibrationMode||'imperial');}
     else if(['divider','region'].includes(S.tool))finishTwoPointTool(point);
   }
+  refreshManualUI();
 };
 canvas.ondblclick=event=>{
   event.preventDefault();if(S.loading)return;
+  if(finishManualTool())return;
   if(['area','split','exclude'].includes(S.tool)&&S.draft.length>=3)finishArea(S.draft);
   else if(S.tool==='linear'&&S.draft.length>=2)finishLine(S.draft);
   else if(S.tool==='fixturePolygon'&&S.draft.length>=3)finishFixtureDrawing();
@@ -2267,7 +2572,7 @@ canvas.onpointerdown=event=>{
   }
 };
 canvas.onpointermove=event=>{
-  const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;
+  const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;refreshManualUI();
   if(S.panning){S.pan={x:S.panning.pan.x+event.clientX-S.panning.x,y:S.panning.pan.y+event.clientY-S.panning.y};return;}
   if(S.dragging) {
     if(dist(point,S.dragging.start)*S.zoom>3)S.dragged=true;
@@ -2321,7 +2626,7 @@ window.onblur=()=>{S.spaceHeld=false;if(S.dragging){const before=S.dragging.befo
 $('#toggleTileGrid').onclick=()=>{S.tileGrid=!S.tileGrid;refresh();};$('#tileSettings').onclick=tileModal;$('#tileOriginBtn').onclick=activateOrigin;
 $('#helpBtn').onclick=helpDialog;$('#saveProjectBtn').onclick=exportProject;
 $('#projectInput').onchange=event=>{importProject(event.target.files[0]);event.target.value='';};
-initEstimationUI();initV7();
+initEstimationUI();initV7();initManualUI();
 canvas.tabIndex=0;canvas.setAttribute('aria-label','Plan : zoom à la molette, sélection, détection et tracé des mesures');
 if(window.innerWidth<780){$('#inspector').hidden=true;$('#reopen').hidden=false;$('.app').classList.add('pages-folded');}
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});refresh();
