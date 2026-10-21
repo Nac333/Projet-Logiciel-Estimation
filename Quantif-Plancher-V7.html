@@ -128,21 +128,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .space-legend-keys i{display:block;width:10px;height:10px;flex-shrink:0;border:1px solid var(--space-color);background:var(--space-fill)}
 .surface-labels input{width:15px;height:15px;accent-color:var(--v7-accent);margin:0}
 .surface-legend-note{font-size:10px;margin-left:auto}
+.wall-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;width:100%;padding-top:4px;border-top:1px solid var(--v7-line)}.wall-legend[hidden]{display:none}.wall-legend span{font-size:10px}.wall-legend b{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:var(--v7-ink)}.wall-legend b::before{content:'';display:block;width:18px;height:3px;background:var(--wall-color)}
+.wall-mode-field{display:block;font:12px/1.45 Arial,sans-serif;margin-top:12px;color:var(--v7-ink)}.wall-mode-field select{display:block;width:100%;margin-top:4px;padding:8px;border:1px solid #7b8b81;border-radius:4px;background:#fff;color:var(--v7-ink)}
 @media(max-width:950px){.surface-legend{gap:5px 8px;padding:5px 8px}.space-legend-keys{gap:4px 8px}.surface-legend-note{width:100%;margin:0}}
 @media(max-width:520px){.surface-legend{font-size:10px}.space-legend-keys{order:3;width:100%}.surface-labels{margin-left:auto}.surface-legend-note{width:auto;order:4}}
 
-/* This file owns the unified ribbon, optional tools panel and manual status. */
+/* This file owns the single exposed ribbon and its manual status line. */
 :root{--manual-paper:#f4f7f5;--manual-white:#ffffff;--manual-ink:#192b22;--manual-muted:#4b5c52;--manual-border:#7b8b81;--manual-divider:#c6d0ca;--manual-focus:#17583f;--manual-area:#256d54;--manual-line:#25649a;--manual-segment:#8a5c16;--manual-count:#6846a3;--manual-active:#e4efe8;--manual-space:4px}
 .manual-ribbon{position:relative;display:flex;flex-direction:column;flex-shrink:0;min-width:0;max-width:100%;border-bottom:1px solid var(--manual-divider);background:var(--manual-paper);color:var(--manual-ink);font:12px/1.45 Arial,sans-serif;z-index:9}
-.manual-ribbon-scroll{display:flex;align-items:stretch;gap:0;min-width:0;max-width:100%;padding:4px 12px 3px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--manual-border) var(--manual-paper)}
-.manual-group{display:flex;flex-direction:column;flex:0 0 auto;padding:0 8px;border-right:1px solid var(--manual-divider)}
+.manual-ribbon-scroll{display:flex;align-items:stretch;gap:0;min-width:0;max-width:100%;padding:4px 8px 3px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--manual-border) var(--manual-paper)}
+.manual-group{display:flex;flex-direction:column;flex:0 0 auto;padding:0 6px;border-right:1px solid var(--manual-divider)}
 .manual-group:first-child{padding-left:0}.manual-group:last-child{border-right:0;padding-right:0}
 .manual-group-buttons{display:flex;align-items:stretch;gap:2px}
 .manual-ribbon .manual-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;width:52px;min-width:52px;min-height:50px;padding:4px 2px;max-width:100%;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--manual-ink);font:600 10px/1.25 Arial,sans-serif;cursor:pointer}
+.manual-button span{max-width:100%;line-height:1.25}.manual-ribbon #ordersBtn{width:64px;min-width:64px}.manual-ribbon #catalogNav{width:68px;min-width:68px}
 .manual-button svg{width:22px;height:22px;stroke-width:1.8;flex:0 0 auto;color:var(--manual-line)}
 .manual-button.manual-area svg{color:var(--manual-area)}.manual-button.manual-line svg{color:var(--manual-line)}.manual-button.manual-segment svg{color:var(--manual-segment)}.manual-button.manual-count svg{color:var(--manual-count)}
 .manual-ribbon .manual-button:hover:not(:disabled){background:var(--manual-white);border-color:var(--manual-border)}
-.manual-ribbon .manual-button.active,.manual-ribbon .manual-button[aria-expanded=true]{background:var(--manual-active);border-color:var(--manual-area);box-shadow:inset 0 -2px 0 var(--manual-area)}
+.manual-ribbon .manual-button.active,.manual-ribbon .manual-button[aria-pressed=true]{background:var(--manual-active);border-color:var(--manual-area);box-shadow:inset 0 -2px 0 var(--manual-area)}
 .manual-ribbon .manual-button.active.manual-count{border-color:var(--manual-count);box-shadow:inset 0 -2px 0 var(--manual-count)}
 .manual-ribbon .manual-button:disabled{color:#657169;cursor:default;opacity:.58}.manual-ribbon .manual-button:disabled svg{color:#657169}
 .manual-ribbon #stepDetect:not(:disabled){background:var(--manual-area);border-color:var(--manual-area);color:var(--manual-white)}.manual-ribbon #stepDetect:not(:disabled) svg{color:var(--manual-white)}
@@ -155,18 +158,41 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .manual-ribbon .manual-actions #manualFinish{background:var(--manual-area);color:var(--manual-white);border-color:var(--manual-area)}
 .manual-ribbon .manual-actions button:disabled{background:#e6ece8;color:#657169;border-color:#b1bdb5;cursor:default}
 .manual-ribbon button:focus-visible{outline:3px solid var(--manual-focus);outline-offset:2px}
-.advanced-tools{position:absolute;top:76px;right:12px;width:430px;max-width:calc(100% - 24px);max-height:calc(100dvh - 160px);padding:12px;overflow:auto;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);box-shadow:0 5px 16px #192b2226;color:var(--manual-ink)}
-.advanced-tools[hidden]{display:none}.advanced-tools header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 8px;border-bottom:1px solid var(--manual-divider)}
-.advanced-tools header strong{font-size:14px}.advanced-tools #closeAdvanced{width:30px;height:30px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:20px/1 Arial,sans-serif;cursor:pointer}
-.advanced-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;min-width:0;margin-top:8px}
-.advanced-tools-grid h3{grid-column:1/-1;margin:0 0 2px;font:700 11px/1.4 Arial,sans-serif;color:var(--manual-muted)}
-.manual-ribbon .advanced-tools .manual-button{display:flex;flex-direction:row;justify-content:flex-start;gap:8px;width:100%;min-width:0;min-height:40px;padding:6px;text-align:left;border-color:var(--manual-divider);font-size:11px;font-weight:500}
-.advanced-tools .manual-button svg{width:20px;height:20px}.advanced-tools .manual-button span{min-width:0;flex:1}.advanced-tools .manual-button kbd{margin-left:auto;border:0;background:var(--manual-paper);color:var(--manual-muted);font:10px/1.2 Arial,sans-serif;padding:2px}
 .zoom{min-width:0;padding:7px 10px}.zoom #zoomText{min-width:0}
 @media(max-width:1150px){.manual-ribbon-scroll{padding-inline:8px}.manual-group{padding-inline:6px}.manual-ribbon .manual-button{width:50px;min-width:50px}}
-@media(max-width:779px){.manual-ribbon-scroll{padding-top:4px;padding-bottom:3px}.manual-ribbon .manual-button{min-height:48px;width:50px;min-width:50px}.manual-group-label{margin-top:3px}.manual-status-line{min-height:30px;padding:4px 10px;gap:8px}.manual-status-line p{font-size:10px}.manual-actions{gap:4px}.manual-ribbon .manual-actions button{font-size:10px;padding:4px 6px}.advanced-tools{right:8px;max-width:calc(100% - 16px)}}
-@media(max-width:520px){.manual-status-line{align-items:flex-start;flex-direction:column;gap:4px;min-height:36px}.manual-status-line p{max-width:100%;font-size:10px}.manual-actions{align-self:flex-end}.manual-ribbon .manual-actions button{min-height:28px}.manual-group{padding-inline:6px}.advanced-tools{box-shadow:none;top:72px;padding:10px}.advanced-tools-grid{gap:4px}.manual-ribbon .advanced-tools .manual-button{font-size:10px}}
+@media(max-width:779px){.manual-ribbon-scroll{padding-top:4px;padding-bottom:3px}.manual-ribbon .manual-button{min-height:48px;width:50px;min-width:50px}.manual-group-label{margin-top:3px}.manual-status-line{min-height:30px;padding:4px 10px;gap:8px}.manual-status-line p{font-size:10px}.manual-actions{gap:4px}.manual-ribbon .manual-actions button{font-size:10px;padding:4px 6px}}
+@media(max-width:520px){.manual-status-line{align-items:flex-start;flex-direction:column;gap:4px;min-height:36px}.manual-status-line p{max-width:100%;font-size:10px}.manual-actions{align-self:flex-end}.manual-ribbon .manual-actions button{min-height:28px}.manual-group{padding-inline:6px}}
 @media(prefers-reduced-motion:reduce){.manual-ribbon{scroll-behavior:auto}}
+
+/* Folder controls belong to the measurement sidebar, never to plan geometry. */
+.measure-folder-tools{display:flex;flex-shrink:0;gap:4px;padding:5px 7px;background:var(--v7-paper);border-bottom:1px solid var(--v7-line);min-width:0}
+.measure-folder-tools button{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;min-width:0;min-height:29px;padding:4px;border:1px solid #7b8b81;border-radius:4px;background:#fff;color:var(--v7-ink);font:600 10px/1.3 Arial,sans-serif;cursor:pointer}
+.measure-folder-tools svg{width:15px;height:15px;flex-shrink:0;color:var(--v7-accent)}
+.measure-folder-tools button:disabled,.measure-folder-action:disabled{opacity:.55;cursor:default}
+.measure-folder{min-width:0;margin:0 0 5px;border-bottom:1px solid var(--v7-line)}
+.measure-folder-heading{display:flex;align-items:center;min-width:0;background:#e5eee8;border-block:1px solid var(--v7-line)}
+.measure-folder-toggle{display:flex;align-items:center;gap:4px;flex:1;min-width:0;min-height:32px;padding:5px 4px;border:0;background:transparent;color:var(--v7-ink);text-align:left;font:600 11px/1.3 Arial,sans-serif;cursor:pointer}
+.measure-folder-toggle>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.measure-folder-toggle>svg{width:16px;height:16px;flex-shrink:0;color:var(--v7-accent)}
+.measure-folder-toggle>small,.measure-unfiled-heading>small{font:10px/1.3 Arial,sans-serif;color:var(--v7-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.measure-folder-action{display:grid;place-items:center;flex-shrink:0;width:24px;min-height:28px;padding:4px;border:0;border-radius:3px;background:transparent;color:var(--v7-muted);cursor:pointer}
+.measure-folder-action svg{width:13px;height:13px}
+.measure-folder-action:hover:not(:disabled),.measure-folder-toggle:hover{background:#d4e5db}
+.measure-folder-contents[hidden]{display:none}
+.measure-folder-contents{padding-left:6px;border-left:2px solid #c6d6cc;margin-left:6px}
+.measure-unfiled-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 4px;color:var(--v7-muted);font:600 10px/1.3 Arial,sans-serif}
+.measure-tree .measure-folder-empty{margin:0;padding:9px 4px;text-align:left;color:var(--v7-muted);font:10px/1.4 Arial,sans-serif}
+.measure-folder .measure-row{min-width:0;gap:5px;padding-inline:4px}
+.measure-folder .measure-row>span{min-width:0}.measure-folder .measure-row b{overflow-wrap:anywhere}
+.folder-inspector{margin:12px;padding:12px 0;border-top:1px solid var(--v7-line);color:var(--v7-ink);font:12px/1.4 Arial,sans-serif}
+.folder-inspector label{display:block;margin-bottom:5px;font-weight:600}
+.folder-inspector select{display:block;width:100%;min-width:0;max-width:100%;padding:8px;border:1px solid #7b8b81;border-radius:4px;background:#fff;color:var(--v7-ink);font:12px/1.4 Arial,sans-serif}
+.folder-inspector button{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:34px;margin-top:6px;padding:6px 8px;text-align:left;border:1px solid #7b8b81;border-radius:4px;background:#fff;color:var(--v7-ink);font:11px/1.4 Arial,sans-serif;cursor:pointer}
+.folder-inspector button svg{width:16px;height:16px;flex-shrink:0;color:var(--v7-accent)}
+.folder-dialog-check{display:flex;align-items:center;gap:8px;margin-top:12px;font:12px/1.4 Arial,sans-serif}.folder-dialog-check input{width:16px!important;height:16px;flex-shrink:0;accent-color:var(--v7-accent)}
+.folder-delete-confirm{min-height:36px;padding:8px 12px;border:1px solid #963621;border-radius:4px;background:#fff7f4;color:#963621;cursor:pointer}
+@media(max-width:950px){.measure-folder-tools{padding-inline:4px;gap:3px}.measure-folder-tools button{gap:3px;font-size:9px}.measure-folder-action{width:22px;padding:3px}.measure-folder-toggle{font-size:10px}.measure-folder-contents{margin-left:3px;padding-left:3px}}
+@media(max-width:779px){.sidebar .measure-tree,.sidebar .tree,.sidebar .pane-title span{display:block}.sidebar .side-search{display:flex}}
 </style>
 </head>
 <body><div id="root"></div>
@@ -482,7 +508,8 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   const factor=Math.min(1,(settings.roomPrecision==='fast'?2000:2600)/Math.max(image.width,image.height)),width=Math.round(image.width*factor),height=Math.round(image.height*factor);
   const off=document.createElement('canvas');off.width=width;off.height=height;
   const context=off.getContext('2d',{willReadFrequently:true});context.fillStyle='#ffffff';context.fillRect(0,0,width,height);
-  const vectorCount=info?.vectorWalls?.length?drawWallPaths(context,info.vectorWalls,factor,settings.threshold,scale,info.texts,settings.doorInches):0;
+  const wallDiagnostics={mode:settings.wallMode==='all'?'all':'structure'};
+  const vectorCount=info?.vectorWalls?.length?drawWallPaths(context,info.vectorWalls,factor,settings.threshold,scale,info.texts,settings.doorInches,info.labels,wallDiagnostics.mode,wallDiagnostics):0;
   if(!vectorCount)context.drawImage(image,0,0,width,height);
   // Suppress readable PDF labels so letters cannot masquerade as wall fragments.
   for(const t of vectorCount?[]:info?.texts||[])if(t.height>0&&t.height<80&&t.width<width/factor*.35) {
@@ -502,7 +529,9 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   model.rooms=model.rooms.filter(r=>r.right-r.x>=2&&r.bottom-r.y>=2&&r.right<maxRight&&
     (roi?r.x>roi.x*factor&&r.y>roi.y*factor&&r.right<roi.right*factor&&r.bottom<roi.bottom*factor:
       r.x>width*.027&&r.y>height*.027&&r.right<width*.973&&r.bottom<height*.973));
-  return splitNarrowPassages({...model,factor,mask,source:vectorCount?'vector':'raster'},info,scale,settings.doorInches);
+  const result=splitNarrowPassages({...model,factor,mask,source:vectorCount?'vector':'raster',wallDiagnostics},info,scale,settings.doorInches);
+  result.wallLayers=classifyWallBoundaries(result,info,scale);
+  return result;
 }
 function roomCandidate(model,room,info,material,settings,scale) {
   const rings=simplifyRoomRings(componentRings(model,room,model.factor),model.factor),outer=rings[0];if(!outer)return null;
@@ -622,6 +651,71 @@ function pairedWallSegments(paths,threshold,scale,texts=[]) {
     });
   });
 }
+/* A dark outline is not sufficient evidence for a wall. Keep the connected
+   wall framework first, including paired faces and named enclosed rooms.
+   An isolated, unlabelled outline nested in that framework is ambiguous
+   furniture/detail geometry; the all-traits setting keeps it when needed. */
+function structuralWallSegments(segments,labels=[],scale,mode='structure',anchors=[]) {
+  if(mode==='all'||segments.length<2)return segments;
+  const parent=segments.map((_,index)=>index),tolerance=Math.max(1.5,.06/scale),
+    root=index=>{while(parent[index]!==index){parent[index]=parent[parent[index]];index=parent[index];}return index;},
+    connect=(a,b)=>distanceToSegment(a.a,b.a,b.b)<=tolerance||distanceToSegment(a.b,b.a,b.b)<=tolerance||distanceToSegment(b.a,a.a,a.b)<=tolerance||distanceToSegment(b.b,a.a,a.b)<=tolerance||segmentsCross(a.a,a.b,b.a,b.b),
+    near=(a,b)=>Math.max(a.a.x,a.b.x)+tolerance>=Math.min(b.a.x,b.b.x)&&Math.max(b.a.x,b.b.x)+tolerance>=Math.min(a.a.x,a.b.x)&&Math.max(a.a.y,a.b.y)+tolerance>=Math.min(b.a.y,b.b.y)&&Math.max(b.a.y,b.b.y)+tolerance>=Math.min(a.a.y,a.b.y);
+  for(let i=0;i<segments.length;i++)for(let j=i+1;j<segments.length;j++)if(near(segments[i],segments[j])&&connect(segments[i],segments[j]))parent[root(i)]=root(j);
+  const groups=new Map();
+  segments.forEach((segment,index)=>{const id=root(index);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(segment);});
+  const components=[...groups.values()].map(edges=>({edges,bounds:boundsOf(edges.flatMap(edge=>[edge.a,edge.b]))}));
+  const paired=edge=>segments.some(other=>{
+    if(edge===other||Math.abs(edge.ux*other.ux+edge.uy*other.uy)<.9995)return false;
+    const dx=other.a.x-edge.a.x,dy=other.a.y-edge.a.y,separation=Math.abs(dx*edge.uy-dy*edge.ux),
+      p=dx*edge.ux+dy*edge.uy,q=(other.b.x-edge.a.x)*edge.ux+(other.b.y-edge.a.y)*edge.uy,
+      overlap=Math.min(edge.length,Math.max(p,q))-Math.max(0,Math.min(p,q));
+    return separation>=Math.max(1.5,1/12/scale)&&separation<=1.25/scale&&overlap>=Math.min(edge.length*.5,1.5/scale);
+  });
+  const enclosed=(point,edges)=>{
+    let left=false,right=false,above=false,below=false;
+    for(const edge of edges){const a=edge.a,b=edge.b;
+      if((a.y>point.y)!==(b.y>point.y)){const x=a.x+(point.y-a.y)*(b.x-a.x)/(b.y-a.y);if(x<point.x)left=true;else right=true;}
+      if((a.x>point.x)!==(b.x>point.x)){const y=a.y+(point.x-a.x)*(b.y-a.y)/(b.x-a.x);if(y<point.y)above=true;else below=true;}
+      if(left&&right&&above&&below)return true;
+    }return false;
+  };
+  const kept=new Set();
+  for(const component of components){
+    const {edges,bounds}=component,center={x:(bounds.x+bounds.right)/2,y:(bounds.y+bounds.bottom)/2},
+      labelled=labels.some(label=>isRoomName(label.text)&&label.cx>bounds.x&&label.cx<bounds.right&&label.cy>bounds.y&&label.cy<bounds.bottom&&enclosed({x:label.cx,y:label.cy},edges)),
+      supported=edges.some(edge=>paired(edge)||anchors.some(anchor=>near(edge,anchor)&&connect(edge,anchor))),
+      nested=components.some(other=>other!==component&&other.bounds.x<bounds.x-tolerance&&other.bounds.y<bounds.y-tolerance&&other.bounds.right>bounds.right+tolerance&&other.bounds.bottom>bounds.bottom+tolerance&&enclosed(center,other.edges))||enclosed(center,anchors);
+    if(labelled||supported||!nested)edges.forEach(edge=>kept.add(edge));
+  }
+  return segments.filter(segment=>kept.has(segment));
+}
+/* Classify the faces that bound the detected floors. The exterior envelope
+   faces the unbounded outside; corridor faces require a recognized label.
+   This inspection layer never changes the room mask or takeoff quantities. */
+function classifyWallBoundaries(model,info,scale) {
+  const layers={exterior:[],interior:[],circulation:[]},outside=new Set(),corridors=new Set();
+  const edgePixel=point=>{if(!model.mask[point]&&model.labels[point])outside.add(model.labels[point]);};
+  for(let x=0;x<model.width;x++){edgePixel(x);edgePixel((model.height-1)*model.width+x);}
+  for(let y=0;y<model.height;y++){edgePixel(y*model.width);edgePixel(y*model.width+model.width-1);}
+  for(const label of info?.labels||[])if(spaceTypeFromName(label.text)==='circulation'){
+    const room=componentAt(model,{x:label.cx,y:label.cy},model.factor,3);if(room)corridors.add(room.id);
+  }
+  for(const room of model.rooms)for(const ring of componentRings(model,room,1))for(let index=0;index<ring.length;index++){
+    const a=ring[index],b=ring[(index+1)%ring.length],length=dist(a,b);if(!length)continue;
+    // componentRings walks room pixels with the room on its right side.
+    const nx=(b.y-a.y)/length,ny=-(b.x-a.x)/length,middle={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    let neighbor=null;
+    for(let step=.75;step<=Math.max(4,3/scale*model.factor);step+=1){
+      const x=Math.floor(middle.x+nx*step),y=Math.floor(middle.y+ny*step);
+      if(x<0||y<0||x>=model.width||y>=model.height){neighbor=0;break;}
+      const p=y*model.width+x;if(!model.mask[p]){neighbor=model.labels[p];break;}
+    }
+    const kind=neighbor===0||outside.has(neighbor)?'exterior':corridors.has(room.id)||corridors.has(neighbor)?'circulation':'interior';
+    layers[kind].push({a:{x:a.x/model.factor,y:a.y/model.factor},b:{x:b.x/model.factor,y:b.y/model.factor}});
+  }
+  return layers;
+}
 function wallDoorBridges(segments,scale,doorInches) {
   if(!doorInches)return [];
   const maxGap=doorInches/12/scale,tolerance=Math.max(2,.25/scale),bridges=[];
@@ -639,9 +733,13 @@ function wallDoorBridges(segments,scale,doorInches) {
   }
   return bridges;
 }
-function drawWallPaths(context,paths,factor,threshold,scale,texts,doorInches=36) {
+function drawWallPaths(context,paths,factor,threshold,scale,texts=[],doorInches=36,labels=null,wallMode='structure',diagnostics=null) {
   context.strokeStyle='#000000';context.lineCap='square';context.lineJoin='miter';
-  const segments=pairedWallSegments(paths,threshold,scale,texts);
+  const admitted=pairedWallSegments(paths,threshold,scale,texts),
+    fills=paths.filter(entry=>entry.fill&&entry.fillBrightness<threshold),
+    anchors=lineSegments(fills.map(entry=>({...entry,stroke:true,width:Math.max(entry.width||0,1.2),brightness:0})),0,255),
+    segments=structuralWallSegments(admitted,labels||texts.filter(text=>isRoomName(text.text)),scale,wallMode,anchors);
+  if(diagnostics)Object.assign(diagnostics,{admittedSegments:admitted.length,wallSegments:segments.length,ignoredSegments:admitted.length-segments.length});
   let filled=0;
   for(const entry of paths)if(entry.fill&&entry.fillBrightness<threshold) {
     context.beginPath();
@@ -786,6 +884,25 @@ function initSurfaceLegend() {
   $('.stagebar').insertAdjacentHTML('afterend',`<section id="surfaceLegend" class="surface-legend" aria-label="Affichage des surfaces" hidden><label>Couleurs <select id="surfaceDisplay"><option value="spaces">Espaces</option><option value="materials">Revêtements</option></select></label><div id="spaceLegendKeys" class="space-legend-keys">${Object.values(SPACE_STYLES).map(style=>`<span><i style="--space-color:${style.color};--space-fill:${style.fill}"></i>${style.label}</span>`).join('')}</div><label class="surface-labels"><input id="surfaceLabels" type="checkbox"> Surfaces</label><span class="surface-legend-note">Repérage · finis à vérifier</span></section>`);
   $('#surfaceDisplay').onchange=event=>{S.settings.surfaceDisplay=event.target.value;save();refresh();};
   $('#surfaceLabels').onchange=event=>{S.settings.surfaceLabels=event.target.checked;save();refresh();};
+  $('#surfaceLegend').insertAdjacentHTML('beforeend','<div id="wallLegend" class="wall-legend" hidden><span>Murs retenus · à vérifier</span><b style="--wall-color:#9b3b20">Extérieurs</b><b style="--wall-color:#245a9c">Intérieurs</b><b style="--wall-color:#a9348c">Corridors</b></div>');
+}
+function toggleWallInspection() {
+  if(!S.plan)return toast('Ouvrez un plan pour examiner les murs.');
+  if(!S.scale)return calibrationModal();
+  S.settings.showWalls=!S.settings.showWalls;
+  if(S.settings.showWalls)detectorForPage();
+  save();refresh();
+}
+function drawWallInspection(context) {
+  if(!S.plan||!S.scale||!S.settings.showWalls)return;
+  const layers=detectorForPage().wallLayers;if(!layers)return;
+  context.save();context.lineWidth=2.5/S.zoom;context.setLineDash([]);
+  for(const [name,color]of [['exterior','#9b3b20'],['interior','#245a9c'],['circulation','#a9348c']]) {
+    context.beginPath();
+    for(const segment of layers[name]||[]){context.moveTo(segment.a.x,segment.a.y);context.lineTo(segment.b.x,segment.b.y);}
+    context.strokeStyle=color;context.stroke();
+  }
+  context.restore();
 }
 const surfaceLabelAnchors=new WeakMap();
 function surfaceLabelAnchor(item,halfWidth,halfHeight) {
@@ -867,10 +984,11 @@ function refreshWorkflow() {
   $('#reviewCount').textContent=String(S.items.filter(item=>!isConfirmed(item)).length+unadded);
   if (S.reviewOpen) renderDetectionPanel();
   refreshSurfaceLegend();
+  $('#wallLegend').hidden=!S.settings.showWalls;
 }
 function previewCandidate(index) {
   const pack=S.reviewByPage[S.page],item=pack?.items[index];if(!item)return;
-  S.previewFocus=index;
+  setSelection([]);S.tool='select';S.draft=[];S.previewFocus=index;
   const b=boundsOf(item.points),w=canvas.clientWidth,h=canvas.clientHeight;
   S.zoom=Math.max(.02,Math.min(12,(w-80)/Math.max(b.right-b.x,20),(h-80)/Math.max(b.bottom-b.y,20)));
   S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};
@@ -915,8 +1033,9 @@ function renderDetectionPanel() {
 function openDetectionSettings() {
   if(!S.plan||S.loading)return toast('Ouvrez un plan avant de détecter les pièces.');
   if(!S.scale)return calibrationModal();
-  openDialog('Détecter les pièces',`<form id="detectionForm"><p>Les traits du PDF servent à repérer les limites intérieures. Les surfaces et les revêtements restent à contrôler.</p>
+  openDialog('Détecter les pièces',`<form id="detectionForm"><p>Les faces et les connexions des murs délimitent d’abord les espaces. Le mode Structure filtre les réseaux isolés qui ressemblent à du mobilier. Vérifiez les murs retenus avec l’icône Murs, puis contrôlez les surfaces et les revêtements.</p>
     <div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active">Feuille active · ${S.page}</option><option value="selected" ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Fermer les ouvertures jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===S.settings.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${S.settings.minArea}"></label><label>Précision<select id="roomPrecision"><option value="fine" ${S.settings.roomPrecision!=='fast'?'selected':''}>Précise</option><option value="fast" ${S.settings.roomPrecision==='fast'?'selected':''}>Rapide</option></select></label><label>Lecture des traits<select id="wallThreshold">${[[135,'Traits foncés'],[180,'Standard'],[215,'Traits pâles']].map(([n,label])=>`<option value="${n}" ${n===S.settings.threshold?'selected':''}>${label}</option>`).join('')}</select></label></div>
+    <label class="wall-mode-field">Lecture des murs<select id="wallMode"><option value="structure" ${S.settings.wallMode!=='all'?'selected':''}>Structure du bâtiment</option><option value="all" ${S.settings.wallMode==='all'?'selected':''}>Tous les traits admissibles</option></select></label>
     <fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${page===S.page?'checked':''}> ${esc(pageName(page))} <small>${S.scales[page]?(S.scaleMeta[page]?.verified?'Échelle vérifiée':'Échelle à vérifier'):'Sans échelle'}</small></label>`).join('')}</fieldset>
     <p class="scale-help">Le seuil des ouvertures est un réglage de fermeture, pas une mesure de porte. B permet une fermeture manuelle ; R limite l’analyse à un cadre. Un fini absent du plan devra être choisi.</p><p id="detectionError" class="v4-error" role="alert" hidden></p>
     <div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter la feuille</button></div></form>`);
@@ -926,7 +1045,7 @@ function openDetectionSettings() {
     event.preventDefault();const minArea=Number($('#minRoomArea').value);
     const pages=$('#detectionScope').value==='active'?[S.page]:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage);
     if(!Number.isFinite(minArea)||minArea<1||minArea>500||!pages.length){$('#detectionError').hidden=false;$('#detectionError').textContent='Choisissez au moins une feuille et une surface minimale de 1 à 500 pi².';return;}
-    S.settings={...S.settings,minArea,roomPrecision:$('#roomPrecision').value,doorInches:+$('#doorGap').value,threshold:+$('#wallThreshold').value};save();
+    S.settings={...S.settings,minArea,roomPrecision:$('#roomPrecision').value,doorInches:+$('#doorGap').value,threshold:+$('#wallThreshold').value,wallMode:$('#wallMode').value};S.detectorCache=null;save();
     runDetectionPages(pages);
   };
 }
@@ -1012,12 +1131,6 @@ function startManualTool(tool) {
   if(!['select','hand'].includes(tool)&&S.reviewOpen)closeReview();
   activateTool(tool);
 }
-function closeAdvancedTools(restoreFocus=false) {
-  const panel=$('#advancedTools'),button=$('#advancedToggle');
-  if(!panel||panel.hidden)return;
-  panel.hidden=true;button.setAttribute('aria-expanded','false');
-  if(restoreFocus)button.focus();
-}
 function initManualUI() {
   if($('#manualRibbon'))return;
   const navigation=[
@@ -1044,7 +1157,7 @@ function initManualUI() {
     manualButton('manualRedo','redo-2','Rétablir','Rétablir la modification · Ctrl+Y')
   ].join('');
   const workflow=$('#workflow'),legacy=$('.ribbon');
-  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet et détection</span></div><div class="manual-group"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group"><div class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group"><div class="manual-group-buttons">${manualButton('advancedToggle','ellipsis','Plus','Autres outils et réglages')}</div><span class="manual-group-label">Options</span></div></div><div id="advancedTools" class="advanced-tools" aria-label="Autres outils et réglages" hidden><header><strong>Autres outils</strong><button type="button" id="closeAdvanced" aria-label="Fermer les autres outils">×</button></header><div class="advanced-tools-grid" id="advancedMeasure"><h3>Détection et correction</h3></div><div class="advanced-tools-grid" id="advancedLayout"><h3>Calepinage</h3></div><div class="advanced-tools-grid" id="advancedProject"><h3>Projet et aide</h3></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group" role="group" aria-label="Projet"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet</span></div><div class="manual-group" role="group" aria-label="Navigation"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group" role="group" aria-label="Mesurer"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group" role="group" aria-label="Relevé manuel"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group" role="group" aria-label="Détection des surfaces"><div id="ribbonDetection" class="manual-group-buttons"></div><span class="manual-group-label">Détection</span></div><div class="manual-group" role="group" aria-label="Corriger"><div id="ribbonCorrection" class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group" role="group" aria-label="Calepinage"><div id="ribbonLayout" class="manual-group-buttons"></div><span class="manual-group-label">Calepinage</span></div><div class="manual-group" role="group" aria-label="Commandes et aide"><div id="ribbonManagement" class="manual-group-buttons"></div><span class="manual-group-label">Commandes et aide</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
   const moveButton=(selector,host,icon,label,title)=>{
     const button=$(selector);if(!button)return;
     button.type='button';button.className='manual-button';
@@ -1057,35 +1170,25 @@ function initManualUI() {
   moveButton('#stepDetect',project,'scan-line','Détecter','Détecter les surfaces de la feuille · Ctrl+Maj+A');
   moveButton('#stepReview',project,'list-checks','Réviser','Réviser les surfaces et les quantités');
   moveButton('#saveProjectBtn',project,'save','Sauver','Sauvegarder le relevé · Ctrl+S');
-  for(const tool of ['auto','split','divider','edit','region'])moveButton(`[data-tool="${tool}"]`,$('#advancedMeasure'));
-  moveButton('#deleteSelection',$('#advancedMeasure'),'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
-  for(const id of ['tileSettings','tileOriginBtn','toggleTileGrid'])moveButton('#'+id,$('#advancedLayout'));
-  moveButton('#demoBtn',$('#advancedProject'),'file-text','Plan d’exemple','Ouvrir le plan fictif de démonstration');
-  moveButton('#ordersBtn',$('#advancedProject'),'package-check','Commandes','Estimation et commandes · F4');
-  moveButton('#catalogNav',$('#advancedProject'),'library','Assemblages','Configurer les finis et assemblages');
-  moveButton('#helpBtn',$('#advancedProject'),'keyboard','Raccourcis','Afficher l’aide souris et raccourcis · ?');
+  const detection=$('#ribbonDetection'),corrections=$('#ribbonCorrection'),layout=$('#ribbonLayout'),management=$('#ribbonManagement');
+  moveButton('[data-tool="auto"]',detection,'wand-sparkles','Au clic','Détecter la pièce au clic · A');
+  moveButton('[data-tool="divider"]',detection,'door-closed','Passage','Fermer un passage pour séparer les surfaces · B');
+  moveButton('[data-tool="region"]',detection,'scan','Cadre','Limiter la détection à un cadre · R');
+  detection.insertAdjacentHTML('beforeend',manualButton('wallLayersToggle','brick-wall','Murs','Afficher les murs extérieurs, intérieurs et de corridor proposés'));
+  $('#wallLayersToggle').onclick=toggleWallInspection;
+  moveButton('[data-tool="edit"]',corrections,'square-pen','Sommets','Modifier les sommets de la surface sélectionnée · E');
+  moveButton('[data-tool="split"]',corrections,'scissors','Sous-zone','Tracer une sous-zone dans la surface sélectionnée · F');
+  moveButton('#deleteSelection',corrections,'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
+  moveButton('#tileSettings',layout,'grid-3x3','Carreaux','Régler le format et la pose des carreaux');
+  moveButton('#tileOriginBtn',layout,'locate-fixed','Origine','Choisir le point de départ de la céramique · T');
+  moveButton('#toggleTileGrid',layout,'layout-grid','Trame','Afficher ou masquer la trame des carreaux · G');
+  moveButton('#ordersBtn',management,'package-check','Commandes','Estimation et commandes · F4');
+  moveButton('#catalogNav',management,'library','Assemblages','Configurer les finis et assemblages');
+  moveButton('#demoBtn',management,'file-text','Exemple','Ouvrir le plan fictif de démonstration');
+  moveButton('#helpBtn',management,'keyboard','Aide','Afficher l’aide souris et raccourcis · ?');
   for(const id of ['fileInput','projectInput'])if($('#'+id))$('.app').append($('#'+id));
   workflow.remove();legacy?.remove();$('.topbar .menu')?.remove();
   for(const id of ['zoomIn','zoomOut','fitView'])$('#'+id)?.remove();
-  const toggle=$('#advancedToggle'),panel=$('#advancedTools');
-  toggle.setAttribute('aria-controls','advancedTools');toggle.setAttribute('aria-expanded','false');
-  toggle.onclick=()=>{
-    if(!panel.hidden){closeAdvancedTools(true);return;}
-    panel.hidden=false;toggle.setAttribute('aria-expanded','true');
-    panel.querySelector('button:not(:disabled)')?.focus();
-  };
-  $('#closeAdvanced').onclick=()=>closeAdvancedTools(true);
-  panel.addEventListener('click',event=>{
-    const button=event.target.closest('.manual-button');if(!button)return;
-    // Dialogs open before this bubbling listener runs. Their trigger is about
-    // to become hidden, so closing the dialog must return to visible Plus.
-    if($('#overlay')?.querySelector('[role="dialog"]')&&S.dialogReturnFocus&&panel.contains(S.dialogReturnFocus))S.dialogReturnFocus=toggle;
-    closeAdvancedTools(false);if(button.dataset.tool)canvas.focus();
-  });
-  document.addEventListener('pointerdown',event=>{if(!panel.hidden&&!panel.contains(event.target)&&!toggle.contains(event.target))closeAdvancedTools(false);});
-  document.addEventListener('keydown',event=>{
-    if(!panel.hidden&&event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();closeAdvancedTools(true);}
-  },true);
   $$('[data-manual-tool]',$('#manualRibbon')).forEach(button=>button.onclick=()=>startManualTool(button.dataset.manualTool));
   $('#manualFit').onclick=()=>{fitPlan();refresh();};
   $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
@@ -1123,7 +1226,7 @@ function manualStatusText() {
   if(S.tool==='fixtureBox')return 'Bain ou douche : cliquez les deux coins opposés de l’emprise à retrancher · Échap pour annuler.';
   if(S.tool==='fixturePolygon')return 'Bain ou douche : cliquez les coins de l’emprise, puis Entrée pour la retrancher.';
   if(S.tool==='fixtureEdit')return 'Emprise du bain ou de la douche : glissez les coins orange pour la corriger.';
-  return 'Détecter pour proposer les pièces · Surface pour tracer · Plus pour les corrections et le calepinage.';
+  return 'Détecter propose les pièces · Cliquez une surface pour afficher ses sommets et les déplacer.';
 }
 function refreshManualUI() {
   const ribbon=$('#manualRibbon');if(!ribbon)return;
@@ -1139,8 +1242,20 @@ function refreshManualUI() {
   });
   for(const id of ['manualFit','manualZoomIn','manualZoomOut'])$('#'+id).disabled=busy;
   $('#manualUndo').disabled=busy||!S.history.length;$('#manualRedo').disabled=busy||!S.redo.length;
-  $$('[data-tool]',$('#advancedTools')).forEach(button=>{button.disabled=busy;button.setAttribute('aria-pressed',String(S.tool===button.dataset.tool));});
-  for(const id of ['tileSettings','tileOriginBtn','toggleTileGrid'])if($('#'+id))$('#'+id).disabled=busy;
+  const selectedArea=S.selection.size===1&&S.items.find(item=>S.selection.has(item.id)&&item.page===S.page&&item.kind==='area');
+  $$('[data-tool]',ribbon).forEach(button=>{
+    const requiresArea=['edit','split'].includes(button.dataset.tool);
+    button.disabled=busy||requiresArea&&!selectedArea;
+    button.setAttribute('aria-pressed',String(S.tool===button.dataset.tool));
+    button.title=busy?(!S.plan?'Ouvrez un plan pour utiliser cet outil.':'Attendez la fin du chargement ou de l’analyse.'):requiresArea&&!selectedArea?'Sélectionnez une surface à modifier.':button.getAttribute('aria-label');
+  });
+  $('#tileSettings').disabled=busy||!selectedArea;
+  $('#tileOriginBtn').disabled=busy||!selectedArea||!selectedArea.material.startsWith('CER');
+  $('#toggleTileGrid').disabled=busy;
+  $('#wallLayersToggle').disabled=busy||!S.scale;
+  $('#wallLayersToggle').setAttribute('aria-pressed',String(!!S.settings.showWalls));
+  $('#wallLayersToggle').title=busy?(!S.plan?'Ouvrez un plan pour examiner les murs.':'Attendez la fin du chargement ou de l’analyse.'):!S.scale?'Calibrez le plan avant d’examiner les murs.':$('#wallLayersToggle').getAttribute('aria-label');
+  for(const id of ['tileSettings','tileOriginBtn'])$('#'+id).title=busy?(!S.plan?'Ouvrez un plan pour régler le calepinage.':'Attendez la fin du chargement ou de l’analyse.'):!selectedArea?'Sélectionnez une surface pour régler le calepinage.':id==='tileOriginBtn'&&!selectedArea.material.startsWith('CER')?'Sélectionnez une surface de céramique pour placer le départ.':$('#'+id).getAttribute('aria-label');
   const finishable=['area','linear','split','exclude','rectangle','segment','count','dimension'].includes(S.tool);
   $('#manualActions').hidden=!finishable;
   const n=S.draft.length;
@@ -1234,6 +1349,142 @@ function drawManualGuides(context) {
   }
 }
 
+/* Flat project folders organize measurements without changing their quantities. */
+function selectedFolderItems() {
+  return S.items.filter(item=>item.page===S.page&&S.selection.has(item.id));
+}
+function folderNameKey(name) {
+  return name.trim().normalize('NFKC').toLocaleLowerCase('fr-CA');
+}
+function folderNameError(name,exceptId=null) {
+  if(!name.trim())return 'Saisissez le nom du dossier.';
+  if(name.length>80||/[\u0000-\u001f\u007f]/.test(name))return 'Utilisez un nom de 1 à 80 caractères, sur une seule ligne.';
+  if(S.folders.some(folder=>folder.id!==exceptId&&folderNameKey(folder.name)===folderNameKey(name)))return 'Ce nom existe déjà. Choisissez un autre nom de dossier.';
+  return '';
+}
+function validateFolders(data) {
+  if(data.folders!==undefined&&(!Array.isArray(data.folders)||data.folders.length>200))throw new Error('La liste des dossiers est invalide.');
+  const ids=new Set(),names=new Set();
+  for(const folder of data.folders||[]) {
+    if(!folder||typeof folder!=='object'||typeof folder.id!=='string'||!/^[a-z0-9_-]{1,60}$/i.test(folder.id)||ids.has(folder.id)||
+      typeof folder.name!=='string'||!folder.name.trim()||folder.name.length>80||/[\u0000-\u001f\u007f]/.test(folder.name)||
+      folder.collapsed!==undefined&&typeof folder.collapsed!=='boolean')throw new Error('Le relevé contient un dossier invalide.');
+    const name=folderNameKey(folder.name);if(names.has(name))throw new Error('Deux dossiers portent le même nom.');
+    ids.add(folder.id);names.add(name);
+  }
+  for(const item of data.items||[])if(item.folderId!==undefined&&(typeof item.folderId!=='string'||!ids.has(item.folderId)))throw new Error('Une mesure fait référence à un dossier absent.');
+  return data;
+}
+function folderBusy() {return !S.plan||S.loading||!!S.detectJob;}
+function finishFolderMutation(message,focusId=null) {
+  closeDialog();save();refresh();
+  if(focusId)$('#'+focusId)?.focus();
+  toast(message);
+}
+function folderDialog(id=null,assignSelection=false) {
+  if(folderBusy())return toast(!S.plan?'Ouvrez un plan avant de créer un dossier.':'Attendez la fin du chargement ou de l’analyse.');
+  if(!id&&S.folders.length>=200)return toast('Le projet contient déjà 200 dossiers.');
+  const folder=id?S.folders.find(entry=>entry.id===id):null;if(id&&!folder)return;
+  const selected=selectedFolderItems();
+  openDialog(folder?'Renommer le dossier':'Créer un dossier de mesures',`<form id="folderForm"><label for="folderName">Nom du dossier</label><input id="folderName" name="folderName" maxlength="80" value="${esc(folder?.name||'')}" placeholder="Ex. Vinyle · étage 2" autocomplete="off" required>${!folder&&selected.length?`<label class="folder-dialog-check"><input id="folderAssignSelection" type="checkbox" ${assignSelection?'checked':''}> Y classer les ${selected.length} mesure(s) sélectionnée(s)</label>`:''}<p id="folderError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="cancelFolder">Annuler</button><button type="submit" class="primary" id="saveFolder">${folder?'Enregistrer le nom':'Créer le dossier'}</button></div></form>`);
+  $('#folderName').focus();$('#folderName').select();
+  $('#cancelFolder').onclick=closeDialog;
+  $('#folderForm').onsubmit=event=>{
+    event.preventDefault();const name=$('#folderName').value.trim(),error=folderNameError(name,id);
+    if(error){$('#folderError').textContent=error;$('#folderName').focus();return;}
+    remember();
+    if(folder)folder.name=name;
+    else {
+      const created={id:uid(),name,collapsed:false};S.folders.push(created);
+      if($('#folderAssignSelection')?.checked)for(const item of selected)item.folderId=created.id;
+    }
+    finishFolderMutation(folder?'Dossier renommé.':'Dossier créé.','newMeasureFolder');
+  };
+}
+function deleteFolderDialog(id) {
+  if(folderBusy())return;
+  const folder=S.folders.find(entry=>entry.id===id);if(!folder)return;
+  const count=S.items.filter(item=>item.folderId===id).length;
+  openDialog('Supprimer le dossier',`<p>Supprimer le dossier <b>${esc(folder.name)}</b> ?</p><p>Ses ${count} mesure(s) seront conservées dans <b>Non classées</b>, sur leurs feuilles d’origine. Aucune surface ou quantité ne sera supprimée.</p><div class="modal-actions"><button type="button" id="cancelDeleteFolder">Annuler</button><button type="button" class="folder-delete-confirm" id="deleteFolder">Supprimer le dossier</button></div>`);
+  $('#cancelDeleteFolder').onclick=closeDialog;
+  $('#deleteFolder').onclick=()=>{
+    remember();S.folders=S.folders.filter(entry=>entry.id!==id);
+    for(const item of S.items)if(item.folderId===id)delete item.folderId;
+    finishFolderMutation('Dossier supprimé ; mesures conservées dans Non classées.','newMeasureFolder');
+  };
+}
+function assignMeasuresToFolder(items,folderId) {
+  if(folderId&&!S.folders.some(folder=>folder.id===folderId))return false;
+  const changed=items.filter(item=>(item.folderId||'')!==folderId);if(!changed.length)return false;
+  remember();
+  for(const item of changed)if(folderId)item.folderId=folderId;else delete item.folderId;
+  const folder=S.folders.find(entry=>entry.id===folderId);if(folder)folder.collapsed=false;
+  save();refresh();toast(`${changed.length} mesure(s) classée(s) dans ${folder?.name||'Non classées'}.`);return true;
+}
+function folderOptions(selected='') {
+  return `<option value="">Non classées</option>${S.folders.map(folder=>`<option value="${folder.id}" ${folder.id===selected?'selected':''}>${esc(folder.name)}</option>`).join('')}`;
+}
+function assignFolderDialog() {
+  const items=selectedFolderItems();if(!items.length)return toast('Sélectionnez les mesures à classer dans la liste ou sur le plan.');
+  if(folderBusy())return;
+  const values=new Set(items.map(item=>item.folderId||'')),value=values.size===1?[...values][0]:'';
+  openDialog('Classer les mesures',`<form id="assignFolderForm"><p>${items.length} mesure(s) sélectionnée(s) sur la feuille active. Le classement conserve leurs surfaces, unités et statuts.</p><label for="assignFolderDialogSelect">Dossier</label><select id="assignFolderDialogSelect">${folderOptions(value)}</select><div class="modal-actions"><button type="button" id="cancelAssignFolder">Annuler</button><button type="submit" class="primary" id="saveFolderAssignment">Classer les mesures</button></div></form>`);
+  $('#cancelAssignFolder').onclick=closeDialog;
+  $('#assignFolderForm').onsubmit=event=>{
+    event.preventDefault();const folderId=$('#assignFolderDialogSelect').value;
+    closeDialog();assignMeasuresToFolder(items,folderId);$('#assignMeasureFolder')?.focus();
+  };
+}
+function initFoldersUI() {
+  if(!Array.isArray(S.folders))S.folders=[];
+  if($('#measureFolderTools'))return;
+  $('#measureTree').insertAdjacentHTML('beforebegin',`<div id="measureFolderTools" class="measure-folder-tools" aria-label="Organisation des mesures"><button type="button" id="newMeasureFolder" title="Créer un dossier de mesures"><i data-lucide="folder-plus" aria-hidden="true"></i><span>Dossier +</span></button><button type="button" id="assignMeasureFolder" title="Classer les mesures sélectionnées"><i data-lucide="folder-input" aria-hidden="true"></i><span>Classer</span></button></div>`);
+  $('#newMeasureFolder').onclick=()=>folderDialog(null,selectedFolderItems().length>0);
+  $('#assignMeasureFolder').onclick=assignFolderDialog;
+  lucide.createIcons();
+}
+function folderMeasureRow(item) {
+  return `<div class="measure-row ${S.selection.has(item.id)?'active':''}" data-item="${item.id}" tabindex="0" role="button" aria-pressed="${S.selection.has(item.id)}"><i style="background:${colorForItem(item)}"></i><span><b>${esc(item.name)}</b><small>${esc(item.material)} · ${esc(item.status)}</small></span><strong>${itemQuantityText(item)}</strong></div>`;
+}
+function renderMeasureTree(visibleItems) {
+  if(!Array.isArray(S.folders))S.folders=[];
+  const tree=$('#measureTree'),busy=folderBusy(),folderIds=new Set(S.folders.map(folder=>folder.id));
+  const unclassified=item=>!folderIds.has(item.folderId),unfiled=visibleItems.filter(unclassified),allUnfiled=S.items.filter(unclassified).length;
+  const groups=S.folders.map(folder=>{
+    const items=visibleItems.filter(item=>item.folderId===folder.id),all=S.items.filter(item=>item.folderId===folder.id).length,
+      hint=`${items.length} mesure(s) sur cette feuille ; ${all} dans le projet`,expanded=!folder.collapsed;
+    return `<section class="measure-folder" data-measure-folder="${folder.id}"><div class="measure-folder-heading"><button type="button" class="measure-folder-toggle" data-folder-toggle="${folder.id}" aria-expanded="${expanded}" aria-controls="folderContents-${folder.id}" title="${esc(folder.name)} · ${hint}"><i data-lucide="${expanded?'folder-open':'folder'}" aria-hidden="true"></i><span>${esc(folder.name)}</span><small aria-label="${hint}">${items.length}/${all}</small></button><button type="button" class="measure-folder-action" data-folder-rename="${folder.id}" aria-label="Renommer le dossier ${esc(folder.name)}" title="Renommer le dossier" ${busy?'disabled':''}><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="measure-folder-action" data-folder-delete="${folder.id}" aria-label="Supprimer le dossier ${esc(folder.name)} en conservant ses mesures" title="Supprimer le dossier, conserver les mesures" ${busy?'disabled':''}><i data-lucide="trash-2" aria-hidden="true"></i></button></div><div id="folderContents-${folder.id}" class="measure-folder-contents" ${expanded?'':'hidden'}>${items.length?items.map(folderMeasureRow).join(''):'<p class="measure-folder-empty">Aucune mesure sur cette feuille.</p>'}</div></section>`;
+  });
+  if(unfiled.length||!S.folders.length||allUnfiled)groups.push(`<section class="measure-folder measure-folder-unfiled"><div class="measure-unfiled-heading"><span>Non classées</span><small title="Mesures de cette feuille / du projet">${unfiled.length}/${allUnfiled}</small></div>${unfiled.length?unfiled.map(folderMeasureRow).join(''):'<p class="measure-folder-empty">Aucune mesure sur cette feuille.</p>'}</section>`);
+  tree.innerHTML=groups.join('');
+  if($('#newMeasureFolder')){
+    $('#newMeasureFolder').disabled=busy;
+    $('#newMeasureFolder').title=!S.plan?'Ouvrez un plan pour créer ses dossiers.':busy?'Attendez la fin du chargement ou de l’analyse.':'Créer un dossier de mesures';
+    $('#assignMeasureFolder').disabled=busy||!selectedFolderItems().length;
+    $('#assignMeasureFolder').title=!selectedFolderItems().length?'Sélectionnez une ou plusieurs mesures à classer.':'Classer les mesures sélectionnées';
+  }
+  $$('[data-folder-toggle]',tree).forEach(button=>button.onclick=()=>{
+    const folder=S.folders.find(entry=>entry.id===button.dataset.folderToggle);if(!folder)return;
+    remember();folder.collapsed=!folder.collapsed;save();refresh();
+    $(`[data-folder-toggle="${folder.id}"]`)?.focus();
+  });
+  $$('[data-folder-rename]',tree).forEach(button=>button.onclick=()=>folderDialog(button.dataset.folderRename));
+  $$('[data-folder-delete]',tree).forEach(button=>button.onclick=()=>deleteFolderDialog(button.dataset.folderDelete));
+  $$('.measure-row',tree).forEach(row=>{
+    row.onclick=event=>selectItem(row.dataset.item,event);
+    row.onkeydown=event=>{if(event.key===' '){event.preventDefault();event.stopPropagation();selectItem(row.dataset.item,event);}else if(event.key==='Enter'){event.preventDefault();event.stopPropagation();openItemEditor(row.dataset.item);}};
+  });
+  lucide.createIcons({attrs:{width:16,height:16,'stroke-width':1.8}});
+}
+function renderFolderInspector(item) {
+  const selected=selectedFolderItems(),host=$('#inspector');if(!selected.length||!host)return;
+  const values=new Set(selected.map(entry=>entry.folderId||'')),mixed=values.size>1,value=mixed?'':[...values][0];
+  host.insertAdjacentHTML('beforeend',`<section class="folder-inspector"><label for="assignFolderSelect">Dossier${selected.length>1?' · '+selected.length+' mesures':''}</label><select id="assignFolderSelect" ${folderBusy()?'disabled':''}>${mixed?'<option value="__mixed__" selected disabled>Plusieurs dossiers</option>':''}${folderOptions(value)}</select><button type="button" id="newFolderForSelection"><i data-lucide="folder-plus" aria-hidden="true"></i> Nouveau dossier pour la sélection</button></section>`);
+  $('#assignFolderSelect').onchange=event=>{assignMeasuresToFolder(selected,event.target.value);$('#assignFolderSelect')?.focus();};
+  $('#newFolderForSelection').disabled=folderBusy();
+  $('#newFolderForSelection').onclick=()=>folderDialog(null,true);
+}
+
 
 const MATERIALS = [
   ['VP-01','Vinyle commercial','#e1b84b',6], ['CER-01','Céramique 24 x 24','#4c9e8d',10], ['CER-12X24','Céramique 12 x 24','#52a6bb',12],
@@ -1285,7 +1536,7 @@ function draw() {
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
   }
-  drawTileGrids(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawReference(ctx);ctx.restore();
+  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawReference(ctx);ctx.restore();
   if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
   requestAnimationFrame(draw);
 }
@@ -1344,7 +1595,7 @@ function readSaved(key, fallback) {
 }
 function save() {
   try {
-    const record = {items:S.items,scales:S.scales,scaleMeta:S.scaleMeta,project:S.project,sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,estimation:S.estimation};
+    const record = {items:S.items,folders:S.folders||[],scales:S.scales,scaleMeta:S.scaleMeta,project:S.project,sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,estimation:S.estimation};
     if (S.documentKey === 'legacy') {
       localStorage.setItem('quantif-items', JSON.stringify(S.items));
       localStorage.setItem('quantif-scales', JSON.stringify(S.scales));
@@ -1354,8 +1605,9 @@ function save() {
   }
 }
 function snapshot() {
-  return structuredClone({items:S.items, scales:S.scales, scaleMeta:S.scaleMeta,
-    selected:S.selected,selection:[...S.selection],sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,project:S.project,estimation:S.estimation});
+  return structuredClone({items:S.items, folders:S.folders||[],scales:S.scales, scaleMeta:S.scaleMeta,
+    selected:S.selected,selection:[...S.selection],sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,project:S.project,estimation:S.estimation,
+    reviewByPage:S.reviewByPage||{},reviewOpen:!!S.reviewOpen,previewFocus:S.previewFocus});
 }
 function remember() {
   S.history.push(snapshot()); S.history = S.history.slice(-40); S.redo = [];
@@ -1364,6 +1616,9 @@ function restoreSnapshot(state) {
   S.items = state.items; S.scales = state.scales; S.scaleMeta = state.scaleMeta;
   S.selection = new Set(state.selection.filter(id => S.items.some(i => i.id === id && i.page === S.page)));
   S.selected = S.selection.has(state.selected) ? state.selected : [...S.selection].at(-1) || null;
+  S.folders=state.folders||[];S.reviewByPage=state.reviewByPage||{};S.reviewOpen=!!state.reviewOpen;S.previewFocus=state.previewFocus??null;
+  S.preview=S.reviewOpen?{page:S.page,items:S.reviewByPage[S.page]?.items||[]}:null;
+  if(!S.reviewOpen){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
   S.draft=[];S.sheetNames=state.sheetNames||{};S.settings=state.settings||S.settings;S.dividers=state.dividers||{};S.detectBounds=state.detectBounds||{};S.project=state.project||S.project;S.estimation=state.estimation||{catalog:{},group:'project'};S.detectorCache=null;save();refresh();
 }
 function undoChange() {
@@ -1379,7 +1634,9 @@ function setSelection(ids) {
   S.selection = new Set(ids); S.selected = [...S.selection].at(-1) || null;
 }
 function selectItem(id, event = {}) {
-  const visible = S.items.filter(i => i.page === S.page);
+  S.previewFocus=null;
+  const itemsOnPage=S.items.filter(item=>item.page===S.page),fromFolders=event.target?.closest?.('#measureTree');
+  const visible=fromFolders?$$('.measure-row',$('#measureTree')).filter(row=>row.getClientRects().length).map(row=>itemsOnPage.find(item=>item.id===row.dataset.item)).filter(Boolean):itemsOnPage;
   if (!visible.some(i => i.id === id)) return;
   if (event.shiftKey && S.anchorId && visible.some(i => i.id === S.anchorId)) {
     const a = visible.findIndex(i => i.id === S.anchorId), b = visible.findIndex(i => i.id === id);
@@ -1477,7 +1734,7 @@ function openDocument(key,name,pdf,pages) {
   const record = readSaved('quantif-document-v3:'+key,{});
   if(S.detectJob)S.detectJob.cancelled=true;S.reviewByPage={};S.reviewOpen=false;S.detectionNotes=[];S.detectJob=null;if($('#reviewPanel')){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
   S.documentKey = key; S.fileName = name; S.pdf = pdf; S.pages = pages; S.page = 1;
-  S.items = Array.isArray(record.items) ? record.items : [];
+  S.items = Array.isArray(record.items) ? record.items : [];S.folders=Array.isArray(record.folders)?record.folders:[];
   S.scales=record.scales||{};S.scaleMeta=record.scaleMeta||{};S.pageInfo={};S.sheetNames=record.sheetNames||{};S.settings={doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'spaces',surfaceLabels:true,...record.settings};S.dividers=record.dividers||{};S.detectBounds=record.detectBounds||{};S.estimation=record.estimation||{catalog:{},group:'project'};S.detectorCache=null;S.preview=null;S.indexedPages=0;S.indexing=false;++S.indexToken;
   S.project = record.project || S.project; S.history = []; S.redo = []; S.draft = [];
   S.plan=null;S.scale=null;S.tool='select';setSelection([]);S.anchorId=null;S.dragging=null;S.panning=null;S.mouseWorld=null;S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;$('#overlay').innerHTML='';
@@ -1673,7 +1930,7 @@ function refreshBase() {
   $('#deleteSelection').disabled=!S.selection.size || S.loading;
   const visible=S.items.filter(i=>i.page===S.page), surface=visible.filter(i=>i.kind==='area'&&!hasPendingFixtures(i)).reduce((sum,i)=>sum+i.qty*(1+i.waste/100),0);
   $('#gridSummary').textContent=`${visible.length} zone${visible.length!==1?'s':''} · ${fmt(surface)} pi²${visible.some(hasPendingFixtures)?' · bain/douche à délimiter':''}${S.selection.size?' · '+S.selection.size+' sélectionnée(s)':''}`;
-  $('#measureTree').innerHTML=visible.length ? visible.map(i=>`<div class="measure-row ${S.selection.has(i.id)?'active':''}" data-item="${i.id}" tabindex="0" role="button" aria-pressed="${S.selection.has(i.id)}"><i style="background:${colorForItem(i)}"></i><span><b>${esc(i.name)}</b><small>${esc(i.material)} · ${esc(i.status)}</small></span><strong>${itemQuantityText(i)}</strong></div>`).join('') : '<p>Aucune quantité mesurée</p>';
+  renderMeasureTree(visible);
   $('#gridRows').innerHTML=visible.length ? visible.map(i=>`<tr class="${S.selection.has(i.id)?'selected':''}" data-item="${i.id}" tabindex="0" aria-selected="${S.selection.has(i.id)}"><td><b>${esc(i.name)}</b></td><td>${esc(i.material)}</td><td>${labelForItem(i)}</td><td>${itemQuantityText(i)}</td><td>${fmt(i.waste)}%</td><td><b>${hasPendingFixtures(i)?'À délimiter':fmt(i.qty*(1+i.waste/100))}</b></td><td><span class="badge ${esc(i.status.replace('à ',''))}">${esc(i.status)}</span></td></tr>`).join('') : '<tr><td colspan="7" class="grid-empty">Tracez une surface ou lancez la détection pour commencer.</td></tr>';
   bindMeasureRowEvents(); renderInspector();
 }
@@ -2053,8 +2310,9 @@ function drawGuides(context) {
     context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(S.mouseWorld.x,S.mouseWorld.y);context.stroke();
   }
   context.setLineDash([]);
-  if(S.tool==='edit') {
-    const item=S.items.find(i=>i.id===S.selected);if(item)for(const p of item.points){const r=4/S.zoom;context.fillStyle='#ffffff';context.fillRect(p.x-r,p.y-r,r*2,r*2);context.strokeStyle='#256d54';context.strokeRect(p.x-r,p.y-r,r*2,r*2);}
+  const editable=focusedSurfaceEdit();
+  if(editable) {
+    for(const p of editable.item.points){const r=4/S.zoom;context.fillStyle='#ffffff';context.fillRect(p.x-r,p.y-r,r*2,r*2);context.strokeStyle='#256d54';context.lineWidth=1.5/S.zoom;context.strokeRect(p.x-r,p.y-r,r*2,r*2);}
   }
   context.restore();
 }
@@ -2078,6 +2336,12 @@ function validEditedItem(item) {
 }
 function commitDrag(drag) {
   if(drag.type==='fixtureVertex')return commitFixtureDrag(drag);
+  if(drag.type==='previewVertex') {
+    const candidate=S.reviewByPage[S.page]?.items[drag.indexInReview];if(!candidate)return;
+    if(!validPreviewEditedItem(candidate,drag.indexInReview)){restoreSnapshot(drag.before);toast('Ce déplacement croise un contour ou une exclusion. Proposition restaurée.');return;}
+    candidate.qty=netArea(candidate)*S.scale**2;candidate.status='à valider';candidate.method='Contour détecté corrigé';candidate.geometryEdited=true;
+    S.history.push(drag.before);S.history=S.history.slice(-40);S.redo=[];save();refresh();return;
+  }
   const item=S.items.find(i=>i.id===drag.id);if(!item)return;
   if(drag.type==='vertex') {
     if(!validEditedItem(item)){restoreSnapshot(drag.before);toast('Ce déplacement croise un contour ou une exclusion. Modification annulée.');return;}
@@ -2085,6 +2349,31 @@ function commitDrag(drag) {
     const parent=S.items.find(i=>i.id===item.parentId);if(parent){parent.subzones[item.id]=structuredClone(item.points);parent.qty=netArea(parent)*S.scales[parent.page]**2;parent.status='à valider';}
   }
   S.history.push(drag.before);S.history=S.history.slice(-40);S.redo=[];save();refresh();
+}
+function focusedSurfaceEdit() {
+  if(!['select','edit'].includes(S.tool)||S.draft.length)return null;
+  if(S.reviewOpen&&S.previewFocus!==null) {
+    const item=S.reviewByPage[S.page]?.items[S.previewFocus];
+    if(item&&!item.duplicate)return {item,preview:true,index:S.previewFocus};
+  }
+  const item=S.selection.size===1?S.items.find(item=>item.id===S.selected&&item.page===S.page&&item.kind==='area'):null;
+  return item?{item,preview:false}:null;
+}
+function validPreviewEditedItem(item,index) {
+  if(!validPolygon(item.points)||!getHoles(item).every(hole=>hole.every(point=>inside(point,item.points)||onRing(point,item.points))&&!ringsCross(hole,item.points)))return false;
+  const proposals=S.reviewByPage[S.page]?.items||[];
+  if(proposals.some((other,n)=>n!==index&&!other.duplicate&&other.selected&&overlapItems(item,other)))return false;
+  return !S.items.some(other=>other.page===S.page&&other.kind==='area'&&overlapItems(item,other));
+}
+function selectSurfaceAt(point,event) {
+  if(S.reviewOpen) {
+    const candidates=S.reviewByPage[S.page]?.items||[];
+    const index=candidates.findLastIndex(item=>!item.duplicate&&(insideItem(point,item)||item.points.some((p,n)=>distanceToSegment(point,p,item.points[(n+1)%item.points.length])<=8/S.zoom)));
+    if(index>=0){setSelection([]);S.previewFocus=index;refresh();return;}
+  }
+  const hit=surfaceForEdit(point);
+  if(hit)selectItem(hit.id,event);
+  else if(!(event.ctrlKey||event.metaKey||event.shiftKey)){S.previewFocus=null;setSelection([]);refresh();}
 }
 
 function renderInspector() {
@@ -2096,9 +2385,9 @@ function renderInspector() {
     $('#editVertices').onclick=()=>activateTool('edit');$('#excludeInside').onclick=()=>activateTool('exclude');
     if($('#placeTileOrigin')){$('#placeTileOrigin').onclick=activateOrigin;$('#openTileSettings').onclick=tileModal;$('#rotateTiles').onclick=()=>rotateTile();}
   }else if(!S.selection.size) {
-    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Détecter propose les contours. Dans Plus, Fermer un passage permet de séparer les pièces communicantes. Choisissez les finis selon le plan ou le devis.</p><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan</p></section>`);
+    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Murs affiche les limites retenues. Détecter propose les contours. Fermer un passage sépare les pièces communicantes. Choisissez les finis selon le plan ou le devis.</p><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan<br>Clic sur une surface : sommets modifiables</p></section>`);
   }
-  estimateInspector(host,item);appendSurfaceInspector(host,item);
+  estimateInspector(host,item);appendSurfaceInspector(host,item);renderFolderInspector(item);
   host.insertAdjacentHTML('afterbegin','<button type="button" class="inspector-close" id="closeInspector">Fermer les propriétés ×</button>');
   $('#closeInspector').onclick=()=>{host.hidden=true;$('#reopen').hidden=false;};
 }
@@ -2122,13 +2411,13 @@ function downloadBlob(blob,name) {
 }
 function exportProject() {
   save();if(!S.plan)return toast('Ouvrez un plan avant de sauvegarder un relevé.');
-  const data={format:'quantif-plancher',version:8,documentKey:S.documentKey,fileName:S.fileName,pages:S.pages,project:S.project,
-    items:S.items,scales:S.scales,scaleMeta:S.scaleMeta,sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,estimation:S.estimation};
+  const data={format:'quantif-plancher',version:9,documentKey:S.documentKey,fileName:S.fileName,pages:S.pages,project:S.project,
+    items:S.items,folders:S.folders||[],scales:S.scales,scaleMeta:S.scaleMeta,sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,estimation:S.estimation};
   downloadBlob(new Blob([JSON.stringify(data)],{type:'application/json'}),S.project.replace(/[^a-z0-9_-]/gi,'_')+'.quantif.json');
   toast('Relevé sauvegardé. Le PDF devra être rouvert pour le restaurer.');
 }
 function validateProject(data) {
-  if(data.format!=='quantif-plancher'||![4,5,6,7,8].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V8 valide.');
+  if(data.format!=='quantif-plancher'||![4,5,6,7,8,9].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V9 valide.');
   if(data.documentKey!==S.documentKey||data.pages!==S.pages)throw new Error('Ouvrez le PDF ou l’image d’origine avant de restaurer ce relevé.');
   if(data.version>=5)validateEstimation(data.estimation);
   const points=(ring,min=2)=>Array.isArray(ring)&&ring.length>=min&&ring.length<=20000&&ring.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<100000&&Math.abs(p.y)<100000);
@@ -2151,7 +2440,7 @@ function validateProject(data) {
   for(const item of data.items)if(item.kind!=='count'&&!data.scales?.[item.page])throw new Error('L’échelle d’une mesure manque.');
   for(const [page,list]of Object.entries(data.dividers||{}))if(!/^\d+$/.test(page)||+page<1||+page>S.pages||!Array.isArray(list)||list.length>500||!list.every(divider=>points(divider.points)&&divider.points.length===2))throw new Error('Une séparation est invalide.');
   for(const rect of Object.values(data.detectBounds||{}))if(!['x','y','right','bottom'].every(key=>Number.isFinite(rect[key])))throw new Error('Un cadre est invalide.');
-  return data;
+  validateFolders(data);return data;
 }
 async function importProject(file) {
   if(!file)return;
@@ -2159,7 +2448,7 @@ async function importProject(file) {
     if(!S.plan)throw new Error('Ouvrez d’abord le PDF ou l’image d’origine.');
     if(file.size>20000000)throw new Error('Le relevé dépasse 20 Mo.');
     const data=validateProject(JSON.parse(await file.text()));remember();
-    S.items=data.items;S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
+    S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'spaces',surfaceLabels:true,...data.settings};
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
@@ -2724,7 +3013,7 @@ canvas.onclick=event=>{
   const point=snapPoint(canvasPoint(event),event);
   if(handleManualClick(point,event))return;
   if(['fixtureBox','fixturePolygon'].includes(S.tool)){if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);if(S.tool==='fixtureBox'&&S.draft.length===2)finishFixtureDrawing();}
-  else if(S.tool==='select'){const hit=hitItem(point);if(hit)selectItem(hit.id,event);else if(!(event.ctrlKey||event.metaKey||event.shiftKey)){setSelection([]);refresh();}}
+  else if(S.tool==='select')selectSurfaceAt(point,event);
   else if(S.tool==='tileOrigin')setTileOrigin(S.selected,point);
   else if(S.tool==='auto')detectRoom(point);
   else if(['area','split','exclude','linear','calibrate','divider','region'].includes(S.tool)) {
@@ -2751,9 +3040,10 @@ canvas.onpointerdown=event=>{
   if(event.button!==0)return;
   const item=S.items.find(i=>i.id===S.selected),point=canvasPoint(event);
   if(fixturePointerDown(event,point))return;
-  if(S.tool==='edit'&&item) {
-    const index=item.points.findIndex(p=>dist(p,point)<=10/S.zoom);
-    if(index>=0){S.dragging={type:'vertex',id:item.id,index,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();}
+  const editable=focusedSurfaceEdit();
+  if(editable) {
+    const index=editable.item.points.findIndex(p=>dist(p,point)<=10/S.zoom);
+    if(index>=0){S.dragging={type:editable.preview?'previewVertex':'vertex',id:editable.item.id,index,indexInReview:editable.index,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();}
   }else if(S.tool==='tileOrigin'&&item&&dist(tileLayout(item).origin,point)<=14/S.zoom) {
     S.dragging={type:'origin',id:item.id,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();
   }
@@ -2763,7 +3053,7 @@ canvas.onpointermove=event=>{
   if(S.panning){S.pan={x:S.panning.pan.x+event.clientX-S.panning.x,y:S.panning.pan.y+event.clientY-S.panning.y};return;}
   if(S.dragging) {
     if(dist(point,S.dragging.start)*S.zoom>3)S.dragged=true;
-    const item=S.items.find(i=>i.id===S.dragging.id);if(!item)return;
+    const item=S.dragging.type==='previewVertex'?S.reviewByPage[S.page]?.items[S.dragging.indexInReview]:S.items.find(i=>i.id===S.dragging.id);if(!item)return;
     if(S.dragging.type==='fixtureVertex'){const cut=item.fixtureCuts?.find(c=>c.id===S.dragging.cutId);if(cut)cut.points[S.dragging.index]=point;}
     else if(S.dragging.type==='origin')setTileOrigin(item.id,point,false);
     else item.points[S.dragging.index]=point;
@@ -2813,7 +3103,7 @@ window.onblur=()=>{S.spaceHeld=false;if(S.dragging){const before=S.dragging.befo
 $('#toggleTileGrid').onclick=()=>{S.tileGrid=!S.tileGrid;refresh();};$('#tileSettings').onclick=tileModal;$('#tileOriginBtn').onclick=activateOrigin;
 $('#helpBtn').onclick=helpDialog;$('#saveProjectBtn').onclick=exportProject;
 $('#projectInput').onchange=event=>{importProject(event.target.files[0]);event.target.value='';};
-initEstimationUI();initV7();initManualUI();
+initEstimationUI();initV7();initManualUI();initFoldersUI();
 canvas.tabIndex=0;canvas.setAttribute('aria-label','Plan : zoom à la molette, sélection, détection et tracé des mesures');
 if(window.innerWidth<780){$('#inspector').hidden=true;$('#reopen').hidden=false;$('.app').classList.add('pages-folded');}
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});refresh();
