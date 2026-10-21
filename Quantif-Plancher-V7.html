@@ -80,14 +80,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .topbar{height:48px;flex-basis:48px;padding:0 16px;gap:18px}
 .brand{font-size:12px;gap:6px;white-space:nowrap}.version-mark{font-size:10px;font-weight:700;border:1px solid #749486;border-radius:3px;padding:1px 4px;color:#dbe9e0;margin-left:4px}
 .project-title{min-width:0;flex:1}.project-title input{max-width:240px;font-size:13px}.top-actions{flex-shrink:0}
-.workflow{display:flex;align-items:stretch;gap:4px;padding:8px 16px;border-bottom:1px solid var(--v7-line);background:var(--v7-paper);flex-shrink:0;min-width:0}
-.workflow>button,.workflow-secondary>button{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border:1px solid transparent;border-radius:5px;color:var(--v7-muted);background:transparent;font-size:13px;font-weight:600;min-height:44px;cursor:pointer}
-.workflow button.complete{color:var(--v7-accent);background:#edf5f0}.workflow #stepDetect{background:var(--v7-accent);color:white;border-color:var(--v7-accent)}
-.workflow button:disabled{background:#f1f3f1;color:#657169;border-color:transparent;cursor:default}
-.workflow button:hover:not(:disabled){border-color:var(--v7-accent)}
-.workflow button b{display:inline-grid;place-items:center;min-width:21px;height:21px;border-radius:3px;background:#e3ebe6;color:var(--v7-ink);font-size:11px}
-.workflow-secondary{display:flex;margin-left:auto;border-left:1px solid var(--v7-line);padding-left:8px}
-.ribbon{display:none;height:108px;flex-basis:108px;background:#e8eeea}.tools-open .ribbon{display:flex}
 .workspace{position:relative;min-width:0;min-height:0;flex:1;overflow:hidden}.sidebar{width:214px;flex-basis:214px;background:#f7faf8;border-right:1px solid var(--v7-line)}
 .pane-title{font-size:10px;letter-spacing:.08em;color:var(--v7-muted)}.measure-row b,.sheet-row strong{font-size:12px}.sheet-row small,.measure-row small{font-size:11px;color:var(--v7-muted)}
 .stage{min-width:0;min-height:0}.stagebar{height:42px;flex-basis:42px;background:#fff;padding:0 12px}.stagebar .document strong{font-size:12px;max-width:350px}
@@ -113,10 +105,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 #detectionProgressBar{width:100%;height:12px;accent-color:var(--v7-accent)}#stopDetection{padding:10px;border:1px solid #8b4519;background:#fff7ef;border-radius:4px;color:#77370f;cursor:pointer}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .app :focus-visible{outline:3px solid var(--v7-focus);outline-offset:2px}
-@media(max-width:1150px){.topbar .menu{display:none}.workflow>button,.workflow-secondary>button{padding:10px 12px}.sidebar{width:180px;flex-basis:180px}.inspector{width:250px;flex-basis:250px}.review-panel{width:325px;flex-basis:325px}.validation-bar{gap:16px;padding:8px 12px}.validation-bar strong{font-size:17px}.validation-bar button{font-size:11px;padding:8px}.stagebar .document strong{max-width:200px}}
-@media(max-width:950px){.workflow>button,.workflow-secondary>button{padding:8px;gap:5px;font-size:12px}.workflow{padding:8px}.sidebar{width:158px;flex-basis:158px}.review-open .sidebar{display:none}.review-panel{width:310px;flex-basis:310px}.stagebar{flex-wrap:wrap;height:auto;min-height:42px;padding:6px 8px;gap:4px}.scale{max-width:100%;font-size:10px}.validation-bar{gap:12px}.validation-bar strong{font-size:16px}}
-@media(max-width:779px){.topbar{height:48px;flex-basis:48px;padding:0 10px;gap:10px}.project-title{display:flex;min-width:0;max-width:none;padding:0;margin:0}.project-title input{max-width:100%;font-size:12px}.project-title>span{display:none}.top-actions #takeoffBtn{display:none}.workspace{display:flex}.stage{width:100%;flex:1}.sidebar{position:absolute;top:0;left:0;bottom:0;width:min(270px,85%);z-index:8}.pages-folded .sidebar,.review-open .sidebar{display:none}.inspector{position:absolute;top:auto;bottom:0;right:0;width:100%;max-height:52%;height:auto;border-top:1px solid #7b8b81;border-left:0;z-index:7;box-shadow:none}.review-panel{position:absolute;right:0;bottom:0;width:100%;height:49%;max-height:49%;border-top:2px solid var(--v7-accent);border-left:0;z-index:6}.review-open .stage{height:51%;align-self:flex-start;padding-bottom:0}.review-open .quantity-grid,.review-open .validation-bar{display:none}.review-head{padding:8px 12px}.review-head h2{font-size:17px}.review-intro{padding:4px 12px 8px;font-size:11px}.review-intro p:last-of-type{display:none}.review-actions{padding:8px 12px}.review-actions>div button{min-height:32px}.stagebar .document strong{max-width:200px}.scale{max-width:75%}.quantity-grid{height:142px;flex-basis:142px}.validation-bar{padding:8px 10px;gap:12px}.validation-bar strong{font-size:15px}.validation-bar span{font-size:10px}.validation-bar button{font-size:11px;max-width:150px}.canvas-wrap{min-height:100px}.hint{font-size:10px;bottom:50px}.workflow-secondary{padding-left:4px;margin-left:auto}.workflow button span{font-size:11px}.top-actions .primary{min-height:34px}}
-@media(max-width:520px){.workflow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px 8px;gap:2px}.workflow>button{display:flex;flex-direction:column;gap:3px;padding:5px 2px;min-height:52px;position:relative;font-size:11px}.workflow>button b{position:absolute;top:0;right:0;font-size:9px;min-width:15px;height:15px}.workflow-secondary{grid-column:1/-1;display:flex;justify-content:flex-end;border-left:0;border-top:1px solid var(--v7-line);padding:2px 0 0;margin:4px 0 0}.workflow-secondary>button{min-height:30px;padding:4px 10px}.workflow-secondary svg{width:14px;height:14px}.brand>span,.brand>b,.version-mark{display:none}.brandmark{margin:0}.topbar .brand{flex-shrink:0}.topbar .project-title{flex:1}.top-actions{margin-left:0}.stagebar .document strong{max-width:165px}.stagebar{padding:5px 8px}.scale{max-width:100%;text-align:left}.validation-bar{flex-wrap:wrap;gap:6px 16px}.validation-bar>div{flex:1}.validation-bar button{width:100%;max-width:none;margin:2px 0 0;min-height:32px}.quantity-grid{height:120px;flex-basis:120px}.quantity-grid td{font-size:11px;padding:8px}.grid-head span{max-width:55%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.review-open .stage{height:52%;padding-bottom:0}.review-panel{height:48%;max-height:48%}.hint{display:none}.review-intro select{padding:4px}.review-intro label{margin-top:4px}.review-head span{font-size:8px}.review-scroll{min-height:48px}.review-panel td{padding:8px}.review-name{font-size:11px}}
+@media(max-width:1150px){.topbar .menu{display:none}.sidebar{width:180px;flex-basis:180px}.inspector{width:250px;flex-basis:250px}.review-panel{width:325px;flex-basis:325px}.validation-bar{gap:16px;padding:8px 12px}.validation-bar strong{font-size:17px}.validation-bar button{font-size:11px;padding:8px}.stagebar .document strong{max-width:200px}}
+@media(max-width:950px){.sidebar{width:158px;flex-basis:158px}.review-open .sidebar{display:none}.review-panel{width:310px;flex-basis:310px}.stagebar{flex-wrap:wrap;height:auto;flex-basis:auto;min-height:42px;padding:6px 8px;gap:4px}.scale{max-width:100%;font-size:10px}.validation-bar{gap:12px}.validation-bar strong{font-size:16px}}
+@media(max-width:779px){.topbar{height:48px;flex-basis:48px;padding:0 10px;gap:10px}.project-title{display:flex;min-width:0;max-width:none;padding:0;margin:0}.project-title input{max-width:100%;font-size:12px}.project-title>span{display:none}.top-actions #takeoffBtn{display:none}.workspace{display:flex}.stage{width:100%;flex:1}.sidebar{position:absolute;top:0;left:0;bottom:0;width:min(270px,85%);z-index:8}.pages-folded .sidebar,.review-open .sidebar{display:none}.inspector{position:absolute;top:auto;bottom:0;right:0;width:100%;max-height:52%;height:auto;border-top:1px solid #7b8b81;border-left:0;z-index:7;box-shadow:none}.review-panel{position:absolute;right:0;bottom:0;width:100%;height:49%;max-height:49%;border-top:2px solid var(--v7-accent);border-left:0;z-index:6}.review-open .stage{height:51%;align-self:flex-start;padding-bottom:0}.review-open .quantity-grid,.review-open .validation-bar{display:none}.review-head{padding:8px 12px}.review-head h2{font-size:17px}.review-intro{padding:4px 12px 8px;font-size:11px}.review-intro p:last-of-type{display:none}.review-actions{padding:8px 12px}.review-actions>div button{min-height:32px}.stagebar .document strong{max-width:200px}.scale{max-width:75%}.quantity-grid{height:142px;flex-basis:142px}.validation-bar{padding:8px 10px;gap:12px}.validation-bar strong{font-size:15px}.validation-bar span{font-size:10px}.validation-bar button{font-size:11px;max-width:150px}.canvas-wrap{min-height:100px}.hint{font-size:10px;bottom:50px}.top-actions .primary{min-height:34px}}
+@media(max-width:520px){.brand>span,.brand>b,.version-mark{display:none}.brandmark{margin:0}.topbar .brand{flex-shrink:0}.topbar .project-title{flex:1}.top-actions{margin-left:0}.stagebar .document strong{max-width:165px}.stagebar{padding:5px 8px}.scale{max-width:100%;text-align:left}.validation-bar{flex-wrap:wrap;gap:6px 16px}.validation-bar>div{flex:1}.validation-bar button{width:100%;max-width:none;margin:2px 0 0;min-height:32px}.quantity-grid{height:120px;flex-basis:120px}.quantity-grid td{font-size:11px;padding:8px}.grid-head span{max-width:55%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.review-open .stage{height:52%;padding-bottom:0}.review-panel{height:48%;max-height:48%}.hint{display:none}.review-intro select{padding:4px}.review-intro label{margin-top:4px}.review-head span{font-size:8px}.review-scroll{min-height:48px}.review-panel td{padding:8px}.review-name{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.app *{scroll-behavior:auto;animation:none!important;transition:none!important}}
 
 #toast{pointer-events:none;max-width:calc(100% - 24px)}
@@ -126,31 +118,54 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 
 .inspector .quantity strong{font-family:Arial,sans-serif}
 
-/* Manual ribbon owns its grouped controls, status line and tool colors. */
+/* Surface legend describes plan colors; material assignments remain separate. */
+.surface-legend{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;flex-shrink:0;padding:6px 12px;border-bottom:1px solid var(--v7-line);background:var(--v7-paper);color:var(--v7-muted);font:11px/1.4 Arial,sans-serif;min-width:0}
+.surface-legend[hidden],.space-legend-keys[hidden]{display:none}
+.surface-legend label{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
+.surface-legend select{max-width:100%;padding:3px 4px;border:1px solid #7b8b81;border-radius:4px;background:#fff;color:var(--v7-ink);font:11px/1.4 Arial,sans-serif}
+.space-legend-keys{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0}
+.space-legend-keys span{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.space-legend-keys i{display:block;width:10px;height:10px;flex-shrink:0;border:1px solid var(--space-color);background:var(--space-fill)}
+.surface-labels input{width:15px;height:15px;accent-color:var(--v7-accent);margin:0}
+.surface-legend-note{font-size:10px;margin-left:auto}
+@media(max-width:950px){.surface-legend{gap:5px 8px;padding:5px 8px}.space-legend-keys{gap:4px 8px}.surface-legend-note{width:100%;margin:0}}
+@media(max-width:520px){.surface-legend{font-size:10px}.space-legend-keys{order:3;width:100%}.surface-labels{margin-left:auto}.surface-legend-note{width:auto;order:4}}
+
+/* This file owns the unified ribbon, optional tools panel and manual status. */
 :root{--manual-paper:#f4f7f5;--manual-white:#ffffff;--manual-ink:#192b22;--manual-muted:#4b5c52;--manual-border:#7b8b81;--manual-divider:#c6d0ca;--manual-focus:#17583f;--manual-area:#256d54;--manual-line:#25649a;--manual-segment:#8a5c16;--manual-count:#6846a3;--manual-active:#e4efe8;--manual-space:4px}
-.manual-ribbon{display:flex;flex-direction:column;flex-shrink:0;min-width:0;max-width:100%;border-bottom:1px solid var(--manual-divider);background:var(--manual-paper);color:var(--manual-ink);font:12px/1.45 Arial,sans-serif}
-.manual-ribbon-scroll{display:flex;align-items:stretch;gap:0;min-width:0;max-width:100%;padding:6px 12px 4px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--manual-border) var(--manual-paper)}
-.manual-group{display:flex;flex-direction:column;flex:0 0 auto;padding:0 10px;border-right:1px solid var(--manual-divider)}
+.manual-ribbon{position:relative;display:flex;flex-direction:column;flex-shrink:0;min-width:0;max-width:100%;border-bottom:1px solid var(--manual-divider);background:var(--manual-paper);color:var(--manual-ink);font:12px/1.45 Arial,sans-serif;z-index:9}
+.manual-ribbon-scroll{display:flex;align-items:stretch;gap:0;min-width:0;max-width:100%;padding:4px 12px 3px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--manual-border) var(--manual-paper)}
+.manual-group{display:flex;flex-direction:column;flex:0 0 auto;padding:0 8px;border-right:1px solid var(--manual-divider)}
 .manual-group:first-child{padding-left:0}.manual-group:last-child{border-right:0;padding-right:0}
-.manual-group-buttons{display:flex;align-items:stretch;gap:var(--manual-space)}
-.manual-ribbon .manual-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;width:60px;min-width:60px;min-height:58px;padding:6px 3px;max-width:100%;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--manual-ink);font:600 11px/1.25 Arial,sans-serif;cursor:pointer}
-.manual-button svg{width:24px;height:24px;stroke-width:1.8;flex:0 0 auto;color:var(--manual-line)}
+.manual-group-buttons{display:flex;align-items:stretch;gap:2px}
+.manual-ribbon .manual-button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;width:52px;min-width:52px;min-height:50px;padding:4px 2px;max-width:100%;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--manual-ink);font:600 10px/1.25 Arial,sans-serif;cursor:pointer}
+.manual-button svg{width:22px;height:22px;stroke-width:1.8;flex:0 0 auto;color:var(--manual-line)}
 .manual-button.manual-area svg{color:var(--manual-area)}.manual-button.manual-line svg{color:var(--manual-line)}.manual-button.manual-segment svg{color:var(--manual-segment)}.manual-button.manual-count svg{color:var(--manual-count)}
 .manual-ribbon .manual-button:hover:not(:disabled){background:var(--manual-white);border-color:var(--manual-border)}
-.manual-ribbon .manual-button.active{background:var(--manual-active);border-color:var(--manual-area);box-shadow:inset 0 -2px 0 var(--manual-area)}
+.manual-ribbon .manual-button.active,.manual-ribbon .manual-button[aria-expanded=true]{background:var(--manual-active);border-color:var(--manual-area);box-shadow:inset 0 -2px 0 var(--manual-area)}
 .manual-ribbon .manual-button.active.manual-count{border-color:var(--manual-count);box-shadow:inset 0 -2px 0 var(--manual-count)}
 .manual-ribbon .manual-button:disabled{color:#657169;cursor:default;opacity:.58}.manual-ribbon .manual-button:disabled svg{color:#657169}
-.manual-group-label{display:block;text-align:center;margin-top:4px;font-size:9px;font-weight:700;line-height:1.3;letter-spacing:.07em;text-transform:uppercase;color:var(--manual-muted)}
-.manual-status-line{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:34px;padding:3px 16px 5px;border-top:1px solid var(--manual-divider);background:var(--manual-white)}
-.manual-status-line p{min-width:0;margin:0;font-size:11px;line-height:1.45;color:var(--manual-muted)}
-.manual-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.manual-ribbon #stepDetect:not(:disabled){background:var(--manual-area);border-color:var(--manual-area);color:var(--manual-white)}.manual-ribbon #stepDetect:not(:disabled) svg{color:var(--manual-white)}
+.manual-ribbon #reviewCount{position:absolute;top:0;right:0;min-width:15px;height:15px;padding:1px 3px;border-radius:3px;background:var(--manual-active);color:var(--manual-ink);font:700 9px/13px Arial,sans-serif}
+.manual-group-label{display:block;text-align:center;margin-top:3px;font-size:8px;font-weight:700;line-height:1.3;letter-spacing:.06em;text-transform:uppercase;color:var(--manual-muted)}
+.manual-status-line{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:28px;padding:3px 12px;border-top:1px solid var(--manual-divider);background:var(--manual-white)}
+.manual-status-line p{min-width:0;margin:0;font-size:11px;line-height:1.4;color:var(--manual-muted)}
+.manual-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}.manual-actions[hidden]{display:none}
 .manual-ribbon .manual-actions button{min-height:28px;padding:4px 8px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:600 11px/1.3 Arial,sans-serif;white-space:nowrap;cursor:pointer}
 .manual-ribbon .manual-actions #manualFinish{background:var(--manual-area);color:var(--manual-white);border-color:var(--manual-area)}
 .manual-ribbon .manual-actions button:disabled{background:#e6ece8;color:#657169;border-color:#b1bdb5;cursor:default}
 .manual-ribbon button:focus-visible{outline:3px solid var(--manual-focus);outline-offset:2px}
-@media(max-width:1150px){.manual-ribbon-scroll{padding-inline:8px}.manual-group{padding-inline:8px}.manual-ribbon .manual-button{width:56px;min-width:56px}}
-@media(max-width:779px){.manual-ribbon-scroll{padding-top:4px;padding-bottom:3px}.manual-ribbon .manual-button{min-height:52px;width:54px;min-width:54px;padding-block:4px;font-size:10px}.manual-button svg{width:22px;height:22px}.manual-group-label{font-size:8px;margin-top:3px}.manual-status-line{min-height:32px;padding:4px 10px;gap:8px}.manual-status-line p{font-size:10px}.manual-actions{gap:4px}.manual-ribbon .manual-actions button{font-size:10px;padding:4px 6px}}
-@media(max-width:520px){.manual-status-line{align-items:flex-start;flex-direction:column;gap:4px;min-height:36px}.manual-status-line p{max-width:100%;font-size:10px}.manual-actions{align-self:flex-end}.manual-ribbon .manual-actions button{min-height:28px}.manual-ribbon-scroll{scrollbar-width:thin}.manual-group{padding-inline:6px}}
+.advanced-tools{position:absolute;top:76px;right:12px;width:430px;max-width:calc(100% - 24px);max-height:calc(100dvh - 160px);padding:12px;overflow:auto;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);box-shadow:0 5px 16px #192b2226;color:var(--manual-ink)}
+.advanced-tools[hidden]{display:none}.advanced-tools header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 8px;border-bottom:1px solid var(--manual-divider)}
+.advanced-tools header strong{font-size:14px}.advanced-tools #closeAdvanced{width:30px;height:30px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:20px/1 Arial,sans-serif;cursor:pointer}
+.advanced-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;min-width:0;margin-top:8px}
+.advanced-tools-grid h3{grid-column:1/-1;margin:0 0 2px;font:700 11px/1.4 Arial,sans-serif;color:var(--manual-muted)}
+.manual-ribbon .advanced-tools .manual-button{display:flex;flex-direction:row;justify-content:flex-start;gap:8px;width:100%;min-width:0;min-height:40px;padding:6px;text-align:left;border-color:var(--manual-divider);font-size:11px;font-weight:500}
+.advanced-tools .manual-button svg{width:20px;height:20px}.advanced-tools .manual-button span{min-width:0;flex:1}.advanced-tools .manual-button kbd{margin-left:auto;border:0;background:var(--manual-paper);color:var(--manual-muted);font:10px/1.2 Arial,sans-serif;padding:2px}
+.zoom{min-width:0;padding:7px 10px}.zoom #zoomText{min-width:0}
+@media(max-width:1150px){.manual-ribbon-scroll{padding-inline:8px}.manual-group{padding-inline:6px}.manual-ribbon .manual-button{width:50px;min-width:50px}}
+@media(max-width:779px){.manual-ribbon-scroll{padding-top:4px;padding-bottom:3px}.manual-ribbon .manual-button{min-height:48px;width:50px;min-width:50px}.manual-group-label{margin-top:3px}.manual-status-line{min-height:30px;padding:4px 10px;gap:8px}.manual-status-line p{font-size:10px}.manual-actions{gap:4px}.manual-ribbon .manual-actions button{font-size:10px;padding:4px 6px}.advanced-tools{right:8px;max-width:calc(100% - 16px)}}
+@media(max-width:520px){.manual-status-line{align-items:flex-start;flex-direction:column;gap:4px;min-height:36px}.manual-status-line p{max-width:100%;font-size:10px}.manual-actions{align-self:flex-end}.manual-ribbon .manual-actions button{min-height:28px}.manual-group{padding-inline:6px}.advanced-tools{box-shadow:none;top:72px;padding:10px}.advanced-tools-grid{gap:4px}.manual-ribbon .advanced-tools .manual-button{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.manual-ribbon{scroll-behavior:auto}}
 </style>
 </head>
@@ -290,10 +305,27 @@ function normalizeName(text) {
 function isBathroom(name) {
   return /^(?:(?:SALLE\s+(?:DE\s+BAINS?|D[' ]EAU))|S\.?\s*D\.?\s*B\.?|S\.?\s*D\.?\s*E\.?|SDB|BATH(?:ROOM)?|WC|W\.C\.)(?:\s*\d+[A-Z]?|\s*[-–:]\s*\w+)?$/i.test(normalizeName(name));
 }
+function isDwellingName(name) {
+  return /^(?:[1-9]\d?\s*C\.?\s*C\.?|STD\.?|STUDIO(?:\s*\d{1,4}[A-Z]?)?|(?:LOGEMENT|APPARTEMENT|APP\.?|APPT\.?|UNITE)\s*(?:[-:#]\s*)?[A-Z]?\d{1,4}[A-Z]?)$/.test(normalizeName(name));
+}
+function spaceTypeFromName(name) {
+  const text=normalizeName(name);
+  if(isBathroom(text))return 'bathroom';
+  if(isDwellingName(text))return 'dwelling';
+  if(isRoomName(text)&&/^(?:CORRIDOR|CIRCULATION|HALL|VESTIBULE|ENTREE)(?:\b|\s)/.test(text))return 'circulation';
+  return 'room';
+}
 function isRoomName(name) {
   const text=normalizeName(name);
   if(/DOIVENT|PREVOIR|SANS FENETRE|PROJECTION|INSTALLATION|VENTILATION|LIMITE STRUCTURE/.test(text))return false;
-  return text.length<=56&&(isBathroom(text)||/^(?:CHAMBRE|BEDROOM|SALON|SEJOUR|CUISINE|KITCHEN|SALLE A MANGER|DINING|CORRIDOR|HALL|ENTREE|VESTIBULE|BUREAU|OFFICE|RECEPTION|AIRE OUVERTE|SALLE FAMILIALE|RANGEMENT|WALK[- ]?IN|BUANDERIE|LAVAGE|GARAGE|LOCAL MECANIQUE|SALLE MECANIQUE|SALLE \d)[A-Z0-9 '\-–.]*$/.test(text));
+  return text.length<=56&&(isBathroom(text)||isDwellingName(text)||/^(?:CHAMBRE|BEDROOM|SALON|SEJOUR|CUISINE|KITCHEN|SALLE A MANGER|DINING|CORRIDOR|CIRCULATION|HALL|ENTREE|VESTIBULE|BUREAU|OFFICE|RECEPTION|AIRE OUVERTE|SALLE FAMILIALE|RANGEMENT|WALK[- ]?IN|BUANDERIE|LAVAGE|GARAGE|LOCAL MECANIQUE|SALLE MECANIQUE|SALLE \d)[A-Z0-9 '\-–.]*$/.test(text));
+}
+function isOpenLivingName(name) {
+  return /^(?:SALON|SEJOUR|CUISINE|KITCHEN|SALLE A MANGER|DINING)\b/.test(normalizeName(name));
+}
+function distinctRoomLabels(labels) {
+  return labels.filter((label,index)=>!labels.slice(0,index).some(prior=>normalizeName(prior.text)===normalizeName(label.text)&&
+    Math.hypot(prior.cx-label.cx,prior.cy-label.cy)<Math.max(2,Math.min(prior.height||0,label.height||0)*.6)));
 }
 function joinedLabelRows(texts) {
   const rows=[];
@@ -475,12 +507,18 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
 function roomCandidate(model,room,info,material,settings,scale) {
   const rings=simplifyRoomRings(componentRings(model,room,model.factor),model.factor),outer=rings[0];if(!outer)return null;
   const labels=(info?.labels||[]).filter(label=>componentAt(model,{x:label.cx,y:label.cy},model.factor,3)?.id===room.id);
-  const names=[...new Set(labels.map(l=>l.text))],baths=names.filter(isBathroom),mixed=!!baths.length&&names.some(n=>!isBathroom(n));
-  const living=n=>/^(?:SALON|SEJOUR|CUISINE|KITCHEN|SALLE A MANGER|DINING)\b/.test(normalizeName(n));
-  const bathroom=!!baths.length&&!mixed,needsSeparation=mixed||names.length>1&&!names.every(living);
+  // PDF exports can overprint the same label. Separate occurrences of a
+  // repeated dwelling name still describe multiple units, even if the text
+  // itself is identical; do not silently accept their merged contour.
+  const physicalLabels=distinctRoomLabels(labels);
+  const names=[...new Set(physicalLabels.map(l=>l.text))],baths=names.filter(isBathroom),mixed=!!baths.length&&names.some(n=>!isBathroom(n));
+  const dwellingLabels=physicalLabels.filter(label=>isDwellingName(label.text)).length,types=[...new Set(names.map(spaceTypeFromName))];
+  const openLiving=names.every(name=>isOpenLivingName(name)||isDwellingName(name)),allCirculation=types.length===1&&types[0]==='circulation';
+  const bathroom=!!baths.length&&!mixed,needsSeparation=mixed||dwellingLabels>1||names.length>1&&!openLiving&&!allCirculation;
+  const spaceType=dwellingLabels===1&&openLiving?'dwelling':types.length===1?types[0]:'room';
   const holes=rings.slice(1).filter(r=>area(r)*scale*scale>=.01);
   const finishCodes=[...new Set((info?.texts||[]).filter(text=>componentAt(model,{x:text.cx,y:text.cy},model.factor,0)?.id===room.id).flatMap(text=>MATERIALS.filter(finish=>normalizeName(text.text)===normalizeName(finish.code)).map(finish=>finish.code)))];
-  const item={kind:'area',points:outer,holes,name:names.join(' / ')||'Pièce détectée',material:finishCodes.length===1?finishCodes[0]:material,bathroom,
+  const item={kind:'area',points:outer,holes,name:names.join(' / ')||'Pièce détectée',material:finishCodes.length===1?finishCodes[0]:material,bathroom,spaceType,
     materialSource:finishCodes.length===1?'code du plan':'matériau actif',materialNeedsReview:finishCodes.length!==1,
     status:'à valider',method:'Contours intérieurs',mixedBathroom:mixed,needsSeparation,selected:!needsSeparation};
   if(item.bathroom)applyRecognizedFixtures(item,info||{},scale);
@@ -649,7 +687,9 @@ function splitNarrowPassages(model,info,scale,doorInches) {
   const radius=Math.max(2,Math.round(doorInches/24/scale*model.factor)+1),result={...model,labels:model.labels.slice(),rooms:[...model.rooms]};
   let nextId=model.labels.reduce((max,id)=>Math.max(max,id),0)+1;
   for(const room of model.rooms) {
-    if((groups.get(room.id)||[]).length<2)continue;
+    const roomLabels=distinctRoomLabels(groups.get(room.id)||[]),dwellingCount=roomLabels.filter(label=>isDwellingName(label.text)).length;
+    if(roomLabels.length<2||dwellingCount<=1&&roomLabels.every(label=>isOpenLivingName(label.text)||isDwellingName(label.text))||
+      roomLabels.every(label=>spaceTypeFromName(label.text)==='circulation'))continue;
     const width=room.right-room.x+2,height=room.bottom-room.y+2,mask=new Uint8Array(width*height).fill(1),offsetX=room.x-1,offsetY=room.y-1;
     for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++)if(model.labels[(y+offsetY)*model.width+x+offsetX]===room.id)mask[y*width+x]=0;
     const clearance=clearanceField(mask,width,height),coreMask=Uint8Array.from(clearance,d=>d>radius?0:1),cores=segmentRooms(coreMask,width,height,16);
@@ -667,8 +707,31 @@ function splitNarrowPassages(model,info,scale,doorInches) {
       }
     }
     const remaining=segmentRooms(Uint8Array.from(mask,(blocked,p)=>blocked||labels[p]?1:0),width,height,16),usedIds=new Map();
+    // Restoring room cores can leave a short doorway neck as its own
+    // component. If that unlabelled neck joins two cores and exactly one is
+    // a labelled corridor, retain it in the continuous corridor. A labelled
+    // narrow room, a dead-end closet and ambiguous junctions stay separate.
+    const circulationCores=new Set(),labelledRest=new Set(),adjacentCores=new Map(),restToCore=new Map();
+    for(const label of groups.get(room.id)||[]) {
+      const x=Math.floor(label.cx*model.factor)-offsetX,y=Math.floor(label.cy*model.factor)-offsetY;
+      if(x<0||y<0||x>=width||y>=height)continue;
+      const p=y*width+x;
+      if(labels[p]&&spaceTypeFromName(label.text)==='circulation')circulationCores.add(labels[p]);
+      else if(!labels[p]&&remaining.labels[p])labelledRest.add(remaining.labels[p]);
+    }
+    if(circulationCores.size) {
+      for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++) {
+        const p=y*width+x,id=remaining.labels[p];if(mask[p]||labels[p]||!id)continue;
+        if(!adjacentCores.has(id))adjacentCores.set(id,new Set());
+        for(const next of [p-1,p+1,p-width,p+width])if(labels[next])adjacentCores.get(id).add(labels[next]);
+      }
+      for(const [id,neighbors]of adjacentCores) {
+        const corridors=[...neighbors].filter(core=>circulationCores.has(core));
+        if(!labelledRest.has(id)&&neighbors.size>=2&&corridors.length===1)restToCore.set(id,corridors[0]);
+      }
+    }
     for(let p=0;p<labels.length;p++)if(!mask[p]) {
-      const local=labels[p]?'core:'+labels[p]:'rest:'+remaining.labels[p];
+      const core=labels[p]||restToCore.get(remaining.labels[p]),local=core?'core:'+core:'rest:'+remaining.labels[p];
       if(!usedIds.has(local))usedIds.set(local,nextId++);
       result.labels[(Math.floor(p/width)+offsetY)*model.width+p%width+offsetX]=usedIds.get(local);
     }
@@ -694,6 +757,71 @@ async function inspectPdfScale(page,withWalls=false) {
 }
 
 /* V7 takeoff workflow. All analysis stays in the browser. */
+const SPACE_STYLES={
+  dwelling:{label:'Logement',color:'#587e18',fill:'#bfe86a66'},
+  bathroom:{label:'Salle de bain',color:'#167c85',fill:'#52d8de66'},
+  circulation:{label:'Corridor',color:'#a9348c',fill:'#ed7ad266'},
+  room:{label:'Autre espace',color:'#526f76',fill:'#a8c9d14d'}
+};
+function surfaceSpaceType(item) {
+  if(Object.hasOwn(SPACE_STYLES,item.spaceType))return item.spaceType;
+  if(item.bathroom||isBathroom(item.name))return 'bathroom';
+  return spaceTypeFromName(item.name);
+}
+function surfaceColorForItem(item) {
+  return S.settings.surfaceDisplay==='materials'?mat(item.material).color:SPACE_STYLES[surfaceSpaceType(item)].color;
+}
+function surfaceFillForItem(item) {
+  return S.settings.surfaceDisplay==='materials'?mat(item.material).color+'44':SPACE_STYLES[surfaceSpaceType(item)].fill;
+}
+function refreshSurfaceLegend() {
+  const legend=$('#surfaceLegend');if(!legend)return;
+  // Keep plan coordinates stable while the first measured surface is added.
+  legend.hidden=!S.plan;
+  $('#surfaceDisplay').value=S.settings.surfaceDisplay==='materials'?'materials':'spaces';
+  $('#surfaceLabels').checked=!!S.settings.surfaceLabels;
+  $('#spaceLegendKeys').hidden=S.settings.surfaceDisplay==='materials';
+}
+function initSurfaceLegend() {
+  $('.stagebar').insertAdjacentHTML('afterend',`<section id="surfaceLegend" class="surface-legend" aria-label="Affichage des surfaces" hidden><label>Couleurs <select id="surfaceDisplay"><option value="spaces">Espaces</option><option value="materials">Revêtements</option></select></label><div id="spaceLegendKeys" class="space-legend-keys">${Object.values(SPACE_STYLES).map(style=>`<span><i style="--space-color:${style.color};--space-fill:${style.fill}"></i>${style.label}</span>`).join('')}</div><label class="surface-labels"><input id="surfaceLabels" type="checkbox"> Surfaces</label><span class="surface-legend-note">Repérage · finis à vérifier</span></section>`);
+  $('#surfaceDisplay').onchange=event=>{S.settings.surfaceDisplay=event.target.value;save();refresh();};
+  $('#surfaceLabels').onchange=event=>{S.settings.surfaceLabels=event.target.checked;save();refresh();};
+}
+const surfaceLabelAnchors=new WeakMap();
+function surfaceLabelAnchor(item,halfWidth,halfHeight) {
+  const old=surfaceLabelAnchors.get(item),b=boundsOf(item.points),
+    texts=(S.pageInfo[item.page||S.page]?.texts||[]).filter(text=>text.x<=b.right&&text.x+text.width>=b.x&&text.y<=b.bottom&&text.y+text.height>=b.y),
+    key=[item.qty,b.x,b.y,b.right,b.bottom,halfWidth,halfHeight,texts.length].join(':');
+  if(old?.key===key)return old.point;
+  let best=null,clearance=-1;
+  const probes=[{x:(b.x+b.right)/2,y:(b.y+b.bottom)/2}];
+  for(let y=1;y<8;y++)for(let x=1;x<8;x++)probes.push({x:b.x+(b.right-b.x)*x/8,y:b.y+(b.bottom-b.y)*y/8});
+  for(const point of probes)if(insideItem(point,item)&&!texts.some(text=>point.x-halfWidth<text.x+text.width+2/S.zoom&&point.x+halfWidth>text.x-2/S.zoom&&point.y-halfHeight<text.y+text.height+2/S.zoom&&point.y+halfHeight>text.y-2/S.zoom)) {
+    let nearest=Infinity;
+    for(const ring of [item.points,...getHoles(item)])for(let i=0;i<ring.length;i++)nearest=Math.min(nearest,distanceToSegment(point,ring[i],ring[(i+1)%ring.length]));
+    if(nearest>clearance){clearance=nearest;best=point;}
+  }
+  surfaceLabelAnchors.set(item,{key,point:best});return best;
+}
+function drawSurfaceLabel(context,item,force=false,occupied=[]) {
+  const label=hasPendingFixtures(item)?'À délimiter':fmt(item.qty)+' pi²';
+  context.save();context.font=`600 ${11/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';
+  const halfWidth=(context.measureText(label).width/2)+5/S.zoom,halfHeight=9/S.zoom,
+    point=surfaceLabelAnchor(item,halfWidth,halfHeight);
+  if(!point){context.restore();return;}
+  const rect={x:point.x-halfWidth,y:point.y-halfHeight,right:point.x+halfWidth,bottom:point.y+halfHeight};
+  const corners=[{x:rect.x,y:rect.y},{x:rect.right,y:rect.y},{x:rect.right,y:rect.bottom},{x:rect.x,y:rect.bottom}];
+  if(!force&&(!corners.every(p=>insideItem(p,item))||occupied.some(other=>rect.x<other.right&&rect.right>other.x&&rect.y<other.bottom&&rect.bottom>other.y))){context.restore();return;}
+  context.setLineDash([]);context.fillStyle='#ffffffeb';context.fillRect(rect.x,rect.y,halfWidth*2,halfHeight*2);
+  context.strokeStyle=surfaceColorForItem(item);context.lineWidth=1/S.zoom;context.strokeRect(rect.x,rect.y,halfWidth*2,halfHeight*2);
+  context.fillStyle='#192b22';context.fillText(label,point.x,point.y);context.restore();occupied.push(rect);
+}
+function drawSurfaceLabels(context) {
+  if(!S.settings.surfaceLabels)return;
+  const occupied=[],preview=S.preview?.page===S.page?S.preview.items.filter(item=>!item.duplicate):[],
+    items=[...S.items.filter(item=>item.page===S.page&&item.kind==='area'),...preview];
+  for(const item of items)drawSurfaceLabel(context,item,false,occupied);
+}
 function confirmationIssues(item) {
   const reasons=[];
   if (item.kind!=='count'&&(!S.scales[item.page] || !S.scaleMeta[item.page]?.verified)) reasons.push('échelle à vérifier');
@@ -723,22 +851,22 @@ function closeReview() {
   refreshWorkflow();
 }
 function refreshWorkflow() {
-  if (!$('#workflow')) return;
+  if (!$('#stepDetect')) return;
   const areas=S.items.filter(item=>item.kind==='area'&&!hasPendingFixtures(item));
   const confirmed=areas.filter(isConfirmed).reduce((sum,item)=>sum+item.qty,0);
   const proposed=areas.filter(item=>!isConfirmed(item)).reduce((sum,item)=>sum+item.qty,0);
   $('#confirmedTotal').textContent=fmt(confirmed)+' pi²';
   $('#proposedTotal').textContent=fmt(proposed)+' pi²';
-  const steps=[!!S.plan,!!S.scaleMeta[S.page]?.verified,!!S.reviewByPage?.[S.page]||S.items.length>0,S.items.length>0&&S.items.every(isConfirmed)];
-  ['stepOpen','stepScale','stepDetect','stepReview'].forEach((id,index)=>$('#'+id).classList.toggle('complete',steps[index]));
-  for (const id of ['stepScale','stepDetect','stepTrace']) $('#'+id).disabled=!S.plan||S.loading||!!S.detectJob;
+  const steps=[!!S.plan,!!S.reviewByPage?.[S.page]||S.items.length>0,S.items.length>0&&S.items.every(isConfirmed)];
+  ['stepOpen','stepDetect','stepReview'].forEach((id,index)=>$('#'+id).classList.toggle('complete',steps[index]));
+  $('#stepDetect').disabled=!S.plan||S.loading||!!S.detectJob;
   $('#stepReview').disabled=!S.items.length&&!Object.keys(S.reviewByPage||{}).length;
-  $('#stepExport').disabled=!S.items.length;
   $('#confirmSelection').disabled=!S.selection.size||!!S.detectJob;
   $('#confirmSelection').textContent=S.selection.size>1?`Confirmer ${S.selection.size} mesures`:'Confirmer la sélection';
   const unadded=Object.values(S.reviewByPage||{}).flatMap(pack=>pack.items).filter(item=>!S.items.some(existing=>existing.page===item.page&&existing.kind==='area'&&duplicateCandidate(item,existing))).length;
   $('#reviewCount').textContent=String(S.items.filter(item=>!isConfirmed(item)).length+unadded);
   if (S.reviewOpen) renderDetectionPanel();
+  refreshSurfaceLegend();
 }
 function previewCandidate(index) {
   const pack=S.reviewByPage[S.page],item=pack?.items[index];if(!item)return;
@@ -844,13 +972,12 @@ async function runDetectionPages(pages) {
 }
 function initV7() {
   Object.assign(S,{reviewByPage:{},reviewOpen:false,detectionNotes:[],detectJob:null,previewFocus:null});
-  $('.ribbon').insertAdjacentHTML('beforebegin',`<nav id="workflow" class="workflow" aria-label="Étapes du relevé"><button type="button" id="stepOpen"><i data-lucide="folder-open"></i><span>Ouvrir</span></button><button type="button" id="stepScale"><i data-lucide="ruler"></i><span>Échelle</span></button><button type="button" id="stepDetect"><i data-lucide="scan-line"></i><span>Détecter</span></button><button type="button" id="stepReview"><i data-lucide="list-checks"></i><span>Réviser</span><b id="reviewCount">0</b></button><button type="button" id="stepExport"><i data-lucide="download"></i><span>Exporter</span></button><div class="workflow-secondary"><button type="button" id="stepTrace" title="Tracer une surface · S"><i data-lucide="pentagon"></i><span>Tracer</span></button><button type="button" id="advancedToggle" aria-expanded="false"><i data-lucide="sliders-horizontal"></i><span>Outils</span></button></div></nav>`);
+  $('.ribbon').insertAdjacentHTML('beforebegin',`<nav id="workflow" aria-label="Projet et détection"><button type="button" id="stepOpen"><i data-lucide="folder-open"></i><span>Ouvrir</span></button><button type="button" id="stepDetect"><i data-lucide="scan-line"></i><span>Détecter</span></button><button type="button" id="stepReview"><i data-lucide="list-checks"></i><span>Réviser</span><b id="reviewCount">0</b></button></nav>`);
   $('.quantity-grid').insertAdjacentHTML('beforebegin',`<section class="validation-bar" aria-label="Validation des surfaces"><div><span>Confirmé · net</span><strong id="confirmedTotal">0,0 pi²</strong></div><div><span>À valider · net</span><strong id="proposedTotal">0,0 pi²</strong></div><button type="button" id="confirmSelection">Confirmer la sélection</button></section>`);
   $('#inspector').insertAdjacentHTML('beforebegin','<aside id="reviewPanel" class="review-panel" aria-label="Révision des pièces détectées" hidden></aside>');
-  $('#stepOpen').onclick=()=>$('#fileInput').click();$('#stepScale').onclick=()=>calibrationModal();$('#stepDetect').onclick=analyzeAll;
+  $('#stepOpen').onclick=()=>$('#fileInput').click();$('#stepDetect').onclick=analyzeAll;
   $('#stepReview').onclick=()=>{if(Object.keys(S.reviewByPage).length){S.reviewOpen=true;renderDetectionPanel();}else takeoffDrawer();};
-  $('#stepExport').onclick=exportExcel;$('#stepTrace').onclick=()=>{closeReview();activateTool('area');};$('#confirmSelection').onclick=confirmSelected;
-  $('#advancedToggle').onclick=()=>{const open=$('.app').classList.toggle('tools-open');$('#advancedToggle').setAttribute('aria-expanded',String(open));};
+  $('#confirmSelection').onclick=confirmSelected;
   $('#aiReview').onclick=$('#stepReview').onclick;
   const syncSmallScreen=()=>{if(innerWidth<780){$('#inspector').hidden=true;$('.app').classList.add('pages-folded');}if(S.reviewOpen)renderDetectionPanel();};
   window.addEventListener('resize',syncSmallScreen);syncSmallScreen();
@@ -858,6 +985,7 @@ function initV7() {
   $$('.menu button:not([id])').forEach(button=>button.remove());
   $('.side-tabs').remove();
   $('.brand').insertAdjacentHTML('beforeend','<small class="version-mark">V7</small>');
+  initSurfaceLegend();
   lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 }
 
@@ -869,7 +997,7 @@ function labelForItem(item) {
   return item.kind==='count'?'Comptage':item.measureOnly?'Cote de référence':item.kind==='area'?mat(item.material).name:'Plinthe / moulure';
 }
 function colorForItem(item) {
-  return item.kind==='count'?'#6846a3':item.measureOnly?'#25649a':item.kind==='area'?mat(item.material).color:'#df5e43';
+  return item.kind==='count'?'#6846a3':item.measureOnly?'#25649a':item.kind==='area'?surfaceColorForItem(item):'#df5e43';
 }
 function manualButton(id,icon,label,title,tool='',tone='') {
   return `<button type="button" id="${id}" class="manual-button ${tone}" title="${title}" aria-label="${title}" ${tool?`data-manual-tool="${tool}" aria-pressed="false"`:''}><i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span></button>`;
@@ -883,6 +1011,12 @@ function startManualTool(tool) {
   }
   if(!['select','hand'].includes(tool)&&S.reviewOpen)closeReview();
   activateTool(tool);
+}
+function closeAdvancedTools(restoreFocus=false) {
+  const panel=$('#advancedTools'),button=$('#advancedToggle');
+  if(!panel||panel.hidden)return;
+  panel.hidden=true;button.setAttribute('aria-expanded','false');
+  if(restoreFocus)button.focus();
 }
 function initManualUI() {
   if($('#manualRibbon'))return;
@@ -909,7 +1043,49 @@ function initManualUI() {
     manualButton('manualUndo','undo-2','Annuler','Annuler la dernière modification · Ctrl+Z'),
     manualButton('manualRedo','redo-2','Rétablir','Rétablir la modification · Ctrl+Y')
   ].join('');
-  $('#workflow').insertAdjacentHTML('afterend',`<section id="manualRibbon" class="manual-ribbon" aria-label="Outils de relevé manuel"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Navigation et mesures manuelles"><div class="manual-group"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group"><div class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé manuel.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  const workflow=$('#workflow'),legacy=$('.ribbon');
+  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet et détection</span></div><div class="manual-group"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group"><div class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group"><div class="manual-group-buttons">${manualButton('advancedToggle','ellipsis','Plus','Autres outils et réglages')}</div><span class="manual-group-label">Options</span></div></div><div id="advancedTools" class="advanced-tools" aria-label="Autres outils et réglages" hidden><header><strong>Autres outils</strong><button type="button" id="closeAdvanced" aria-label="Fermer les autres outils">×</button></header><div class="advanced-tools-grid" id="advancedMeasure"><h3>Détection et correction</h3></div><div class="advanced-tools-grid" id="advancedLayout"><h3>Calepinage</h3></div><div class="advanced-tools-grid" id="advancedProject"><h3>Projet et aide</h3></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  const moveButton=(selector,host,icon,label,title)=>{
+    const button=$(selector);if(!button)return;
+    button.type='button';button.className='manual-button';
+    if(icon)button.innerHTML=`<i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span>${button.id==='stepReview'?'<b id="reviewCount">0</b>':''}`;
+    if(title){button.title=title;button.setAttribute('aria-label',title);}
+    host.append(button);
+  };
+  const project=$('#ribbonProject');
+  moveButton('#stepOpen',project,'folder-open','Ouvrir','Ouvrir un plan PDF ou une image');
+  moveButton('#stepDetect',project,'scan-line','Détecter','Détecter les surfaces de la feuille · Ctrl+Maj+A');
+  moveButton('#stepReview',project,'list-checks','Réviser','Réviser les surfaces et les quantités');
+  moveButton('#saveProjectBtn',project,'save','Sauver','Sauvegarder le relevé · Ctrl+S');
+  for(const tool of ['auto','split','divider','edit','region'])moveButton(`[data-tool="${tool}"]`,$('#advancedMeasure'));
+  moveButton('#deleteSelection',$('#advancedMeasure'),'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
+  for(const id of ['tileSettings','tileOriginBtn','toggleTileGrid'])moveButton('#'+id,$('#advancedLayout'));
+  moveButton('#demoBtn',$('#advancedProject'),'file-text','Plan d’exemple','Ouvrir le plan fictif de démonstration');
+  moveButton('#ordersBtn',$('#advancedProject'),'package-check','Commandes','Estimation et commandes · F4');
+  moveButton('#catalogNav',$('#advancedProject'),'library','Assemblages','Configurer les finis et assemblages');
+  moveButton('#helpBtn',$('#advancedProject'),'keyboard','Raccourcis','Afficher l’aide souris et raccourcis · ?');
+  for(const id of ['fileInput','projectInput'])if($('#'+id))$('.app').append($('#'+id));
+  workflow.remove();legacy?.remove();$('.topbar .menu')?.remove();
+  for(const id of ['zoomIn','zoomOut','fitView'])$('#'+id)?.remove();
+  const toggle=$('#advancedToggle'),panel=$('#advancedTools');
+  toggle.setAttribute('aria-controls','advancedTools');toggle.setAttribute('aria-expanded','false');
+  toggle.onclick=()=>{
+    if(!panel.hidden){closeAdvancedTools(true);return;}
+    panel.hidden=false;toggle.setAttribute('aria-expanded','true');
+    panel.querySelector('button:not(:disabled)')?.focus();
+  };
+  $('#closeAdvanced').onclick=()=>closeAdvancedTools(true);
+  panel.addEventListener('click',event=>{
+    const button=event.target.closest('.manual-button');if(!button)return;
+    // Dialogs open before this bubbling listener runs. Their trigger is about
+    // to become hidden, so closing the dialog must return to visible Plus.
+    if($('#overlay')?.querySelector('[role="dialog"]')&&S.dialogReturnFocus&&panel.contains(S.dialogReturnFocus))S.dialogReturnFocus=toggle;
+    closeAdvancedTools(false);if(button.dataset.tool)canvas.focus();
+  });
+  document.addEventListener('pointerdown',event=>{if(!panel.hidden&&!panel.contains(event.target)&&!toggle.contains(event.target))closeAdvancedTools(false);});
+  document.addEventListener('keydown',event=>{
+    if(!panel.hidden&&event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();closeAdvancedTools(true);}
+  },true);
   $$('[data-manual-tool]',$('#manualRibbon')).forEach(button=>button.onclick=()=>startManualTool(button.dataset.manualTool));
   $('#manualFit').onclick=()=>{fitPlan();refresh();};
   $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
@@ -939,7 +1115,15 @@ function manualStatusText() {
   if(S.tool==='linear')return `Ligne : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+fmt(lineLength(S.draft)*scale)+' pi':''} · Cliquez les points, puis Terminer ou Entrée.`;
   if(S.tool==='calibrate')return 'Échelle : cliquez les extrémités d’une cote connue, puis saisissez sa longueur.';
   if(S.tool==='hand')return 'Déplacer : glissez le plan · molette pour zoomer · V pour sélectionner.';
-  return 'Relevé manuel : choisissez Surface, Rectangle, Ligne, Segments ou Comptage. Les cotes restent hors des commandes.';
+  if(S.tool==='auto')return 'Pièce au clic : cliquez à l’intérieur d’une pièce fermée.';
+  if(S.tool==='divider')return 'Fermer un passage : cliquez ses deux extrémités, puis relancez Détecter.';
+  if(S.tool==='region')return 'Cadre de détection : cliquez deux coins opposés autour des pièces à analyser.';
+  if(S.tool==='edit')return 'Modifier les coins : glissez un sommet de la surface sélectionnée.';
+  if(S.tool==='tileOrigin')return 'Point de départ : cliquez l’origine de pose de la céramique sélectionnée.';
+  if(S.tool==='fixtureBox')return 'Bain ou douche : cliquez les deux coins opposés de l’emprise à retrancher · Échap pour annuler.';
+  if(S.tool==='fixturePolygon')return 'Bain ou douche : cliquez les coins de l’emprise, puis Entrée pour la retrancher.';
+  if(S.tool==='fixtureEdit')return 'Emprise du bain ou de la douche : glissez les coins orange pour la corriger.';
+  return 'Détecter pour proposer les pièces · Surface pour tracer · Plus pour les corrections et le calepinage.';
 }
 function refreshManualUI() {
   const ribbon=$('#manualRibbon');if(!ribbon)return;
@@ -955,6 +1139,8 @@ function refreshManualUI() {
   });
   for(const id of ['manualFit','manualZoomIn','manualZoomOut'])$('#'+id).disabled=busy;
   $('#manualUndo').disabled=busy||!S.history.length;$('#manualRedo').disabled=busy||!S.redo.length;
+  $$('[data-tool]',$('#advancedTools')).forEach(button=>{button.disabled=busy;button.setAttribute('aria-pressed',String(S.tool===button.dataset.tool));});
+  for(const id of ['tileSettings','tileOriginBtn','toggleTileGrid'])if($('#'+id))$('#'+id).disabled=busy;
   const finishable=['area','linear','split','exclude','rectangle','segment','count','dimension'].includes(S.tool);
   $('#manualActions').hidden=!finishable;
   const n=S.draft.length;
@@ -1088,20 +1274,18 @@ function draw() {
     const active=S.selection.has(item.id),color=colorForItem(item);ctx.save();
     if(item.kind==='count'){drawCountItem(ctx,item,active);ctx.restore();continue;}
     if(item.kind==='area') {
-      ctx.save();clipItem(ctx,item);ctx.fillStyle=color+'4d';const b=boundsOf(item.points);ctx.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);ctx.restore();traceItem(ctx,item);
+      ctx.save();clipItem(ctx,item);ctx.fillStyle=surfaceFillForItem(item);const b=boundsOf(item.points);ctx.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);ctx.restore();traceItem(ctx,item);
     }else {ctx.beginPath();item.points.forEach((point,index)=>index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y));}
     ctx.strokeStyle=active?'#101713':color;ctx.lineWidth=(active?4:2)/S.zoom;ctx.stroke();
-    if(item.kind==='area'&&active&&S.selection.size===1) {
-      const x=item.points.reduce((sum,p)=>sum+p.x,0)/item.points.length,y=item.points.reduce((sum,p)=>sum+p.y,0)/item.points.length;
-      ctx.fillStyle='#18201c';ctx.font=`${15/S.zoom}px Arial`;ctx.textAlign='center';ctx.fillText(`${item.material} · ${hasPendingFixtures(item)?'À délimiter':fmt(item.qty)} pi²`,x,y);
-    }else drawManualLineDecorations(ctx,item);
+    if(item.kind==='area'&&active&&S.selection.size===1&&!S.settings.surfaceLabels)drawSurfaceLabel(ctx,item,true);
+    else drawManualLineDecorations(ctx,item);
     ctx.restore();
   }
   if(S.draft.length&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
   }
-  drawTileGrids(ctx);drawGuides(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawReference(ctx);ctx.restore();
+  drawTileGrids(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawReference(ctx);ctx.restore();
   if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
   requestAnimationFrame(draw);
 }
@@ -1116,9 +1300,9 @@ function renderInspectorBase() {
   const host=$('#inspector');if(S.selection.size>1)return renderMultipleInspector(host);
   const item=S.items.find(item=>item.id===S.selected);
   if(item) {
-    host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div><button class="icon-btn closePanel" aria-label="Fermer les propriétés"><i data-lucide="panel-right-close"></i></button></div>
+    host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div></div>
       <label>Nom du relevé<input id="itemName" maxlength="300" value="${esc(item.name)}"></label>
-      ${item.kind==='area'?`<label>Fini<select id="itemMaterial">${MATERIALS.map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
+      ${item.kind==='area'?`<label>Type d’espace<select id="itemSpaceType">${Object.entries(SPACE_STYLES).map(([type,style])=>`<option value="${type}" ${surfaceSpaceType(item)===type?'selected':''}>${style.label}</option>`).join('')}</select></label><label>Fini<select id="itemMaterial">${MATERIALS.map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
       <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':fmt(item.qty,item.kind==='count'?0:1)} <small>${unitForItem(item)}</small></strong></div>
       ${item.kind!=='count'&&!item.measureOnly?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${item.waste}"><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
       ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${fmt(perimeter(item.points)*S.scales[item.page])} pi</b></div>`:''}
@@ -1127,11 +1311,12 @@ function renderInspectorBase() {
       <div class="status-note"><i data-lucide="check"></i><span>Page ${item.page}<small>${esc(item.method)}${item.kind==='count'?' · échelle non requise':S.scaleMeta[item.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer le relevé</button>`;
     $('#itemName').onchange=event=>updateItem(item.id,{name:event.target.value});
     if($('#itemMaterial'))$('#itemMaterial').onchange=event=>updateItem(item.id,{material:event.target.value});
+    if($('#itemSpaceType'))$('#itemSpaceType').onchange=event=>updateItem(item.id,{spaceType:event.target.value,bathroom:event.target.value==='bathroom'});
     if($('#itemWaste'))$('#itemWaste').onchange=event=>updateItem(item.id,{waste:+event.target.value});
     $('#itemStatus').onchange=event=>updateItem(item.id,{status:event.target.value});$('#deleteItem').onclick=deleteSelection;
   } else {
     const ts=totals(),lin=S.items.filter(item=>item.kind==='linear'&&!item.measureOnly&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty*(1+item.waste/100),0),count=S.items.filter(item=>item.kind==='count'&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty,0);
-    host.innerHTML=`<div class="panel-head"><div><span>BIBLIOTHÈQUE</span><h2>Finis et assemblages</h2></div><button class="icon-btn closePanel" aria-label="Fermer les propriétés"><i data-lucide="panel-right-close"></i></button></div><div class="panel-section"><span>MATÉRIAU ACTIF</span><div class="library-list">${MATERIALS.map(material=>`<div class="library-item ${material.code===S.material?'active':''}" data-material="${material.code}" role="button" tabindex="0"><i style="background:${material.color}"></i><span><b>${material.code}</b><small>${esc(material.name)}</small></span><em>${material.waste}%</em></div>`).join('')}</div></div><div class="panel-section"><span>RELEVÉ CONFIRMÉ</span>${ts.map(total=>`<div class="mini-total"><i style="background:${total.color}"></i><div><b>${total.code}</b><small>${total.count} zone(s)</small></div><strong>${fmt(total.total)} pi²</strong></div>`).join('')}${lin?`<p>Plinthes : <b>${fmt(lin)} pi</b></p>`:''}${count?`<p>Comptage : <b>${fmt(count,0)} u</b></p>`:''}${!ts.length&&!lin&&!count?'<p class="empty-copy">Tracez une surface, une ligne ou comptez les éléments avec le ruban manuel.</p>':''}</div>${!S.scale?'<div class="warning"><i data-lucide="triangle-alert"></i><div><b>Échelle à régler pour les mesures</b><span>Le comptage reste utilisable sans calibration.</span></div></div>':''}`;
+    host.innerHTML=`<div class="panel-head"><div><span>BIBLIOTHÈQUE</span><h2>Finis et assemblages</h2></div></div><div class="panel-section"><span>MATÉRIAU ACTIF</span><div class="library-list">${MATERIALS.map(material=>`<div class="library-item ${material.code===S.material?'active':''}" data-material="${material.code}" role="button" tabindex="0"><i style="background:${material.color}"></i><span><b>${material.code}</b><small>${esc(material.name)}</small></span><em>${material.waste}%</em></div>`).join('')}</div></div><div class="panel-section"><span>RELEVÉ CONFIRMÉ</span>${ts.map(total=>`<div class="mini-total"><i style="background:${total.color}"></i><div><b>${total.code}</b><small>${total.count} zone(s)</small></div><strong>${fmt(total.total)} pi²</strong></div>`).join('')}${lin?`<p>Plinthes : <b>${fmt(lin)} pi</b></p>`:''}${count?`<p>Comptage : <b>${fmt(count,0)} u</b></p>`:''}${!ts.length&&!lin&&!count?'<p class="empty-copy">Tracez une surface, une ligne ou comptez les éléments avec le ruban manuel.</p>':''}</div>${!S.scale?'<div class="warning"><i data-lucide="triangle-alert"></i><div><b>Échelle à régler pour les mesures</b><span>Le comptage reste utilisable sans calibration.</span></div></div>':''}`;
     $$('.library-item',host).forEach(button=>{button.onclick=()=>{S.material=button.dataset.material;renderInspector();};button.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();button.click();}};});
   }
   $$('.closePanel',host).forEach(button=>button.onclick=()=>{host.hidden=true;$('#reopen').hidden=false;});lucide.createIcons({attrs:{width:17,height:17}});
@@ -1293,7 +1478,7 @@ function openDocument(key,name,pdf,pages) {
   if(S.detectJob)S.detectJob.cancelled=true;S.reviewByPage={};S.reviewOpen=false;S.detectionNotes=[];S.detectJob=null;if($('#reviewPanel')){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
   S.documentKey = key; S.fileName = name; S.pdf = pdf; S.pages = pages; S.page = 1;
   S.items = Array.isArray(record.items) ? record.items : [];
-  S.scales=record.scales||{};S.scaleMeta=record.scaleMeta||{};S.pageInfo={};S.sheetNames=record.sheetNames||{};S.settings={doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',...record.settings};S.dividers=record.dividers||{};S.detectBounds=record.detectBounds||{};S.estimation=record.estimation||{catalog:{},group:'project'};S.detectorCache=null;S.preview=null;S.indexedPages=0;S.indexing=false;++S.indexToken;
+  S.scales=record.scales||{};S.scaleMeta=record.scaleMeta||{};S.pageInfo={};S.sheetNames=record.sheetNames||{};S.settings={doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'spaces',surfaceLabels:true,...record.settings};S.dividers=record.dividers||{};S.detectBounds=record.detectBounds||{};S.estimation=record.estimation||{catalog:{},group:'project'};S.detectorCache=null;S.preview=null;S.indexedPages=0;S.indexing=false;++S.indexToken;
   S.project = record.project || S.project; S.history = []; S.redo = []; S.draft = [];
   S.plan=null;S.scale=null;S.tool='select';setSelection([]);S.anchorId=null;S.dragging=null;S.panning=null;S.mouseWorld=null;S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;$('#overlay').innerHTML='';
 }
@@ -1485,7 +1670,6 @@ function refreshBase() {
   status.title='Ouvrir les réglages d’échelle et vérifier une cote connue';
   $('#pages').hidden=S.pages<=1; $('#pageNum').textContent=`${S.page} / ${S.pages}`;
   $('#prevPage').disabled=S.loading || S.page<=1; $('#nextPage').disabled=S.loading || S.page>=S.pages;
-  $('#undo').disabled=!S.history.length || S.loading; $('#redo').disabled=!S.redo.length || S.loading;
   $('#deleteSelection').disabled=!S.selection.size || S.loading;
   const visible=S.items.filter(i=>i.page===S.page), surface=visible.filter(i=>i.kind==='area'&&!hasPendingFixtures(i)).reduce((sum,i)=>sum+i.qty*(1+i.waste/100),0);
   $('#gridSummary').textContent=`${visible.length} zone${visible.length!==1?'s':''} · ${fmt(surface)} pi²${visible.some(hasPendingFixtures)?' · bain/douche à délimiter':''}${S.selection.size?' · '+S.selection.size+' sélectionnée(s)':''}`;
@@ -1858,8 +2042,12 @@ function drawGuides(context) {
   context.save();context.lineWidth=2/S.zoom;context.strokeStyle='#b73f24';context.setLineDash([6/S.zoom,4/S.zoom]);
   for(const divider of S.dividers[S.page]||[]){context.beginPath();divider.points.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.stroke();}
   const roi=S.detectBounds[S.page];if(roi){context.strokeStyle='#256d54';context.strokeRect(roi.x,roi.y,roi.right-roi.x,roi.bottom-roi.y);}
-  if(S.preview?.page===S.page)for(const item of S.preview.items)if(item.selected||item.needsSeparation||S.preview.items.indexOf(item)===S.previewFocus) {
-    if(item.selected){context.save();clipItem(context,item);context.fillStyle=mat(item.material).color+'44';const b=boundsOf(item.points);context.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);context.restore();}traceItem(context,item);context.strokeStyle=item.needsSeparation?'#b73f24':S.preview.items.indexOf(item)===S.previewFocus?'#101713':mat(item.material).color;context.lineWidth=(S.preview.items.indexOf(item)===S.previewFocus?4:2)/S.zoom;context.stroke();
+  if(S.preview?.page===S.page)for(const item of S.preview.items)if(!item.duplicate) {
+    const focused=S.preview.items.indexOf(item)===S.previewFocus;
+    context.save();
+    if(item.selected||focused){context.save();clipItem(context,item);context.fillStyle=surfaceFillForItem(item);const b=boundsOf(item.points);context.fillRect(b.x,b.y,b.right-b.x,b.bottom-b.y);context.restore();}
+    context.setLineDash(item.needsSeparation||!item.selected?[5/S.zoom,3/S.zoom]:[]);
+    traceItem(context,item);context.strokeStyle=item.needsSeparation?'#b73f24':focused?'#101713':surfaceColorForItem(item);context.lineWidth=(focused?3:1.5)/S.zoom;context.stroke();context.restore();
   }
   if(S.draft.length&&S.mouseWorld&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
     context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(S.mouseWorld.x,S.mouseWorld.y);context.stroke();
@@ -1904,12 +2092,11 @@ function renderInspector() {
   if(S.selection.size===1&&item?.kind==='area') {
     host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><label class="check-label"><input id="bathroomFlag" type="checkbox" ${item.bathroom?'checked':''}>Salle de bains · équipements</label><button type="button" id="editVertices" class="selection-action">Modifier les coins · E</button><button type="button" id="excludeInside" class="selection-action">Exclure une surface intérieure · X</button>${item.material.startsWith('CER')?`<h3>Départ de céramique</h3><p>Croix orange sur le plan · angle ${fmt(tileLayout(item).angle,0)}° · joint ${fmt(tileLayout(item).joint,3)} po</p><button type="button" id="placeTileOrigin" class="selection-action">Choisir le point de départ · T</button><button type="button" id="openTileSettings" class="selection-action">Format, angle et décalages</button><button type="button" id="rotateTiles" class="selection-action">Tourner de 90° · O</button><p>Dans l’outil T : flèches = 1 po, Maj + flèches = 12 po. La superficie mesurée reste identique.</p>`:''}${getHoles(item).length?`<p>${getHoles(item).length} exclusion(s) déjà retranchée(s) du net.</p>`:''}</section>`);
     if(item.bathroom)host.insertAdjacentHTML('beforeend','<p class="selection-help">Excluez le bain, la douche ou les meubles fixes avec X si leur surface ne reçoit pas le revêtement prévu.</p>');
-    $('#bathroomFlag').onchange=event=>updateItem(item.id,{bathroom:event.target.checked});
+    $('#bathroomFlag').onchange=event=>updateItem(item.id,{bathroom:event.target.checked,spaceType:event.target.checked?'bathroom':surfaceSpaceType(item)==='bathroom'?'room':surfaceSpaceType(item)});
     $('#editVertices').onclick=()=>activateTool('edit');$('#excludeInside').onclick=()=>activateTool('exclude');
     if($('#placeTileOrigin')){$('#placeTileOrigin').onclick=activateOrigin;$('#openTileSettings').onclick=tileModal;$('#rotateTiles').onclick=()=>rotateTile();}
   }else if(!S.selection.size) {
-    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Les traits délimitent les pièces. Vérifiez chaque contour et choisissez les finis selon le plan ou le devis.</p><button type="button" id="startDetection" class="selection-action">Détecter les pièces de la feuille</button><button type="button" id="drawDivider" class="selection-action">Fermer un passage · B</button><button type="button" id="showShortcuts" class="selection-action">Souris et raccourcis · ?</button><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan</p></section>`);
-    $('#startDetection').onclick=analyzeAll;$('#drawDivider').onclick=()=>activateTool('divider');$('#showShortcuts').onclick=helpDialog;
+    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Détecter propose les contours. Dans Plus, Fermer un passage permet de séparer les pièces communicantes. Choisissez les finis selon le plan ou le devis.</p><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan</p></section>`);
   }
   estimateInspector(host,item);appendSurfaceInspector(host,item);
   host.insertAdjacentHTML('afterbegin','<button type="button" class="inspector-close" id="closeInspector">Fermer les propriétés ×</button>');
@@ -1927,8 +2114,7 @@ function refresh() {
   if(hints[S.tool]&&!S.loading)$('#hint').textContent=hints[S.tool];
   canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   $('#toggleTileGrid').setAttribute('aria-pressed',String(S.tileGrid));
-  for(const id of ['aiAnalyze','aiReview'])$('#'+id).disabled=!S.plan||S.loading;
-  $('#hint').hidden=!S.plan||S.tool==='select';
+  $('#hint').hidden=true;
   refreshWorkflow();refreshManualUI();
 }
 function downloadBlob(blob,name) {
@@ -1954,6 +2140,7 @@ function validateProject(data) {
       typeof item.name!=='string'||item.name.length>300||typeof item.method!=='string'||item.method.length>300||
       !(item.kind==='count'?item.material==='QT-01':item.kind==='linear'?item.material==='PL-01':MATERIALS.some(material=>material.code===item.material)))throw new Error('Le relevé contient une mesure invalide.');
     if(item.measureOnly!==undefined&&(typeof item.measureOnly!=='boolean'||item.measureOnly&&item.kind!=='linear'))throw new Error('Une cote de référence doit être une ligne.');
+    if(item.spaceType!==undefined&&!Object.hasOwn(SPACE_STYLES,item.spaceType))throw new Error('Le type d’espace est invalide.');
     if((item.kind==='count'||item.measureOnly)&&item.waste!==0)throw new Error('Les comptages et les cotes ne portent pas de perte.');
     if(item.kind==='count'&&(item.holes?.length||Object.keys(item.subzones||{}).length||item.layout||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId))throw new Error('Un comptage ne porte pas d’exclusion ou de calepinage.');
     if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);ids.add(item.id);
@@ -1974,7 +2161,7 @@ async function importProject(file) {
     const data=validateProject(JSON.parse(await file.text()));remember();
     S.items=data.items;S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
-    if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings=data.settings;
+    if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'spaces',surfaceLabels:true,...data.settings};
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
@@ -2512,7 +2699,7 @@ function initEstimationUI() {
   $('.grid-head b').textContent='MESURES UNIQUES';$('#takeoffBtn').setAttribute('title','Rapport des mesures uniques, sans répétitions');
 }
 
-Object.assign(S,{estimation:readSaved('quantif-document-v3:legacy',{}).estimation||{catalog:{},group:'project'},sheetNames:{},settings:{doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24'},dividers:{},detectBounds:{},indexToken:0,indexedPages:0,indexing:false,preview:null,detectorCache:null});
+Object.assign(S,{estimation:readSaved('quantif-document-v3:legacy',{}).estimation||{catalog:{},group:'project'},sheetNames:{},settings:{doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'spaces',surfaceLabels:true},dividers:{},detectBounds:{},indexToken:0,indexedPages:0,indexing:false,preview:null,detectorCache:null});
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+`<button data-tool="divider" title="Fermer un passage (B)"><i data-lucide="door-closed"></i><span>Fermer<br>un passage</span><kbd>B</kbd></button><button data-tool="edit" title="Modifier les coins (E)"><i data-lucide="square-pen"></i><span>Modifier<br>les coins</span><kbd>E</kbd></button><button data-tool="region" title="Cadre de détection (R)"><i data-lucide="scan"></i><span>Cadre<br>de détection</span><kbd>R</kbd></button><small>Mesurer et corriger</small>`;
 $('#tileSettings').insertAdjacentHTML('afterend','<button type="button" id="tileOriginBtn" title="Point de départ de céramique · T"><i data-lucide="locate-fixed"></i><span>Point<br>de départ</span><kbd>T</kbd></button>');
 $('.zoom').insertAdjacentHTML('beforeend','<button type="button" id="fitView" aria-label="Afficher toute la feuille">⛶</button>');
