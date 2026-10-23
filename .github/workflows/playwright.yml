@@ -1,0 +1,47 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Chromium - ouverture du logiciel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v5
+      - name: Installer Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Installer les dependances verrouillees
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Tester le serveur local
+        run: npm run test:server
+      - name: Installer Chromium et ses dependances systeme
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Tester l'ouverture de l'application
+        run: npm run test:e2e
+      - name: Conserver le rapport et les preuves
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 7
