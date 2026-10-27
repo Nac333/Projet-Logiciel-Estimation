@@ -87,9 +87,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .hint{max-width:calc(100% - 24px);font-size:11px;line-height:1.45;bottom:56px;padding:8px 12px}.empty-demo{padding:12px 16px}
 .inspector{width:292px;flex-basis:292px;background:#f9fbfa;border-left:1px solid var(--v7-line);overflow:auto;min-width:0}.inspector label{font-size:12px}.inspector .panel-head h2{font:700 17px/1.3 Arial,sans-serif}
 .inspector-close{display:block;position:sticky;top:0;margin:8px 8px 0 auto;padding:6px 10px;z-index:2;background:white;border:1px solid #7b8b81;border-radius:4px;color:var(--v7-ink)}
-.validation-bar{display:flex;align-items:center;gap:24px;padding:10px 16px;background:#f8fbf9;border-block:1px solid var(--v7-line);flex-shrink:0;min-width:0}
-.validation-bar>div{min-width:0}.validation-bar span{display:block;color:var(--v7-muted);font-size:11px}.validation-bar strong{font-size:19px;font-variant-numeric:tabular-nums;line-height:1.4}.validation-bar>div:first-child strong{color:var(--v7-accent)}
-.validation-bar button{margin-left:auto;padding:9px 12px;min-height:40px;border:1px solid var(--v7-accent);border-radius:4px;color:var(--v7-accent);background:white;font-size:12px;font-weight:600;cursor:pointer}.validation-bar button:disabled{color:#69746d;border-color:#b4bfb7;cursor:default}
+#compactValidation{display:flex;align-items:center;gap:12px;margin-left:auto;white-space:nowrap;flex-shrink:0}#compactValidation span{font-size:10px}#compactValidation strong{font-variant-numeric:tabular-nums}#compactValidation button{min-height:26px;padding:3px 7px;background:white;border:1px solid #7b8b81;border-radius:3px;color:var(--v7-accent);font-size:11px;cursor:pointer}#compactValidation button:disabled{color:#69746d;cursor:default}.grid-head{white-space:nowrap;overflow-x:auto;gap:10px}.grid-head>#collapseGrid{flex-shrink:0;margin-left:0}.sanitary-report{max-height:180px;overflow:auto;margin:6px 0}.sanitary-report button{margin:3px;padding:4px}.review-pagination{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px;border-bottom:1px solid var(--v7-line)}.review-pagination button{padding:4px 7px}.review-filter{margin:6px 0}
+@media(max-width:1000px){#compactValidation>span{display:none}}
 .quantity-grid{height:184px;flex-basis:184px}.grid-head{height:34px;flex-basis:34px;padding:0 12px}.grid-head b{font-size:10px;letter-spacing:.05em}.grid-head span{font-size:11px;color:var(--v7-muted)}
 .quantity-grid th{font-size:11px}.quantity-grid td{font-size:12px;padding:9px 12px}.badge{font-size:10px;padding:3px 5px}
 .review-panel{display:flex;flex-direction:column;width:360px;flex-basis:360px;min-width:0;min-height:0;background:var(--v7-paper);border-left:1px solid var(--v7-line);overflow:hidden}
@@ -474,12 +473,62 @@ function componentAt(model,point,factor=1,radius=0) {
   }
   return null;
 }
+function sanitaryForPage(info,scale,roi=null) {
+  if(!info)return {baths:[],warnings:[]};
+  const key=JSON.stringify([scale,roi]);
+  if(info.sanitaryCache?.key===key)return info.sanitaryCache.value;
+  let value;
+  try {
+    if(info.sanitaryTruncated)value={baths:[],warnings:['Lecture des symboles limitée : les salles de bains doivent être vérifiées manuellement.']};
+    else {
+      let segments=symbolSegments((info.vectorFixtures||[]).filter(path=>path.stroke));
+      if(roi)segments=segments.filter(segment=>[segment.a,segment.b].every(point=>point.x>=roi.x&&point.x<=roi.right&&point.y>=roi.y&&point.y<=roi.bottom));
+      value=sanitarySymbols.detect(segments,{scale});
+    }
+  }catch(error){value={baths:[],warnings:['Symboles sanitaires non analysés : '+error.message]};}
+  info.sanitaryCache={key,value};return value;
+}
+function sanitaryWallPaths(paths,baths,scale) {
+  if(!baths.length)return paths;
+  return paths.filter(entry=>{
+    if(entry.fill||!entry.stroke||isStrongWallStroke(entry.width)||entry.brightness<=60)return true;
+    const rings=[];let ring=null,closed=true;
+    for(let i=0;i<entry.path.length;){
+      const code=entry.path[i++];
+      if(code===0){if(ring&&dist(ring[0],ring.at(-1))>.5)closed=false;ring=[{x:entry.path[i++],y:entry.path[i++]}];rings.push(ring);}
+      else if(code===1){if(!ring)return true;ring.push({x:entry.path[i++],y:entry.path[i++]});}
+      else if(code===4){if(ring)ring.push(ring[0]);}
+      else return true;
+    }
+    if(!ring||dist(ring[0],ring.at(-1))>.5||!closed)return true;
+    const points=rings.flat(),margin=.5/scale;
+    return !baths.some(bath=>points.every(point=>{
+      const dx=point.x-bath.center.x,dy=point.y-bath.center.y;
+      return Math.abs(dx*bath.axes.major.x+dy*bath.axes.major.y)<=bath.axes.length/2+margin&&Math.abs(dx*bath.axes.minor.x+dy*bath.axes.minor.y)<=bath.axes.width/2+margin;
+    }));
+  });
+}
+function sanitaryRejectionKey(documentKey,page,symbolId) {return 'sanitary:'+JSON.stringify([documentKey,page,symbolId]);}
+function applySanitaryProposals(candidates,info,scale,model,documentKey,page,roi) {
+  const detection=sanitaryForPage(info,scale,roi),rejected=new Set(S.settings.sanitaryRejects||[]),
+    baths=detection.baths.filter(bath=>!rejected.has(sanitaryRejectionKey(documentKey,page,bath.id))),
+    result=sanitaryRooms.associate(baths,candidates,{scale,model});
+  for(const match of result.assignments) {
+    const item=candidates[match.roomIndex],bath=baths.find(entry=>entry.id===match.symbolId);if(!item||!bath)continue;
+    item.bathroom=true;item.spaceType='bathroom';if(item.unnamed)item.name='Salle de bains proposée '+(match.roomIndex+1);
+    if(item.materialSource!=='code du plan')Object.assign(item,finishProposals.propose({bathroom:true,spaceType:'bathroom',activeMaterial:item.material},MATERIALS.map(entry=>entry.code)));
+    item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true}];
+    applyRecognizedFixtures(item,info,scale);
+  }
+  return {...result,baths,warnings:detection.warnings||[],rejectedCount:detection.baths.length-baths.length};
+}
 function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   const factor=Math.min(1,(settings.roomPrecision==='fast'?2000:2600)/Math.max(image.width,image.height)),width=Math.round(image.width*factor),height=Math.round(image.height*factor);
   const off=document.createElement('canvas');off.width=width;off.height=height;
   const context=off.getContext('2d',{willReadFrequently:true});context.fillStyle='#ffffff';context.fillRect(0,0,width,height);
   const wallDiagnostics={mode:settings.wallMode==='all'?'all':'structure'};
-  const vectorCount=info?.vectorWalls?.length?drawWallPaths(context,info.vectorWalls,factor,settings.threshold,scale,info.texts,settings.doorInches,info.labels,wallDiagnostics.mode,wallDiagnostics):0;
+  const sanitary=sanitaryForPage(info,scale,roi),wallPaths=sanitaryWallPaths(info?.vectorWalls||[],sanitary.baths,scale);
+  const vectorCount=wallPaths.length?drawWallPaths(context,wallPaths,factor,settings.threshold,scale,info.texts,settings.doorInches,info.labels,wallDiagnostics.mode,wallDiagnostics):0;
   if(!vectorCount)context.drawImage(image,0,0,width,height);
   // Suppress readable PDF labels so letters cannot masquerade as wall fragments.
   for(const t of vectorCount?[]:info?.texts||[])if(t.height>0&&t.height<80&&t.width<width/factor*.35) {
@@ -519,7 +568,7 @@ function roomCandidate(model,room,info,material,settings,scale) {
   const finishCodes=[...new Set((info?.texts||[]).filter(text=>componentAt(model,{x:text.cx,y:text.cy},model.factor,0)?.id===room.id).flatMap(text=>MATERIALS.filter(finish=>normalizeName(text.text)===normalizeName(finish.code)).map(finish=>finish.code)))];
   const item={kind:'area',points:outer,holes,name:names.join(' / ')||'Pièce détectée',material:finishCodes.length===1?finishCodes[0]:material,bathroom,spaceType,
     ...finishProposals.propose({finishCodes,activeMaterial:material,bathroom,mixedBathroom:mixed,needsSeparation,spaceType},MATERIALS.map(entry=>entry.code)),
-    status:'à valider',method:'Contours intérieurs',mixedBathroom:mixed,needsSeparation,selected:!needsSeparation};
+    status:'à valider',method:'Contours intérieurs',mixedBathroom:mixed,needsSeparation,selected:!needsSeparation,unnamed:!names.length,sourceRoomId:room.id};
   if(item.bathroom)applyRecognizedFixtures(item,info||{},scale);
   item.qty=netArea(item)*scale*scale;if(settings.minArea&&area(item.points)*scale*scale<settings.minArea)return null;return item;
 }
@@ -561,7 +610,7 @@ function extractWallPaths(list,viewport,collector=null) {
     if(!fill&&!stroke)continue;
     const packed=args[1]?.[0];if(!Array.isArray(packed)&&!ArrayBuffer.isView(packed))continue;
     const matrix=multiplyMatrix(viewport.transform,state.matrix),width=state.width*Math.sqrt(Math.abs(matrix[0]*matrix[3]-matrix[1]*matrix[2]));
-    if(!fill&&(width<.25||width<.55&&colorBrightness(state.color)>60)&&!collector?.zones?.length)continue;
+    if(!fill&&(width<.25||width<.55&&colorBrightness(state.color)>60)&&!collector?.globalSanitary&&!collector?.zones?.length)continue;
     const path=[],point=(x,y)=>[matrix[0]*x+matrix[2]*y+matrix[4],matrix[1]*x+matrix[3]*y+matrix[5]];
     let valid=true;
     for(let i=0;i<packed.length;) {
@@ -592,14 +641,15 @@ function lineSegments(paths,minimum,maximumBrightness) {
   }
   return segments;
 }
+function isStrongWallStroke(width) {return width>=1.2;}
 function pairedWallSegments(paths,threshold,scale,texts=[]) {
   const minimum=threshold===135?.55:threshold===215?.25:.27,
-    maximumBrightness=threshold===135?80:threshold===215?160:110;
+    maximumBrightness=threshold;
   const segments=lineSegments(paths,minimum,maximumBrightness),maxThickness=1.25/scale,minThickness=Math.max(1.5,1/12/scale);
   const dimensions=texts.filter(t=>t.text.length<45&&/\d.*['"′″]|\d\s*(?:po|pi)\b/i.test(t.text));
   return segments.filter((a,index)=>{
     if(a.length<Math.max(5,.5/scale))return false;
-    if(a.width>=1.2||threshold===215)return true;
+    if(isStrongWallStroke(a.width)||threshold===215)return true;
     if(dimensions.some(t=>{
       const vertical=t.height>t.width*1.8;
       if(vertical?Math.abs(a.uy)<.98:Math.abs(a.ux)<.98)return false;
@@ -744,7 +794,7 @@ async function inspectPdfScale(page,withWalls=false) {
       scaleInfo=parseScaleText(text),sheet=extractSheetInfo(content.items,viewport),collector=fixtureCollector(sheet,scaleInfo);
     let vectorWalls=null;
     if(withWalls)try{vectorWalls=extractWallPaths(await page.getOperatorList(),viewport,collector);}catch{}
-    return {...scaleInfo,...sheet,hasText:!!text.trim(),vectorWalls,vectorRead:withWalls,vectorFixtures:collector.symbols};
+    return {...scaleInfo,...sheet,hasText:!!text.trim(),vectorWalls,vectorRead:withWalls,vectorFixtures:collector.symbols,sanitaryTruncated:collector.truncated};
   }catch{return {candidates:[],ambiguous:false,hasText:false,labels:[],texts:[],readError:true};}
 }
 
@@ -995,6 +1045,16 @@ function detectionChoiceKey(documentKey,page,candidate) {
 function validateDetectionOptions(settings) {
   if(settings?.detectionChoices!==undefined)detectionDecisions.validate(settings.detectionChoices,MATERIALS.map(entry=>entry.code));
   if(settings?.splitSingleDwelling!==undefined&&typeof settings.splitSingleDwelling!=='boolean')throw new Error('Le réglage de séparation des logements doit être un booléen.');
+  if(settings?.sanitaryRejects!==undefined&&(!Array.isArray(settings.sanitaryRejects)||settings.sanitaryRejects.length>5000||new Set(settings.sanitaryRejects).size!==settings.sanitaryRejects.length||!settings.sanitaryRejects.every(key=>typeof key==='string'&&key.startsWith('sanitary:')&&key.length<=600)))throw new Error('Les refus de symboles sanitaires sont invalides.');
+}
+function validateSanitaryData(item) {
+  if(item.sanitaryEvidence===undefined)return;
+  if(item.kind!=='area'||!Array.isArray(item.sanitaryEvidence)||item.sanitaryEvidence.length>50)throw new Error('Les indices sanitaires sont invalides.');
+  const ids=new Set(),allowed=['symbolId','kind','source','status','basinRing','drainRing','roomAssociation','associationMode','requiresFootprintReview'],ring=value=>Array.isArray(value)&&value.length>=3&&value.length<=512&&value.every(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&Math.abs(point.x)<1e7&&Math.abs(point.y)<1e7);
+  for(const entry of item.sanitaryEvidence) {
+    if(!entry||typeof entry!=='object'||Object.keys(entry).some(key=>!allowed.includes(key))||typeof entry.symbolId!=='string'||!/^bath:[\d:-]{1,150}$/.test(entry.symbolId)||ids.has(entry.symbolId)||entry.kind!=='bath'||entry.source!=='vector-shape'||entry.status!=='proposed'||entry.roomAssociation!=='geometry-adjacency'||!['contains','adjacent'].includes(entry.associationMode)||entry.requiresFootprintReview!==true||!ring(entry.basinRing)||!ring(entry.drainRing))throw new Error('Une preuve sanitaire est invalide.');
+    ids.add(entry.symbolId);
+  }
 }
 function rememberDetectionChoice(candidate,patch) {
   const codes=MATERIALS.map(entry=>entry.code),key=detectionChoiceKey(S.documentKey,candidate.page||S.page,candidate),
@@ -1008,6 +1068,22 @@ function redrawDetectionChoices(index) {
   const scroll=$('#reviewPanel .review-scroll')?.scrollTop||0;renderDetectionPanel();
   const scroller=$('#reviewPanel .review-scroll');if(scroller)scroller.scrollTop=scroll;
   $(`[data-candidate-material="${index}"]`)?.focus({preventScroll:true});
+}
+function updateDetectionChoiceButton(candidates) {
+  const count=candidates.filter(item=>item.selected&&!item.duplicate&&!item.needsSeparation).length,button=$('#addCandidates');
+  if(button){button.disabled=!count;button.textContent=`Ajouter ${count} choix · toutes les pages · à valider`;}
+}
+function sanitaryReviewMarkup(pack) {
+  const data=pack?.sanitary;if(!data)return '';
+  return `${(data.warnings||[]).map(warning=>`<p class="review-warning" role="status">${esc(warning)}</p>`).join('')}<details class="sanitary-report"><summary>${data.baths.length} bain(s) proposé(s) · ${data.assignments.length} rattachement(s) au sol · ${data.pending.length} à délimiter</summary><p>Hypothèses à vérifier. Le bassin intérieur ne définit ni le sol ni l’emprise extérieure.</p>${data.pending.map((entry,index)=>`<button type="button" data-preview-sanitary="${index}">Voir le bain ${index+1} · sol à délimiter</button>`).join('')}${data.rejectedCount?`<p>${data.rejectedCount} symbole(s) refusé(s) par l’estimateur.</p>`:''}</details>`;
+}
+function previewSanitary(index) {
+  const pack=S.reviewByPage[S.page],entry=pack?.sanitary?.pending[index],bath=pack?.sanitary?.baths.find(item=>item.id===entry?.symbolId);if(!bath)return;
+  const b=bath.bounds,w=canvas.clientWidth,h=canvas.clientHeight;
+  S.zoom=Math.max(.02,Math.min(12,(w-80)/Math.max(b.right-b.x,80),(h-80)/Math.max(b.bottom-b.y,80)));
+  S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};S.previewFocus=null;
+  S.fixturePreview={page:S.page,cuts:[{points:bath.basinRing,type:'bath'}]};$('#zoomText').textContent=fmt(S.zoom*100,0)+' %';refreshManualUI();
+  toast('Bassin intérieur proposé : délimitez le vrai sol et l’emprise extérieure.');
 }
 function renderDetectionPanel() {
   const panel=$('#reviewPanel'),pack=S.reviewByPage?.[S.page];
@@ -1023,19 +1099,36 @@ function renderDetectionPanel() {
   S.preview={page:S.page,items:candidates};
   const pages=Object.keys(S.reviewByPage).map(Number).sort((a,b)=>a-b);
   const notes=S.detectionNotes||[];
+  const filter=['all','sanitary','unnamed'].includes(S.reviewFilter)?S.reviewFilter:'all',
+    filtered=candidates.map((item,index)=>({item,index})).filter(({item})=>filter==='all'||filter==='sanitary'&&(item.bathroom||item.sanitaryEvidence?.length)||filter==='unnamed'&&item.unnamed),
+    totalPages=Math.max(1,Math.ceil(filtered.length/100)),offset=Math.max(0,Math.min(S.reviewOffset||0,totalPages-1));
+  S.reviewOffset=offset;const visible=filtered.slice(offset*100,(offset+1)*100);
   panel.innerHTML=`<header class="review-head"><div><span>RELEVÉ AUTOMATIQUE</span><h2>Réviser les pièces</h2></div><button type="button" id="closeReview" aria-label="Fermer la révision">×</button></header>
     <div class="review-intro"><p>${candidates.length} proposition(s) · ${esc(pageName(S.page))}</p><p id="detectionEngine" data-detection-engine="${esc(pack?.engineSource||'unknown')}">Lecture : ${pack?.engineSource==='vector'?'tracés PDF':pack?.engineSource==='raster'?'image du plan':'source à vérifier'} · propositions à valider.</p><p>${candidates.filter(item=>item.unnamed).length} zone(s) sans nom à rattacher · ${candidates.filter(item=>item.materialNeedsReview).length} fini(s) proposé(s) à confirmer.</p><p>Affichez un contour, vérifiez son fini, puis ajoutez-le au relevé. La confirmation se fait ensuite dans le tableau.</p>
     ${pages.length>1?`<label>Feuille analysée<select id="reviewPage">${pages.map(page=>`<option value="${page}" ${page===S.page?'selected':''}>${esc(pageName(page))}</option>`).join('')}</select></label>`:''}</div>
-    <div class="review-scroll">${candidates.length?`<div class="detection-table"><table><thead><tr><th>Choix</th><th>Pièce et revêtement</th><th>Net</th></tr></thead><tbody>${candidates.map((item,index)=>`<tr data-review-candidate="${index}"><td><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected?'checked':''} ${item.duplicate||item.needsSeparation?'disabled':''}></td><td><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index===S.previewFocus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button><label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate?'disabled':''}>${!item.material?'<option value="">Choisir le revêtement</option>':''}${MATERIALS.map(material=>`<option value="${material.code}" ${item.material===material.code?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select>
-      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?'<small>Zone sans nom : identifier et rattacher cette pièce; contour à vérifier.</small>':''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
+    ${sanitaryReviewMarkup(pack)}<label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter==='all'?'selected':''}>Toutes les propositions</option><option value="sanitary" ${filter==='sanitary'?'selected':''}>Salles de bains proposées</option><option value="unnamed" ${filter==='unnamed'?'selected':''}>Zones sans nom</option></select></label>
+    <div class="review-pagination"><button type="button" id="reviewPrevious" ${offset===0?'disabled':''}>Précédent</button><span>${filtered.length} résultat(s) · page ${offset+1} / ${totalPages}</span><button type="button" id="reviewNext" ${offset+1>=totalPages?'disabled':''}>Suivant</button></div>
+    <div class="review-scroll">${candidates.length?`<div class="detection-table"><table><thead><tr><th>Choix</th><th>Pièce et revêtement</th><th>Net</th></tr></thead><tbody>${visible.map(({item,index})=>`<tr data-review-candidate="${index}"><td><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected?'checked':''} ${item.duplicate||item.needsSeparation?'disabled':''}></td><td><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index===S.previewFocus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button><label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate?'disabled':''}>${!item.material?'<option value="">Choisir le revêtement</option>':''}${MATERIALS.map(material=>`<option value="${material.code}" ${item.material===material.code?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select>
+      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?'<small>Zone sans nom : identifier et rattacher cette pièce; contour à vérifier.</small>':''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
     ${notes.length?`<details class="review-notes" open><summary>Bilan des feuilles</summary><ul>${notes.map(note=>`<li>Page ${note.page} : ${esc(note.message)}</li>`).join('')}</ul></details>`:''}</div>
     <footer class="review-actions"><button type="button" class="primary" id="addCandidates" ${!candidates.some(item=>item.selected&&!item.duplicate&&!item.needsSeparation)?'disabled':''}>Ajouter au relevé · à valider</button><div><button type="button" id="retryDetection">Réglages</button><button type="button" id="correctDetection">Fermer un passage</button><button type="button" id="cancelDetection">Fermer</button></div></footer>`;
+  updateDetectionChoiceButton(candidates);
+  $('#reviewFilter').onchange=event=>{S.reviewFilter=event.target.value;S.reviewOffset=0;renderDetectionPanel();};
+  $('#reviewPrevious').onclick=()=>{S.reviewOffset=offset-1;renderDetectionPanel();};
+  $('#reviewNext').onclick=()=>{S.reviewOffset=offset+1;renderDetectionPanel();};
+  $$('[data-preview-sanitary]',panel).forEach(button=>button.onclick=()=>previewSanitary(+button.dataset.previewSanitary));
+  $$('[data-reject-sanitary]',panel).forEach(button=>button.onclick=()=>{
+    const item=candidates[+button.dataset.rejectSanitary],keys=new Set(S.settings.sanitaryRejects||[]);
+    for(const proof of item.sanitaryEvidence||[])keys.add(sanitaryRejectionKey(S.documentKey,S.page,proof.symbolId));
+    if(keys.size>5000)return toast('Limite de refus atteinte : exportez le relevé avant de poursuivre.');
+    remember();S.settings={...S.settings,sanitaryRejects:[...keys]};S.detectorCache=null;save();runDetectionPages([S.page]);
+  });
   $('#closeReview').onclick=$('#cancelDetection').onclick=closeReview;
   $('#retryDetection').onclick=openDetectionSettings;
   $('#correctDetection').onclick=()=>{closeReview();activateTool('divider');};
   if($('#reviewPage'))$('#reviewPage').onchange=async event=>{await showPage(+event.target.value);renderDetectionPanel();};
   $$('[data-preview]',panel).forEach(button=>button.onclick=()=>previewCandidate(+button.dataset.preview));
-  $$('[data-candidate]',panel).forEach(input=>input.onchange=()=>{const item=candidates[+input.dataset.candidate];try{rememberDetectionChoice(item,{selected:input.checked});$('#addCandidates').disabled=!candidates.some(entry=>entry.selected&&!entry.duplicate&&!entry.needsSeparation);}catch(error){input.checked=item.selected;toast(error.message);}});
+  $$('[data-candidate]',panel).forEach(input=>input.onchange=()=>{const item=candidates[+input.dataset.candidate];try{rememberDetectionChoice(item,{selected:input.checked});updateDetectionChoiceButton(candidates);}catch(error){input.checked=item.selected;toast(error.message);}});
   $$('[data-candidate-material]',panel).forEach(select=>select.onchange=()=>{const index=+select.dataset.candidateMaterial,item=candidates[index];if(select.value)try{rememberDetectionChoice(item,{material:select.value,materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){select.value=item.material;toast(error.message);}});
   $$('[data-confirm-material]',panel).forEach(button=>button.onclick=()=>{const index=+button.dataset.confirmMaterial,item=candidates[index];try{rememberDetectionChoice(item,{materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){toast(error.message);}});
   $('#addCandidates').onclick=()=>{
@@ -1093,12 +1186,13 @@ async function runDetectionPages(pages) {
       if(!scale){notes.push({page,message:'Non analysée : calibre ou choisissez l’échelle de cette feuille.'});continue;}
       const model=makeWallModel(image,info,settings,scale,S.dividers[page]||[],S.detectBounds[page]);
       let candidates=model.rooms.map(room=>roomCandidate(model,room,info,material,settings,scale)).filter(Boolean);
-      const hasNames=candidates.some(item=>item.name!=='Pièce détectée');
+      const sanitary=applySanitaryProposals(candidates,info,scale,model,job.key,page,S.detectBounds[page]);
+      const hasNames=candidates.some(item=>!item.unnamed);
       candidates.sort((a,b)=>boundsOf(a.points).y-boundsOf(b.points).y||boundsOf(a.points).x-boundsOf(b.points).x);
-      candidates=candidates.slice(0,150).map((candidate,n)=>({...candidate,page,unnamed:candidate.name==='Pièce détectée',selected:candidate.selected&&(!hasNames||candidate.name!=='Pièce détectée'),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
+      candidates=candidates.slice(0,3000).map((candidate,n)=>({...candidate,page,selected:candidate.selected&&(!hasNames||!candidate.unnamed||candidate.bathroom),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
       candidates=candidates.map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
-      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-2'};
-      if(model.rooms.length>150)notes.push({page,message:'Affichage limité à 150 propositions : réduire le cadre ou analyser les zones séparément.'});
+      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-3-sanitary',sanitary};
+      if(model.rooms.length>3000)notes.push({page,message:'Limite de 3000 propositions atteinte : analyser les zones séparément.'});
       notes.push({page,message:`${candidates.length} proposition(s)${S.scaleMeta[page]?.verified?'':' · échelle à vérifier avant confirmation'}`});
     } catch(error){notes.push({page,message:'Analyse impossible : '+error.message});}
     finally{if($('#detectionProgressBar'))$('#detectionProgressBar').value=index+1;}
@@ -1114,7 +1208,7 @@ async function runDetectionPages(pages) {
 function initV7() {
   Object.assign(S,{reviewByPage:{},reviewOpen:false,detectionNotes:[],detectJob:null,previewFocus:null});
   $('.ribbon').insertAdjacentHTML('beforebegin',`<nav id="workflow" aria-label="Projet et détection"><button type="button" id="stepOpen"><i data-lucide="folder-open"></i><span>Ouvrir</span></button><button type="button" id="stepDetect"><i data-lucide="scan-line"></i><span>Détecter</span></button><button type="button" id="stepReview"><i data-lucide="list-checks"></i><span>Réviser</span><b id="reviewCount">0</b></button></nav>`);
-  $('.quantity-grid').insertAdjacentHTML('beforebegin',`<section class="validation-bar" aria-label="Validation des surfaces"><div><span>Sol confirmé · net</span><strong id="confirmedTotal">0,0 pi²</strong></div><div><span>Sol à valider · net</span><strong id="proposedTotal">0,0 pi²</strong></div><button type="button" id="confirmSelection">Confirmer la sélection</button></section>`);
+  $('#collapseGrid').insertAdjacentHTML('beforebegin',`<div id="compactValidation" role="group" aria-label="Validation des surfaces"><span>Confirmé <strong id="confirmedTotal">0,0 pi²</strong></span><span>À valider <strong id="proposedTotal">0,0 pi²</strong></span><button type="button" id="confirmSelection">Confirmer la sélection</button></div>`);
   $('#inspector').insertAdjacentHTML('beforebegin','<aside id="reviewPanel" class="review-panel" aria-label="Révision des pièces détectées" hidden></aside>');
   $('#stepOpen').onclick=()=>$('#fileInput').click();$('#stepDetect').onclick=analyzeAll;
   $('#stepReview').onclick=()=>{if(Object.keys(S.reviewByPage).length){S.reviewOpen=true;renderDetectionPanel();}else takeoffDrawer();};
@@ -3357,6 +3451,347 @@ const passageSplittingFactory = (function createPassageSplitting({ segmentRooms,
 
   return { split };
 });
+const sanitarySymbols = (function createSanitarySymbols() {
+  const MAX_SEGMENTS = 100000, MAX_NODES = 200000, MAX_WORK = 4000000;
+
+  function detect(segments, options = {}) {
+    const warnings = [], baths = [], scale = options?.scale;
+    const warn = message => { if (!warnings.includes(message)) warnings.push(message); };
+    if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(0.006 / scale)) {
+      return { baths, warnings: ['Échelle invalide : détection sanitaire non exécutée.'] };
+    }
+    if (!Array.isArray(segments)) return { baths, warnings: ['Segments vectoriels invalides.'] };
+    if (segments.length > MAX_SEGMENTS) warn('Limite de 100 000 segments atteinte : analyse sanitaire partielle.');
+    let work = 0, invalid = 0;
+    const exhausted = {};
+    function spend(amount = 1) {
+      work += amount;
+      if (work > MAX_WORK) {
+        warn('Budget de calcul atteint : analyse sanitaire partielle.');
+        throw exhausted;
+      }
+    }
+
+    try {
+      const tolerance = 0.006 / scale, nodes = [], cells = new Map(), edges = new Set();
+      function nodeAt(point) {
+        const gx = Math.floor(point.x / tolerance), gy = Math.floor(point.y / tolerance);
+        if (!Number.isSafeInteger(gx) || !Number.isSafeInteger(gy)) return -1;
+        let nearest = -1, distance = tolerance;
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          spend();
+          const local = cells.get((gx + dx) + ',' + (gy + dy));
+          if (!local) continue;
+          for (const id of local) {
+            spend();
+            const candidate = nodes[id], d = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+            if (d < distance) { nearest = id; distance = d; }
+          }
+        }
+        if (nearest >= 0) return nearest;
+        if (nodes.length >= MAX_NODES) {
+          warn('Limite de 200 000 sommets atteinte : analyse sanitaire partielle.');
+          throw exhausted;
+        }
+        const id = nodes.length, key = gx + ',' + gy;
+        nodes.push({ x: point.x, y: point.y, adjacent: new Set() });
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(id);
+        return id;
+      }
+
+      for (let i = 0; i < Math.min(segments.length, MAX_SEGMENTS); i++) {
+        spend();
+        const segment = segments[i];
+        // Contrôler les nombres avant divisions, indexation spatiale ou calculs de longueur.
+        if (!segment || !Number.isFinite(segment.a?.x) || !Number.isFinite(segment.a?.y) ||
+          !Number.isFinite(segment.b?.x) || !Number.isFinite(segment.b?.y) ||
+          !Number.isFinite(segment.width) || segment.width < 0 ||
+          !Number.isFinite(segment.brightness) || segment.brightness < 0 || segment.brightness > 255) {
+          invalid++;
+          continue;
+        }
+        if (segment.width * scale > 0.1 || segment.brightness > 225) continue;
+        const length = Math.hypot(segment.b.x - segment.a.x, segment.b.y - segment.a.y) * scale;
+        if (!Number.isFinite(length)) { invalid++; continue; }
+        if (length < 0.003 || length > 10) continue;
+        const a = nodeAt(segment.a), b = nodeAt(segment.b);
+        if (a < 0 || b < 0) { invalid++; continue; }
+        if (a === b) continue;
+        const key = Math.min(a, b) + ':' + Math.max(a, b);
+        if (edges.has(key)) continue;
+        edges.add(key);
+        nodes[a].adjacent.add(b);
+        nodes[b].adjacent.add(a);
+      }
+
+      // Élaguer les branches ouvertes sans inventer de fermeture entre traits voisins.
+      const queue = [];
+      for (let i = 0; i < nodes.length; i++) {
+        spend();
+        if (nodes[i].adjacent.size < 2) queue.push(i);
+      }
+      for (let index = 0; index < queue.length; index++) {
+        const node = nodes[queue[index]];
+        for (const neighbor of node.adjacent) {
+          spend();
+          const adjacent = nodes[neighbor].adjacent;
+          adjacent.delete(queue[index]);
+          if (adjacent.size === 1) queue.push(neighbor);
+        }
+        node.adjacent.clear();
+      }
+
+      const visited = new Uint8Array(nodes.length), basins = [], drains = [];
+      for (let start = 0; start < nodes.length; start++) {
+        spend();
+        if (visited[start] || !nodes[start].adjacent.size) continue;
+        const component = [start];
+        let simple = true;
+        visited[start] = 1;
+        for (let i = 0; i < component.length; i++) {
+          const node = nodes[component[i]];
+          if (node.adjacent.size !== 2) simple = false;
+          for (const next of node.adjacent) {
+            spend();
+            if (!visited[next]) { visited[next] = 1; component.push(next); }
+          }
+        }
+        // Les composantes ambiguës restent à vérifier, sans les convertir en équipements.
+        if (!simple || component.length < 8) continue;
+        let current = start, previous = -1;
+        const ring = [];
+        do {
+          spend();
+          const node = nodes[current];
+          ring.push({ x: node.x, y: node.y });
+          const next = [...node.adjacent].find(id => id !== previous);
+          previous = current;
+          current = next;
+        } while (current !== start && ring.length <= component.length);
+        if (current !== start) continue;
+        const shape = describe(ring, scale, spend);
+        if (!shape) continue;
+        const physicalLength = shape.axes.length * scale, physicalWidth = shape.axes.width * scale;
+        const ratio = physicalLength / physicalWidth;
+        if (physicalLength >= 2.8 && physicalLength <= 6.8 && physicalWidth >= 1.1 && physicalWidth <= 3.2 &&
+          ratio >= 1.5 && ratio <= 3.8 && shape.corners >= 8 && shape.maxTurn < 1.55) basins.push(shape);
+        if (shape.corners === 8 && physicalLength >= 0.1 && physicalLength <= 0.45 &&
+          physicalWidth >= 0.1 && ratio <= 1.3 && shape.minTurn > 0.35 && shape.maxTurn < 1.2 &&
+          shape.longestEdge / shape.shortestEdge < 1.8) drains.push(shape);
+      }
+
+      // Un seul bassin par drain; retenir le contour intérieur si des rebords sont aussi arrondis.
+      basins.sort((a, b) => a.area - b.area);
+      const usedDrains = new Set();
+      for (const basin of basins) for (let i = 0; i < drains.length; i++) {
+        spend();
+        if (usedDrains.has(i)) continue;
+        const drain = drains[i], bounds = basin.bounds;
+        if (drain.bounds.x <= bounds.x || drain.bounds.y <= bounds.y ||
+          drain.bounds.right >= bounds.right || drain.bounds.bottom >= bounds.bottom) continue;
+        if (!drain.ring.every(point => contains(basin.ring, point, spend))) continue;
+        const { center, axes } = basin;
+        baths.push({ id: 'bath:' + [center.x, center.y, axes.length, axes.width].map(Math.round).join(':'),
+          center, basinRing: basin.ring, drainRing: drain.ring, axes, bounds,
+          source: 'vector-shape', status: 'proposed' });
+        usedDrains.add(i);
+        break;
+      }
+      baths.sort((a, b) => a.center.y - b.center.y || a.center.x - b.center.x);
+    } catch (error) {
+      if (error !== exhausted) throw error;
+    }
+    if (invalid) warn(invalid + ' segment(s) invalide(s) ignoré(s).');
+    return { baths, warnings };
+  }
+
+  function describe(ring, scale, spend) {
+    // PCA de la frontière pondérée par longueur: indépendante de la tessellation des courbes.
+    const origin = ring[0];
+    let perimeter = 0, mx = 0, my = 0, xx = 0, yy = 0, xy = 0, area = 0;
+    for (let i = 0; i < ring.length; i++) {
+      spend();
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const ax = a.x - origin.x, ay = a.y - origin.y, bx = b.x - origin.x, by = b.y - origin.y;
+      const length = Math.hypot(bx - ax, by - ay);
+      perimeter += length;
+      mx += length * (ax + bx) / 2;
+      my += length * (ay + by) / 2;
+      xx += length * (ax * ax + ax * bx + bx * bx) / 3;
+      yy += length * (ay * ay + ay * by + by * by) / 3;
+      xy += length * (2 * ax * ay + ax * by + bx * ay + 2 * bx * by) / 6;
+      area += ax * by - bx * ay;
+    }
+    if (!Number.isFinite(xx + yy + xy + area) || !perimeter || !area) return null;
+    mx /= perimeter; my /= perimeter;
+    const angle = 0.5 * Math.atan2(2 * (xy / perimeter - mx * my),
+      xx / perimeter - mx * mx - yy / perimeter + my * my);
+    let major = { x: Math.cos(angle), y: Math.sin(angle) };
+    let minor = { x: -major.y, y: major.x };
+    let lowU = Infinity, highU = -Infinity, lowV = Infinity, highV = -Infinity;
+    const bounds = { x: Infinity, y: Infinity, right: -Infinity, bottom: -Infinity };
+    for (const point of ring) {
+      spend();
+      const x = point.x - origin.x, y = point.y - origin.y;
+      const u = x * major.x + y * major.y, v = x * minor.x + y * minor.y;
+      lowU = Math.min(lowU, u); highU = Math.max(highU, u);
+      lowV = Math.min(lowV, v); highV = Math.max(highV, v);
+      bounds.x = Math.min(bounds.x, point.x); bounds.y = Math.min(bounds.y, point.y);
+      bounds.right = Math.max(bounds.right, point.x); bounds.bottom = Math.max(bounds.bottom, point.y);
+    }
+    const center = { x: origin.x + (lowU + highU) / 2 * major.x + (lowV + highV) / 2 * minor.x,
+      y: origin.y + (lowU + highU) / 2 * major.y + (lowV + highV) / 2 * minor.y };
+    let length = highU - lowU, width = highV - lowV;
+    if (width > length) { [length, width] = [width, length]; [major, minor] = [minor, major]; }
+    if (major.x < -1e-10 || Math.abs(major.x) <= 1e-10 && major.y < 0) {
+      major = { x: -major.x, y: -major.y };
+    }
+    minor = { x: -major.y, y: major.x };
+    const fill = Math.abs(area) / (2 * length * width);
+    if (!Number.isFinite(fill) || fill < 0.68 || fill > 1.001 || width * scale < 0.09 || length * scale > 7) return null;
+
+    let corners = 0, minTurn = Infinity, maxTurn = 0, shortestEdge = Infinity, longestEdge = 0;
+    const sign = Math.sign(area);
+    for (let i = 0; i < ring.length; i++) {
+      spend();
+      const a = ring[(i + ring.length - 1) % ring.length], b = ring[i], c = ring[(i + 1) % ring.length];
+      const ux = b.x - a.x, uy = b.y - a.y, vx = c.x - b.x, vy = c.y - b.y;
+      const turn = sign * Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+      if (turn < -0.04) return null;
+      const edge = Math.hypot(vx, vy);
+      shortestEdge = Math.min(shortestEdge, edge); longestEdge = Math.max(longestEdge, edge);
+      if (turn > 0.04) { corners++; minTurn = Math.min(minTurn, turn); maxTurn = Math.max(maxTurn, turn); }
+    }
+    return { ring, center, axes: { major, minor, length, width }, bounds,
+      area: Math.abs(area) / 2, corners, minTurn, maxTurn, shortestEdge, longestEdge };
+  }
+
+  function contains(ring, point, spend) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      spend();
+      const a = ring[i], b = ring[j];
+      if ((a.y > point.y) !== (b.y > point.y) &&
+        point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  }
+
+  return { detect };
+})();
+const sanitaryRooms = (function createSanitaryRooms(geometry) {
+  const { inside, netArea, segmentsCross } = geometry;
+  const finite = value => typeof value === 'number' && Number.isFinite(value);
+  const pointValid = point => point && finite(point.x) && finite(point.y);
+  const ringValid = ring => Array.isArray(ring) && ring.length >= 3 && ring.every(pointValid);
+  const inFloor = (point, room) => inside(point, room.points) && !(room.holes || []).some(hole => inside(point, hole));
+
+  function contains(room, bath) {
+    if (!inFloor(bath.center, room) || !bath.basinRing.every(point => inFloor(point, room))) return false;
+    if ((room.holes || []).some(hole => hole.some(point => inside(point, bath.basinRing)))) return false;
+    return !bath.basinRing.some((a, i) => [room.points, ...(room.holes || [])].some(ring => ring.some((b, j) =>
+      segmentsCross(a, bath.basinRing[(i + 1) % bath.basinRing.length], b, ring[(j + 1) % ring.length]))));
+  }
+
+  // Conservative proposal gates, not guaranteed bathroom dimensions: net floor
+  // / basin OBB area 1.5–12; extension >=1.5 ft on at least one side; dimensions
+  // <=16 ft along both oriented basin axes. Never change a contour or quantity.
+  function plausible(room, bath, scale) {
+    if (!room || !ringValid(room.points) || !Array.isArray(room.holes || []) || !(room.holes || []).every(ringValid) ||
+        room.needsSeparation || ['dwelling', 'circulation'].includes(room.spaceType) ||
+        !room.unnamed && !room.bathroom && room.spaceType !== 'bathroom') return false;
+    const ratio = netArea({ points: room.points, holes: room.holes || [] }) / (bath.axes.length * bath.axes.width);
+    if (!finite(ratio) || ratio < 1.5 || ratio > 12) return false;
+    const { major, minor, length, width } = bath.axes;
+    let lo = Infinity, hi = -Infinity, bottom = Infinity, top = -Infinity;
+    for (const point of room.points) {
+      const dx = point.x - bath.center.x, dy = point.y - bath.center.y;
+      const u = dx * major.x + dy * major.y, v = dx * minor.x + dy * minor.y;
+      lo = Math.min(lo, u); hi = Math.max(hi, u); bottom = Math.min(bottom, v); top = Math.max(top, v);
+    }
+    return Math.max(-lo - length / 2, hi - length / 2, -bottom - width / 2, top - width / 2) * scale >= 1.5 &&
+      (hi - lo) * scale <= 16 && (top - bottom) * scale <= 16;
+  }
+
+  function validBath(bath) {
+    const axes = bath?.axes;
+    return !!bath && typeof bath.id === 'string' && pointValid(bath.center) && ringValid(bath.basinRing) &&
+      axes && pointValid(axes.major) && pointValid(axes.minor) && finite(axes.length) && axes.length > 0 &&
+      finite(axes.width) && axes.width > 0 && Math.abs(Math.hypot(axes.major.x, axes.major.y) - 1) < .001 &&
+      Math.abs(Math.hypot(axes.minor.x, axes.minor.y) - 1) < .001 &&
+      Math.abs(axes.major.x * axes.minor.x + axes.major.y * axes.minor.y) < .001;
+  }
+
+  function validModel(model) {
+    return model && Number.isInteger(model.width) && model.width > 0 && Number.isInteger(model.height) && model.height > 0 &&
+      Number.isSafeInteger(model.width * model.height) && finite(model.factor) && model.factor > 0 &&
+      model.mask?.length === model.width * model.height && model.labels?.length === model.width * model.height;
+  }
+
+  // Three rays per long side, <=2 ft, quarter-grid-cell sampling. A wall or
+  // diagonal blocked corner stops the ray, including ambiguous fixture masks.
+  function adjacent(bath, candidates, model, scale) {
+    const byId = new Map();
+    for (const candidate of candidates) if (Number.isInteger(candidate.room.sourceRoomId) && candidate.room.sourceRoomId > 0) {
+      if (!byId.has(candidate.room.sourceRoomId)) byId.set(candidate.room.sourceRoomId, []);
+      byId.get(candidate.room.sourceRoomId).push(candidate);
+    }
+    const { width, height, factor, mask, labels } = model;
+    const steps = Math.max(1, Math.ceil(2 / scale * factor * 4));
+    if (steps > 512) return { reason: 'blocked-or-unresolved' };
+    const hits = new Map(), { major, minor, length, width: basinWidth } = bath.axes;
+    const blocked = (x, y) => x < 0 || y < 0 || x >= width || y >= height || !!mask[y * width + x];
+    for (const side of [-1, 1]) for (const fraction of [-.25, 0, .25]) {
+      const start = { x: bath.center.x + major.x * length * fraction + minor.x * basinWidth / 2 * side,
+        y: bath.center.y + major.y * length * fraction + minor.y * basinWidth / 2 * side };
+      let prior = null;
+      for (let step = 0; step <= steps; step++) {
+        const distance = step / steps * 2 / scale + 1e-7;
+        const point = { x: start.x + minor.x * side * distance, y: start.y + minor.y * side * distance };
+        const x = Math.floor(point.x * factor), y = Math.floor(point.y * factor);
+        if (blocked(x, y) || prior && prior.x !== x && prior.y !== y &&
+          (blocked(prior.x, y) || blocked(x, prior.y))) break;
+        prior = { x, y };
+        const id = labels[y * width + x];
+        if (!id) continue;
+        const cellCenter = { x: (x + .5) / factor, y: (y + .5) / factor };
+        for (const candidate of byId.get(id) || []) if (inFloor(cellCenter, candidate.room)) {
+          hits.set(candidate.index, (hits.get(candidate.index) || 0) + 1);
+        }
+        break; // A ray cannot skip the first labelled region to seek a preferred room.
+      }
+    }
+    if (hits.size > 1) return { reason: 'ambiguous-floor' };
+    if (hits.size === 1) {
+      const [index, count] = hits.entries().next().value;
+      if (count >= 2) return { index };
+    }
+    return { reason: 'blocked-or-unresolved' };
+  }
+
+  function associate(baths, rooms, { scale, model } = {}) {
+    if (!Array.isArray(baths) || !Array.isArray(rooms)) throw new TypeError('Symboles et pièces doivent former des listes.');
+    if (!finite(scale) || scale <= 0) throw new TypeError('Une échelle positive finie en pieds par pixel est requise.');
+    const assignments = [], pending = [];
+    for (const bath of baths) {
+      if (!validBath(bath)) { pending.push({ symbolId: bath?.id ?? null, reason: 'invalid-symbol' }); continue; }
+      const candidates = rooms.map((room, index) => ({ room, index })).filter(({ room }) => plausible(room, bath, scale));
+      const contained = candidates.filter(({ room }) => contains(room, bath));
+      let result;
+      if (contained.length > 1) result = { reason: 'ambiguous-floor' };
+      else if (contained.length === 1) result = { index: contained[0].index, mode: 'contains' };
+      else if (!candidates.length) result = { reason: 'no-closed-floor' };
+      else if (!validModel(model)) result = { reason: 'model-required' };
+      else result = { ...adjacent(bath, candidates, model, scale), mode: 'adjacent' };
+      if (result.index !== undefined) assignments.push({ symbolId: bath.id, roomIndex: result.index,
+        mode: result.mode, requiresFootprintReview: true });
+      else pending.push({ symbolId: bath.id, reason: result.reason });
+    }
+    return { assignments, pending };
+  }
+  return { associate };
+})(geometry);
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -7025,7 +7460,7 @@ function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
     if((item.kind==='count'||item.measureOnly)&&item.waste!==0)throw new Error('Les comptages et les cotes ne portent pas de perte.');
     if(item.kind==='count'&&(item.holes?.length||Object.keys(item.subzones||{}).length||item.layout||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId))throw new Error('Un comptage ne porte pas d’exclusion ou de calepinage.');
     if(item.wasteConfirmed!==undefined&&typeof item.wasteConfirmed!=='boolean')throw new Error('Statut du taux de perte invalide.');
-    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);validateWallTakeoffData(item);ids.add(item.id);
+    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);if(item.sanitaryEvidence!==undefined)validateSanitaryData(item);validateWallTakeoffData(item);ids.add(item.id);
     if((item.holes&&!Array.isArray(item.holes))||!getHoles(item).every(ring=>points(ring,3)))throw new Error('Une exclusion est invalide.');
     if(item.layout&&(!points([item.layout.origin,item.layout.origin])||!Number.isFinite(item.layout.angle)||!Number.isFinite(item.layout.joint)||item.layout.joint<0||item.layout.joint>1))throw new Error('Un départ de céramique est invalide.');
   }
@@ -7045,7 +7480,7 @@ async function importProject(file) {
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
-    for(const key of ['detectionChoices','splitSingleDwelling']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
+    for(const key of ['detectionChoices','splitSingleDwelling','sanitaryRejects']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
@@ -7080,12 +7515,16 @@ function fixtureTextHints(texts=[]) {
 }
 function fixtureCollector(sheet,scaleInfo) {
   const scale=scaleInfo.candidates?.[0]?.feetPerInch/PDF_DPI;
-  return {symbols:[],zones:[...fixtureTextHints(sheet.texts),...wallBacksplashHints(sheet.texts)].map(h=>{
+  return {symbols:[],globalSanitary:true,symbolValues:0,truncated:false,zones:[...fixtureTextHints(sheet.texts),...wallBacksplashHints(sheet.texts)].map(h=>{
     const radius=Math.max(70,Math.min(sheet.width*.22,(Math.max(h.widthInches||60,h.lengthInches||60)/12/(scale||.04))*1.2));
     return {x:h.cx-radius,y:h.cy-radius,right:h.cx+radius,bottom:h.cy+radius};
   })};
 }
 function keepFixturePath(collector,entry) {
+  if(collector?.globalSanitary&&entry.stroke) {
+    if(collector.symbols.length>=100000||collector.symbolValues+entry.path.length>1500000){collector.truncated=true;return;}
+    collector.symbols.push(entry);collector.symbolValues+=entry.path.length;return;
+  }
   if(!collector?.zones?.length)return;
   let points=[];
   for(let i=0;i<entry.path.length;){const c=entry.path[i++],pairs=c===0||c===1?1:c===2?3:c===3?2:0;for(let j=0;j<pairs;j++)points.push({x:entry.path[i++],y:entry.path[i++]});}
@@ -7188,9 +7627,14 @@ function addFixtureToItem(item,cut) {
 function recognizeFixtures(item,info,scale) {
   if(!item.bathroom&&!isBathroom(item.name))return {hints:[],cuts:[],pending:[]};
   const hints=fixtureTextHints(info?.texts||[]).filter(h=>inside({x:h.cx,y:h.cy},item.points)||onRing({x:h.cx,y:h.cy},item.points));
+  for(const proof of item.sanitaryEvidence||[]) {
+    const b=boundsOf(proof.basinRing),cx=(b.x+b.right)/2,cy=(b.y+b.bottom)/2;
+    if(!hints.some(hint=>dist({x:hint.cx,y:hint.cy},{x:cx,y:cy})<1/scale))hints.push({key:proof.symbolId,type:'bath',label:'Bain proposé · symbole vectoriel',cx,cy,source:'vector-shape'});
+  }
   const cuts=[],pending=[];
   for(const hint of hints) {
     if((item.fixtureCuts||[]).some(c=>c.hintKey===hint.key))continue;
+    if(hint.source==='vector-shape'){pending.push({...hint,reason:'Bassin intérieur repéré : délimitez et vérifiez l’emprise extérieure réelle.'});continue;}
     const cut=locateFixture(item,hint,info,scale);
     if(!cut){pending.push({...hint,reason:hint.widthInches?'Contour non reconnu : délimitez l’emprise sur le plan.':'Dimensions absentes : délimitez l’emprise sur le plan.'});continue;}
     const check=checkFixtureCut(item,cut);
