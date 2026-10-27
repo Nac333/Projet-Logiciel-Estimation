@@ -1069,9 +1069,15 @@ function redrawDetectionChoices(index) {
   const scroller=$('#reviewPanel .review-scroll');if(scroller)scroller.scrollTop=scroll;
   $(`[data-candidate-material="${index}"]`)?.focus({preventScroll:true});
 }
-function updateDetectionChoiceButton(candidates) {
+function reviewBatchPages() {
+  const pages=S.reviewBatchPages?.length?S.reviewBatchPages:[S.page];
+  return pages.filter(page=>S.reviewByPage?.[page]?.key===S.documentKey);
+}
+function reviewBatchCandidates() {return reviewBatchPages().flatMap(page=>S.reviewByPage[page].items);}
+function updateDetectionChoiceButton() {
+  const candidates=reviewBatchCandidates();
   const count=candidates.filter(item=>item.selected&&!item.duplicate&&!item.needsSeparation).length,button=$('#addCandidates');
-  if(button){button.disabled=!count;button.textContent=`Ajouter ${count} choix · toutes les pages · à valider`;}
+  if(button){button.disabled=!count;button.textContent=`Ajouter ${count} choix · ${reviewBatchPages().length} feuille(s) · à valider`;}
 }
 function sanitaryReviewMarkup(pack) {
   const data=pack?.sanitary;if(!data)return '';
@@ -1088,16 +1094,17 @@ function previewSanitary(index) {
 function renderDetectionPanel() {
   const panel=$('#reviewPanel'),pack=S.reviewByPage?.[S.page];
   if(!panel||!S.reviewOpen)return;
+  if(S.reviewBatchPages?.length&&!S.reviewBatchPages.includes(S.page))return closeReview();
   const firstOpen=!$('.app').classList.contains('review-open');
   panel.hidden=false;$('#inspector').hidden=true;$('.app').classList.add('review-open');
   if(firstOpen&&S.previewFocus===null)fitPlan();
   const candidates=pack?.items||[];
-  for(const candidate of candidates) {
+  for(const candidate of reviewBatchCandidates()) {
     candidate.duplicate=candidateAlreadyMeasured(candidate);
     if(candidate.duplicate)candidate.selected=false;
   }
   S.preview={page:S.page,items:candidates};
-  const pages=Object.keys(S.reviewByPage).map(Number).sort((a,b)=>a-b);
+  const pages=reviewBatchPages().sort((a,b)=>a-b);
   const notes=S.detectionNotes||[];
   const filter=['all','sanitary','unnamed'].includes(S.reviewFilter)?S.reviewFilter:'all',
     filtered=candidates.map((item,index)=>({item,index})).filter(({item})=>filter==='all'||filter==='sanitary'&&(item.bathroom||item.sanitaryEvidence?.length)||filter==='unnamed'&&item.unnamed),
@@ -1109,10 +1116,10 @@ function renderDetectionPanel() {
     ${sanitaryReviewMarkup(pack)}<label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter==='all'?'selected':''}>Toutes les propositions</option><option value="sanitary" ${filter==='sanitary'?'selected':''}>Salles de bains proposées</option><option value="unnamed" ${filter==='unnamed'?'selected':''}>Zones sans nom</option></select></label>
     <div class="review-pagination"><button type="button" id="reviewPrevious" ${offset===0?'disabled':''}>Précédent</button><span>${filtered.length} résultat(s) · page ${offset+1} / ${totalPages}</span><button type="button" id="reviewNext" ${offset+1>=totalPages?'disabled':''}>Suivant</button></div>
     <div class="review-scroll">${candidates.length?`<div class="detection-table"><table><thead><tr><th>Choix</th><th>Pièce et revêtement</th><th>Net</th></tr></thead><tbody>${visible.map(({item,index})=>`<tr data-review-candidate="${index}"><td><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected?'checked':''} ${item.duplicate||item.needsSeparation?'disabled':''}></td><td><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index===S.previewFocus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button><label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate?'disabled':''}>${!item.material?'<option value="">Choisir le revêtement</option>':''}${MATERIALS.map(material=>`<option value="${material.code}" ${item.material===material.code?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select>
-      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?'<small>Zone sans nom : identifier et rattacher cette pièce; contour à vérifier.</small>':''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
+      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.importIssue&&!item.duplicate?`<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>`:''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?'<small>Zone sans nom : identifier et rattacher cette pièce; contour à vérifier.</small>':''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
     ${notes.length?`<details class="review-notes" open><summary>Bilan des feuilles</summary><ul>${notes.map(note=>`<li>Page ${note.page} : ${esc(note.message)}</li>`).join('')}</ul></details>`:''}</div>
     <footer class="review-actions"><button type="button" class="primary" id="addCandidates" ${!candidates.some(item=>item.selected&&!item.duplicate&&!item.needsSeparation)?'disabled':''}>Ajouter au relevé · à valider</button><div><button type="button" id="retryDetection">Réglages</button><button type="button" id="correctDetection">Fermer un passage</button><button type="button" id="cancelDetection">Fermer</button></div></footer>`;
-  updateDetectionChoiceButton(candidates);
+  updateDetectionChoiceButton();
   $('#reviewFilter').onchange=event=>{S.reviewFilter=event.target.value;S.reviewOffset=0;renderDetectionPanel();};
   $('#reviewPrevious').onclick=()=>{S.reviewOffset=offset-1;renderDetectionPanel();};
   $('#reviewNext').onclick=()=>{S.reviewOffset=offset+1;renderDetectionPanel();};
@@ -1128,32 +1135,48 @@ function renderDetectionPanel() {
   $('#correctDetection').onclick=()=>{closeReview();activateTool('divider');};
   if($('#reviewPage'))$('#reviewPage').onchange=async event=>{await showPage(+event.target.value);renderDetectionPanel();};
   $$('[data-preview]',panel).forEach(button=>button.onclick=()=>previewCandidate(+button.dataset.preview));
-  $$('[data-candidate]',panel).forEach(input=>input.onchange=()=>{const item=candidates[+input.dataset.candidate];try{rememberDetectionChoice(item,{selected:input.checked});updateDetectionChoiceButton(candidates);}catch(error){input.checked=item.selected;toast(error.message);}});
+  $$('[data-candidate]',panel).forEach(input=>input.onchange=()=>{const item=candidates[+input.dataset.candidate];try{rememberDetectionChoice(item,{selected:input.checked});updateDetectionChoiceButton();}catch(error){input.checked=item.selected;toast(error.message);}});
   $$('[data-candidate-material]',panel).forEach(select=>select.onchange=()=>{const index=+select.dataset.candidateMaterial,item=candidates[index];if(select.value)try{rememberDetectionChoice(item,{material:select.value,materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){select.value=item.material;toast(error.message);}});
   $$('[data-confirm-material]',panel).forEach(button=>button.onclick=()=>{const index=+button.dataset.confirmMaterial,item=candidates[index];try{rememberDetectionChoice(item,{materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){toast(error.message);}});
   $('#addCandidates').onclick=()=>{
     if(pack?.key!==S.documentKey)return closeReview();
-    const result=addDetected(candidates);renderDetectionPanel();
+    const result=addDetected(reviewBatchCandidates());renderDetectionPanel();
     if(result.skipped.length)toast(`${result.accepted} ajout(s) ; ${result.skipped.length} contour(s) à corriger.`);
     else toast(`${result.accepted} mesure(s) ajoutée(s), à valider avant commande.`);
   };
 }
+function floorPlanPages() {
+  return Array.from({length:S.pages},(_,index)=>index+1).filter(page=>{
+    const title=normalizeName(S.sheetNames[page]?.title||S.pageInfo[page]?.title||'');
+    return /\bPLAN\b/.test(title)&&/SOUS[- ]?SOL|REZ[- ]?DE[- ]?CHAUSSEE|RDC|NIVEAU|ETAGE|FLOOR|BASEMENT|GROUND/.test(title)&&!/TOITURE|PLAFOND|DETAIL|AGRANDI|IMPLANTATION|LOGEMENTS?/.test(title);
+  });
+}
 function openDetectionSettings() {
   if(!S.plan||S.loading)return toast('Ouvrez un plan avant de détecter les pièces.');
-  if(!S.scale)return calibrationModal();
+  if(!S.scale&&(!S.pdf||S.pages===1))return calibrationModal();
+  const defaultScope=!S.scale&&S.pdf&&S.pages>1?'levels':'active';
   openDialog('Détecter les pièces',`<form id="detectionForm"><p>Les faces et les connexions des murs délimitent d’abord les espaces. Le mode Structure filtre les réseaux isolés qui ressemblent à du mobilier. Vérifiez les murs retenus avec l’icône Murs, puis contrôlez les surfaces et les revêtements.</p>
-    <div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active">Feuille active · ${S.page}</option><option value="selected" ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Fermer les ouvertures jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===S.settings.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${S.settings.minArea}"></label><label>Précision<select id="roomPrecision"><option value="fine" ${S.settings.roomPrecision!=='fast'?'selected':''}>Précise</option><option value="fast" ${S.settings.roomPrecision==='fast'?'selected':''}>Rapide</option></select></label><label>Lecture des traits<select id="wallThreshold">${[[135,'Traits foncés'],[180,'Standard'],[215,'Traits pâles']].map(([n,label])=>`<option value="${n}" ${n===S.settings.threshold?'selected':''}>${label}</option>`).join('')}</select></label></div>
+    <div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active" ${defaultScope==='active'?'selected':''}>Feuille active · ${S.page}</option>${S.pdf&&S.pages>1?`<option value="levels" ${defaultScope==='levels'?'selected':''}>Niveaux du projet · détection groupée</option>`:''}<option value="selected" ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Fermer les ouvertures jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===S.settings.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${S.settings.minArea}"></label><label>Précision<select id="roomPrecision"><option value="fine" ${S.settings.roomPrecision!=='fast'?'selected':''}>Précise</option><option value="fast" ${S.settings.roomPrecision==='fast'?'selected':''}>Rapide</option></select></label><label>Lecture des traits<select id="wallThreshold">${[[135,'Traits foncés'],[180,'Standard'],[215,'Traits pâles']].map(([n,label])=>`<option value="${n}" ${n===S.settings.threshold?'selected':''}>${label}</option>`).join('')}</select></label></div>
     <label class="wall-mode-field"><span>Séparation géométrique</span><span><input type="checkbox" id="splitSingleDwelling" ${S.settings.splitSingleDwelling===true?'checked':''}> Séparer aussi les pièces sans nom dans un logement</span><small>Propositions à vérifier : aucun nom de pièce, équipement ou fini n’est déduit de cette séparation.</small></label>
     <label class="wall-mode-field">Lecture des murs<select id="wallMode"><option value="structure" ${S.settings.wallMode!=='all'?'selected':''}>Structure du bâtiment</option><option value="all" ${S.settings.wallMode==='all'?'selected':''}>Tous les traits admissibles</option></select></label>
+    <p>Le mode Niveaux analyse les plans d’étage et exclut les détails et la toiture. Une feuille type de plusieurs niveaux est comptée une fois; les répétitions restent à renseigner.</p>
     <fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${page===S.page?'checked':''}> ${esc(pageName(page))} <small>${S.scales[page]?(S.scaleMeta[page]?.verified?'Échelle vérifiée':'Échelle à vérifier'):'Sans échelle'}</small></label>`).join('')}</fieldset>
     <p class="scale-help">Le seuil des ouvertures est un réglage de fermeture, pas une mesure de porte. B permet une fermeture manuelle ; R limite l’analyse à un cadre. Un fini absent du plan devra être choisi.</p><p id="detectionError" class="v4-error" role="alert" hidden></p>
     <div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter la feuille</button></div></form>`);
-  $('#detectionScope').onchange=event=>{$('#detectionPages').hidden=event.target.value!=='selected';$('#runDetection').textContent=event.target.value==='selected'?'Détecter les feuilles choisies':'Détecter la feuille';};
+  $('#detectionScope').onchange=event=>{$('#detectionPages').hidden=event.target.value!=='selected';$('#runDetection').textContent=event.target.value==='levels'?'Détecter les niveaux':event.target.value==='selected'?'Détecter les feuilles choisies':'Détecter la feuille';};
   $('#removeDetectionFrame').onclick=()=>{remember();delete S.detectBounds[S.page];S.detectorCache=null;save();toast('Cadre retiré de la feuille active.');};
-  $('#detectionForm').onsubmit=event=>{
-    event.preventDefault();const minArea=Number($('#minRoomArea').value);
-    const pages=$('#detectionScope').value==='active'?[S.page]:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage);
-    if(!Number.isFinite(minArea)||minArea<1||minArea>500||!pages.length){$('#detectionError').hidden=false;$('#detectionError').textContent='Choisissez au moins une feuille et une surface minimale de 1 à 500 pi².';return;}
+  $('#detectionScope').dispatchEvent(new Event('change'));
+  $('#detectionForm').onsubmit=async event=>{
+    event.preventDefault();const minArea=Number($('#minRoomArea').value),scope=$('#detectionScope').value,key=S.documentKey,form=event.currentTarget;
+    if(scope==='levels'&&S.indexTask){
+      $('#runDetection').disabled=true;$('#runDetection').textContent='Lecture des feuilles…';
+      await S.indexTask;
+      if(S.documentKey!==key||!form.isConnected)return;
+      $('#runDetection').disabled=false;$('#runDetection').textContent='Détecter les niveaux';
+      if(S.indexedPages<S.pages){$('#detectionError').hidden=false;$('#detectionError').textContent='Lecture des titres incomplète. Choisissez explicitement les feuilles à analyser.';return;}
+    }
+    const pages=scope==='levels'?floorPlanPages():scope==='active'?[S.page]:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage);
+    if(!Number.isFinite(minArea)||minArea<1||minArea>500||!pages.length){$('#detectionError').hidden=false;$('#detectionError').textContent=scope==='levels'&&!pages.length?'Aucun plan d’étage identifié : choisissez explicitement les feuilles à analyser.':'Choisissez au moins une feuille et une surface minimale de 1 à 500 pi².';return;}
     S.settings={...S.settings,minArea,roomPrecision:$('#roomPrecision').value,doorInches:+$('#doorGap').value,threshold:+$('#wallThreshold').value,wallMode:$('#wallMode').value,splitSingleDwelling:$('#splitSingleDwelling').checked};S.detectorCache=null;save();
     runDetectionPages(pages);
   };
@@ -1171,6 +1194,8 @@ async function detectionSource(pageNumber) {
 }
 async function runDetectionPages(pages) {
   const job={cancelled:false,key:S.documentKey},notes=[];S.detectJob=job;S.detectionNotes=[];
+  S.reviewBatchPages=[...pages];S.previewFocus=null;S.fixturePreview=null;S.reviewOffset=0;S.reviewFilter='all';
+  for(const page of pages)delete S.reviewByPage[page];
   openDialog('Analyse des feuilles',`<p id="detectionProgress" role="status" aria-live="polite">Préparation…</p><progress id="detectionProgressBar" max="${pages.length}" value="0"></progress><p>L’arrêt prend effet entre deux feuilles. Les résultats déjà obtenus sont conservés.</p><button type="button" id="stopDetection">Arrêter après cette feuille</button>`);
   $('#stopDetection').onclick=()=>{job.cancelled=true;$('#stopDetection').disabled=true;$('#stopDetection').textContent='Arrêt demandé…';};
   const settings={...S.settings},material=S.material;
@@ -1201,7 +1226,7 @@ async function runDetectionPages(pages) {
   S.detectJob=null;if(job.key!==S.documentKey)return;
   S.detectionNotes=notes;closeDialog();
   const first=Object.keys(S.reviewByPage).map(Number).find(page=>pages.includes(page));
-  if(first&&!S.reviewByPage[S.page])await showPage(first);
+  if(first&&(!pages.includes(S.page)||!S.reviewByPage[S.page]))await showPage(first);
   S.reviewOpen=true;renderDetectionPanel();refreshWorkflow();save();
   if(job.cancelled)toast('Analyse arrêtée. Les propositions obtenues sont conservées.');
 }
@@ -1211,7 +1236,13 @@ function initV7() {
   $('#collapseGrid').insertAdjacentHTML('beforebegin',`<div id="compactValidation" role="group" aria-label="Validation des surfaces"><span>Confirmé <strong id="confirmedTotal">0,0 pi²</strong></span><span>À valider <strong id="proposedTotal">0,0 pi²</strong></span><button type="button" id="confirmSelection">Confirmer la sélection</button></div>`);
   $('#inspector').insertAdjacentHTML('beforebegin','<aside id="reviewPanel" class="review-panel" aria-label="Révision des pièces détectées" hidden></aside>');
   $('#stepOpen').onclick=()=>$('#fileInput').click();$('#stepDetect').onclick=analyzeAll;
-  $('#stepReview').onclick=()=>{if(Object.keys(S.reviewByPage).length){S.reviewOpen=true;renderDetectionPanel();}else takeoffDrawer();};
+  $('#stepReview').onclick=async()=>{
+    const pages=Object.keys(S.reviewByPage).map(Number).filter(page=>S.reviewByPage[page].key===S.documentKey);
+    if(!pages.length)return takeoffDrawer();
+    if(S.reviewByPage[S.page]?.key===S.documentKey){if(!S.reviewBatchPages?.includes(S.page))S.reviewBatchPages=[S.page];}
+    else await showPage(reviewBatchPages()[0]||pages[0]);
+    S.reviewOpen=true;renderDetectionPanel();
+  };
   $('#confirmSelection').onclick=confirmSelected;
   $('#aiReview').onclick=$('#stepReview').onclick;
   const syncSmallScreen=()=>{if(innerWidth<780){$('#inspector').hidden=true;$('.app').classList.add('pages-folded');}if(S.reviewOpen)renderDetectionPanel();};
@@ -2491,7 +2522,7 @@ const calibration = (function createCalibration() {
 })();
 const documents = (function createDocuments(getIndexedDB, options = {}) {
   const dbName = options.dbName ?? 'estimation-documents-v1';
-  const maxBytes = options.maxBytes ?? 100 * 1024 * 1024;
+  const maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
   if (typeof dbName !== 'string' || !dbName.trim() || !Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
     throw new Error('Configuration du stockage documentaire invalide.');
   }
@@ -2506,14 +2537,14 @@ const documents = (function createDocuments(getIndexedDB, options = {}) {
     return { id: record.id, name: record.name, type: record.type, lastModified: record.lastModified, size: record.bytes.byteLength };
   }
 
-  function copyRecord(record) {
+  function checkedRecord(record, copyBytes) {
     identifier(record?.id);
     if (typeof record.name !== 'string' || !record.name.trim() || record.name.length > 1024) throw new Error('Nom de document invalide.');
     if (!['application/pdf', 'image/png', 'image/jpeg'].includes(record.type)) throw new Error('Format non pris en charge : utilisez PDF, PNG ou JPEG.');
     if (!Number.isSafeInteger(record.lastModified)) throw new Error('Date du document invalide.');
     if (!(record.bytes instanceof ArrayBuffer) || record.bytes.byteLength === 0) throw new Error('Le document doit contenir des octets non vides.');
     if (record.bytes.byteLength > maxBytes) throw new Error(`Le document dépasse la limite de ${maxBytes} octets.`);
-    return { id: record.id, name: record.name, type: record.type, lastModified: record.lastModified, bytes: record.bytes.slice(0) };
+    return { id: record.id, name: record.name, type: record.type, lastModified: record.lastModified, bytes: copyBytes ? record.bytes.slice(0) : record.bytes };
   }
 
   function database() {
@@ -2556,7 +2587,8 @@ const documents = (function createDocuments(getIndexedDB, options = {}) {
   }
 
   async function put(input) {
-    const record = copyRecord(input);
+    // Figer l'entrée avant le premier await protège des mutations de l'appelant.
+    const record = checkedRecord(input, true);
     return transaction('readwrite', (store, result, reject) => {
       const existing = store.get(record.id);
       existing.onsuccess = () => {
@@ -2580,7 +2612,9 @@ const documents = (function createDocuments(getIndexedDB, options = {}) {
     identifier(id);
     return transaction('readonly', (store, result) => {
       const request = store.get(id);
-      request.onsuccess = () => result(request.result ? copyRecord(request.result) : null);
+      // IndexedDB livre déjà un clone indépendant par lecture : ne pas doubler
+      // encore la mémoire du plan pour rendre cette copie à l'appelant.
+      request.onsuccess = () => result(request.result ? checkedRecord(request.result, false) : null);
     });
   }
 
@@ -5266,7 +5300,7 @@ const purchaseComparison = (function createPurchaseComparison({ orders, purchasi
 
   return { modes, compare };
 })({orders,purchasing,quantities});
-const archives = (function createArchives(ZipConstructor, getCrypto = () => globalThis.crypto, { maxTotalBytes = 250 * 1024 * 1024 } = {}) {
+const archives = (function createArchives(ZipConstructor, getCrypto = () => globalThis.crypto, { maxTotalBytes = 1024 * 1024 * 1024 } = {}) {
   const MAX_ENTRIES = 10003;
   const allowedTypes = new Set(['application/pdf', 'image/png', 'image/jpeg']);
   if (!Number.isSafeInteger(maxTotalBytes) || maxTotalBytes < 1) throw new Error('Limite de sauvegarde invalide.');
@@ -5483,7 +5517,7 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
     return { documents, records, activeDocumentId: activeId(manifest.activeDocumentId, ids) };
   }
 
-  return { encode, decode };
+  return { encode, decode, maxTotalBytes };
 })(globalThis.JSZip);
 const revisions = (function createRevisions(geometry) {
   for (const name of ['area', 'netArea', 'excludedArea', 'segmentsCross']) {
@@ -6547,16 +6581,17 @@ function save() {
 function snapshot() {
   return structuredClone({items:S.items, folders:S.folders||[],scales:S.scales, scaleMeta:S.scaleMeta,
     selected:S.selected,selection:[...S.selection],sheetNames:S.sheetNames,settings:S.settings,dividers:S.dividers,detectBounds:S.detectBounds,project:S.project,estimation:S.estimation,
-    reviewByPage:S.reviewByPage||{},reviewOpen:!!S.reviewOpen,previewFocus:S.previewFocus});
+    reviewByPage:S.reviewByPage||{},reviewBatchPages:S.reviewBatchPages||[],reviewOpen:!!S.reviewOpen,previewFocus:S.previewFocus});
 }
 function remember() {
   S.history.push(snapshot()); S.history = S.history.slice(-40); S.redo = [];
 }
 function restoreSnapshot(state) {
   S.items = state.items; S.scales = state.scales; S.scaleMeta = state.scaleMeta;
+  S.scale=S.scales[S.page]||null;
   S.selection = new Set(state.selection.filter(id => S.items.some(i => i.id === id && i.page === S.page)));
   S.selected = S.selection.has(state.selected) ? state.selected : [...S.selection].at(-1) || null;
-  S.folders=state.folders||[];S.reviewByPage=state.reviewByPage||{};S.reviewOpen=!!state.reviewOpen;S.previewFocus=state.previewFocus??null;
+  S.folders=state.folders||[];S.reviewByPage=state.reviewByPage||{};S.reviewBatchPages=state.reviewBatchPages||[];S.reviewOpen=!!state.reviewOpen;S.previewFocus=state.previewFocus??null;
   S.preview=S.reviewOpen?{page:S.page,items:S.reviewByPage[S.page]?.items||[]}:null;
   if(!S.reviewOpen){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
   S.draft=[];S.sheetNames=state.sheetNames||{};S.settings=state.settings||S.settings;S.dividers=state.dividers||{};S.detectBounds=state.detectBounds||{};S.project=state.project||S.project;S.estimation=state.estimation||{catalog:{},group:'project'};S.detectorCache=null;save();refresh();
@@ -6619,7 +6654,7 @@ function parseScaleText(input) {
   const number = '(?:\\d+[ \\t]+\\d+[ \\t]*\\/[ \\t]*\\d+|\\d+[ \\t]*\\/[ \\t]*\\d+|\\d+(?:[.,]\\d+)?)';
   const inch = '(?:"|po(?:uces?)?\\.?|in(?:ches?)?\\.?)';
   const foot = "(?:'|pi(?:eds?)?\\.?|ft\\.?)";
-  const imperial = new RegExp('('+number+')[ \\t]*'+inch+'[ \\t]*=[ \\t]*(\\d+(?:[.,]\\d+)?)[ \\t]*'+foot+'(?:[ \\t]*[-–]?[ \\t]*('+number+')[ \\t]*'+inch+')?', 'gi');
+  const imperial = new RegExp('(?<![A-Za-z0-9_./-])('+number+')[ \\t]*'+inch+'[ \\t]*=[ \\t]*(\\d+(?:[.,]\\d+)?)[ \\t]*'+foot+'(?:[ \\t]*[-–]?[ \\t]*('+number+')[ \\t]*'+inch+')?', 'gi');
   const candidates = [];
   const add = (denominator,label) => {
     if (Number.isFinite(denominator) && denominator > 0 && !candidates.some(c => Math.abs(c.denominator-denominator) < 1e-5))
@@ -6702,11 +6737,14 @@ async function loadFile(file) {
     if (file.size > documents.maxBytes) throw new Error('Le plan dépasse la limite de '+Math.round(documents.maxBytes/1024/1024)+' Mo.');
     if (!(file.type === 'application/pdf' || /^image\/(png|jpeg)$/.test(file.type) || /\.(pdf|png|jpe?g)$/i.test(file.name))) throw new Error('Formats acceptés : PDF, JPG et PNG.');
     const data = await file.arrayBuffer();
+    if(token!==S.loadVersion)return false;
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
-      const pdf = await pdfjsLib.getDocument({data}).promise;
+      // PDF.js transfère son buffer au worker. Garder les octets de l’original
+      // pour l’identité et le stockage, sans relire trois fois un gros fichier.
+      const pdf = await pdfjsLib.getDocument({data:data.slice(0)}).promise;
       if (token !== S.loadVersion) { await pdf.destroy(); return; }
       const key = documentIdentity(file,pdf);
-      try{await checkOriginalIdentity(key,await file.arrayBuffer());}catch(error){await pdf.destroy();throw error;}
+      try{await checkOriginalIdentity(key,data);}catch(error){await pdf.destroy();throw error;}
       if(token!==S.loadVersion){await pdf.destroy();return false;}
       openDocument(key,file.name,pdf,pdf.numPages);await showPage(1);
       if(token===S.loadVersion&&S.pdf===pdf) {
@@ -6724,7 +6762,7 @@ async function loadFile(file) {
     if (token === S.loadVersion && S.plan) {
       try {
         const type = /\.pdf$/i.test(file.name) ? 'application/pdf' : /\.png$/i.test(file.name) ? 'image/png' : file.type || 'image/jpeg';
-        await documents.put({id:S.documentKey,name:file.name,type,lastModified:file.lastModified,bytes:await file.arrayBuffer()});save();
+        await documents.put({id:S.documentKey,name:file.name,type,lastModified:file.lastModified,bytes:data});save();
       } catch (storageError) { if(token === S.loadVersion)toast('Plan ouvert, mais copie locale indisponible : '+storageError.message); }
     }
     return token===S.loadVersion;
@@ -6744,7 +6782,7 @@ async function showPage(number) {
     const [,info] = await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise, inspectPdfScale(page,true)]);
     const image = await decodeImage(offscreen.toDataURL());
     if (token !== S.renderVersion || document !== S.pdf) return;
-    S.page=number;S.plan=image;S.pageInfo[number]=info;rememberSheet(number,info);S.detectorCache=null;S.preview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
+    S.page=number;S.plan=image;S.pageInfo[number]=info;rememberSheet(number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
     if (!S.scales[number] && info.candidates.length === 1 && !info.ambiguous) {
       const candidate = info.candidates[0]; S.scales[number] = candidate.feetPerInch / PDF_DPI;
       S.scaleMeta[number] = {...candidate,source:'automatic',verified:false}; recalculatePage(number);
@@ -7087,12 +7125,14 @@ function integrateCandidate(items,candidate) {
 function addDetected(candidates) {
   const chosen=candidates.filter(i=>i.selected&&!i.mixedBathroom&&!i.needsSeparation),items=structuredClone(S.items),accepted=[],skipped=[];
   for(const source of chosen) {
-    const candidate={...structuredClone(source),id:uid(),page:S.page,status:'à valider',waste:0,wasteConfirmed:false,work:{layer:'finish'}};
-    candidate.work=workOf(candidate);delete candidate.selected;delete candidate.mixedBathroom;
+    const page=source.page??S.page;
+    if(!Number.isInteger(page)||page<1||page>S.pages||!Number.isFinite(S.scales[page])||S.scales[page]<=0){skipped.push({name:source.name,reason:'échelle de la feuille source absente'});continue;}
+    const candidate={...structuredClone(source),id:uid(),page,status:'à valider',waste:0,wasteConfirmed:false,work:{layer:'finish'}};
+    candidate.work=workOf(candidate);delete candidate.selected;delete candidate.mixedBathroom;delete candidate.importIssue;
     const result=integrateCandidate(items,candidate);
-    if(result.ok){items.push(candidate);accepted.push(candidate.id);}else skipped.push({name:source.name,reason:result.reason});
+    if(result.ok){delete source.importIssue;items.push(candidate);accepted.push(candidate.id);}else{source.importIssue=result.reason;skipped.push({name:source.name,reason:result.reason});}
   }
-  if(accepted.length){remember();S.items=items;setSelection(accepted);save();}
+  if(accepted.length){remember();S.items=items;setSelection(accepted.filter(id=>items.find(item=>item.id===id)?.page===S.page));save();}
   S.preview=null;S.tool='select';refresh();return {accepted:accepted.length,skipped};
 }
 async function detectRoom(point) {
@@ -7112,7 +7152,7 @@ async function detectRoom(point) {
 }
 function analyzeAll() { return openDetectionSettings(); }
 function detectionResults(candidates) {
-  S.reviewByPage[S.page]={key:S.documentKey,items:candidates.map(item=>({...item,page:S.page}))};
+  S.reviewBatchPages=[S.page];S.reviewByPage[S.page]={key:S.documentKey,items:candidates.map(item=>({...item,page:S.page}))};
   closeDialog();S.reviewOpen=true;renderDetectionPanel();refreshWorkflow();
 }
 function finishArea(points,method='Tracé polygonal') {
