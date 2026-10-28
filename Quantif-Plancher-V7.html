@@ -3,47 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#17231e">
+<meta name="theme-color" content="#d9efff">
 <title>Quantif Plancher V7 — Relevé et estimation</title>
-<style>:root{font-family:'DM Sans',Arial,sans-serif;color:#19211d;background:#edf0ed;font-synthesis:none;--ink:#19211d;--muted:#6e7772;--line:#d9dedb;--green:#256d54;--accent:#df5e43}*{box-sizing:border-box}body{margin:0;overflow:hidden}button,input,select{font:inherit}button{cursor:pointer}.app{height:100vh;display:flex;flex-direction:column;background:#e7eae7}.topbar{height:62px;flex:0 0 62px;background:#17201c;color:#fff;display:flex;align-items:center;padding:0 18px;gap:28px;border-bottom:1px solid #303934}.brand{display:flex;align-items:center;font-family:Manrope,sans-serif;font-size:14px;letter-spacing:.5px;white-space:nowrap}.brand b{font-weight:700;color:#9dd8be;margin-left:4px}.brandmark{width:32px;height:32px;display:grid;place-items:center;background:#34795f;border-radius:6px;margin-right:9px}.project-title{display:flex;flex-direction:column;min-width:0;flex:1;border-left:1px solid #36403b;padding-left:24px}.project-title input{background:transparent;border:0;color:#fff;font-size:14px;font-weight:600;padding:0;outline:none;width:250px}.project-title span{color:#9ba49f;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}.top-actions{display:flex;align-items:center;gap:7px}.top-actions button{height:36px}.icon-btn{border:0;background:transparent;color:inherit;width:34px;height:34px;display:grid;place-items:center;border-radius:5px}.icon-btn:hover{background:rgba(255,255,255,.08)}.icon-btn:disabled{opacity:.32;cursor:not-allowed}.outline,.primary{display:flex;align-items:center;justify-content:center;gap:7px;border-radius:5px;border:1px solid #48514d;background:transparent;color:#fff;padding:0 13px;font-weight:600;font-size:13px}.outline span{background:#35403a;padding:2px 6px;border-radius:9px;font-size:10px}.primary{background:#df5e43;border-color:#df5e43}.primary:hover{background:#ca4d34}.primary:disabled{opacity:.45}.workspace{flex:1;min-height:0;display:flex;position:relative}.sidebar{width:176px;background:#f7f8f6;border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;z-index:3}.upload{height:42px;border:0;background:#246d54;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:5px;font-weight:600;font-size:13px;margin-bottom:16px}.sidebar nav,.sidebar-bottom{display:flex;flex-direction:column;gap:3px}.sidebar nav button,.sidebar-bottom button,.demo{border:0;background:transparent;display:grid;grid-template-columns:25px 1fr 20px;align-items:center;gap:7px;color:#4b5550;text-align:left;padding:9px 9px;border-radius:5px;font-size:12px}.sidebar nav button:hover,.sidebar nav button.active,.demo:hover{background:#e6ede9;color:#205f49}.sidebar nav button.active{font-weight:700}.sidebar kbd{font-size:9px;color:#939b97;border:1px solid #d4d9d6;border-radius:3px;text-align:center;padding:1px}.side-sep{height:1px;background:var(--line);margin:14px 8px}.demo{grid-template-columns:25px 1fr;color:#58625d}.sidebar-bottom{margin-top:auto}.sidebar-bottom button{grid-template-columns:25px 1fr}.stage{flex:1;min-width:0;position:relative;overflow:hidden;background:#dde1de}.stagebar{position:absolute;z-index:2;left:0;right:0;top:0;height:44px;background:rgba(249,250,248,.95);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#66706b;font-size:12px}.document{display:flex;align-items:center;gap:7px}.document strong{color:#303934;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pages{display:flex;align-items:center;margin-left:8px;border-left:1px solid var(--line);padding-left:8px}.pages button{border:0;background:transparent;font-size:18px}.pages span{min-width:48px;text-align:center}.scale{display:flex;align-items:center;gap:7px}.scale .dot{width:7px;height:7px;border-radius:50%;background:#d66b52}.scale.ok .dot{background:#3b9a70}.stage canvas{width:100%;height:100%;display:block;cursor:crosshair}.zoom{position:absolute;z-index:2;bottom:16px;left:16px;height:36px;background:#fff;display:flex;align-items:center;border:1px solid #cfd5d1;border-radius:5px;box-shadow:0 3px 12px #1b251f15}.zoom button{width:34px;height:34px;border:0;background:transparent;display:grid;place-items:center}.zoom span{font-size:11px;width:52px;text-align:center;color:#55605a}.hint{position:absolute;left:50%;bottom:17px;transform:translateX(-50%);background:#17201ce8;color:#fff;padding:9px 14px;border-radius:5px;font-size:11px;pointer-events:none}.empty-demo{position:absolute;left:50%;top:calc(50% + 40px);transform:translate(-50%,-50%);border:1px solid #aeb7b2;background:#f5f6f4;border-radius:5px;padding:9px 13px;color:#295f4b;font-weight:600}.inspector{width:292px;flex:0 0 292px;background:#fbfcfa;border-left:1px solid var(--line);padding:18px 18px;overflow:auto;z-index:3}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}.panel-head span,.panel-section>span{font-size:9px;font-weight:700;color:#87908b;letter-spacing:1.2px}.panel-head h2{font:700 17px Manrope;margin:4px 0 0}.inspector label{display:block;color:#5d6762;font-size:11px;font-weight:600;margin:14px 0}.inspector input,.inspector select,.panel-section select{margin-top:6px;width:100%;height:38px;border:1px solid #ccd3cf;background:#fff;border-radius:4px;padding:0 9px;color:#26302b;font-size:12px;outline:none}.inspector input:focus,.inspector select:focus{border-color:#3b8065}.quantity{background:#eef3f0;border-left:3px solid #2f775c;padding:14px;margin:18px 0}.quantity span{display:block;font-size:9px;font-weight:700;letter-spacing:.8px;color:#77817b}.quantity strong{display:block;font:700 28px Manrope;margin-top:2px}.quantity small{font-size:12px}.input-unit{position:relative}.input-unit span{position:absolute;right:10px;top:18px;color:#758079}.total-line{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e3e7e4;font-size:11px}.status-note{display:flex;align-items:flex-start;gap:8px;background:#edf6f1;color:#28684f;padding:10px;border-radius:4px;font-size:11px}.status-note span,.status-note small{display:block}.status-note small{font-size:9px;color:#718078;margin-top:2px}.danger{margin-top:24px;border:0;background:transparent;color:#c24f3c;display:flex;align-items:center;gap:7px;font-size:11px;padding:0}.panel-section{border-bottom:1px solid var(--line);padding-bottom:19px;margin-bottom:19px}.swatch-line{display:grid;grid-template-columns:15px 1fr auto;align-items:center;gap:7px;margin-top:10px}.swatch-line i,.mini-total i{width:10px;height:10px;border-radius:2px}.swatch-line b{font-size:11px}.swatch-line small{font-size:9px;color:#7d8581}.mini-total{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #e7eae8}.mini-total div b,.mini-total div small{display:block}.mini-total div b{font-size:11px}.mini-total div small{font-size:9px;color:#8a928e}.mini-total strong{font-size:12px}.empty-copy{font-size:11px;line-height:1.55;color:#7a847e}.warning{display:flex;gap:9px;background:#fff5df;border:1px solid #edd7a3;color:#765b20;padding:11px;border-radius:4px}.warning b,.warning span{display:block;font-size:10px}.warning span{margin-top:3px;line-height:1.4}.reopen{position:absolute;right:10px;top:54px;z-index:4;width:36px;height:36px;border:1px solid #cfd5d1;background:#fff;border-radius:5px;display:grid;place-items:center}.modal-back,.drawer-back{position:fixed;inset:0;background:#10171388;z-index:20;display:grid;place-items:center}.cal-modal{width:390px;background:#fff;padding:27px;border-radius:7px;box-shadow:0 25px 70px #1119}.modal-icon{width:42px;height:42px;background:#e6f0eb;color:#23684f;border-radius:6px;display:grid;place-items:center}.cal-modal h2{font:700 21px Manrope;margin:16px 0 5px}.cal-modal p{margin:0 0 18px;color:#6d7671;font-size:13px}.cal-modal label{font-size:11px;font-weight:700}.cal-input{display:flex;margin-top:7px}.cal-input input,.cal-input select{height:42px;border:1px solid #ccd3cf;padding:0 10px}.cal-input input{flex:1;border-radius:4px 0 0 4px}.cal-input select{width:100px;border-left:0;border-radius:0 4px 4px 0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}.modal-actions button{height:37px;border:1px solid #d2d7d4;background:#fff;padding:0 14px;border-radius:4px}.modal-actions .primary{background:#df5e43;border-color:#df5e43}.drawer-back{display:flex;justify-content:flex-end}.takeoff{width:min(820px,90vw);height:100%;background:#f9faf8;box-shadow:-15px 0 50px #1113;display:flex;flex-direction:column}.takeoff header{height:80px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.takeoff header span{font-size:9px;letter-spacing:1px;color:#858e89}.takeoff h2{font:700 20px Manrope;margin:3px 0}.takeoff-summary{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}.takeoff-summary div{padding:20px 24px;border-right:1px solid var(--line)}.takeoff-summary span,.takeoff-summary strong{display:block}.takeoff-summary span{font-size:10px;color:#7d8681}.takeoff-summary strong{font:700 20px Manrope;margin-top:4px}.search{margin:18px 24px 8px;display:flex;align-items:center;gap:8px;border:1px solid #d3d8d5;background:#fff;padding:0 11px;border-radius:4px}.search input{height:38px;flex:1;border:0;outline:0;font-size:12px}.table-wrap{padding:0 24px;overflow:auto;flex:1}table{width:100%;border-collapse:collapse;font-size:11px}th{text-align:left;color:#7c8580;font-size:9px;letter-spacing:.5px;padding:11px 8px;border-bottom:1px solid #cfd5d1}td{padding:12px 8px;border-bottom:1px solid #e0e4e1}tbody tr{cursor:pointer}tbody tr:hover{background:#f0f4f1}td small{display:block;color:#8b938f;margin-top:2px}.badge{display:inline-block;padding:4px 7px;border-radius:10px;background:#e1f0e8;color:#25674d;font-size:9px}.badge.estimée{background:#fff0d2;color:#855f17}.badge.valider{background:#fee4df;color:#a64837}.takeoff footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:14px 24px}.takeoff footer p{font-size:10px;color:#7a837f;max-width:390px}.takeoff footer .primary{height:38px}.toast{position:fixed;z-index:30;left:50%;bottom:25px;transform:translateX(-50%);background:#17201c;color:#fff;border-radius:5px;padding:11px 15px;display:flex;align-items:center;gap:8px;font-size:12px;box-shadow:0 8px 25px #1115;animation:rise .2s ease-out}@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}}
+<style>:root{font-family:'DM Sans',Arial,sans-serif;color:#18354d;background:#edf7ff;font-synthesis:none;--ink:#18354d;--muted:#6e7772;--line:#d9dedb;--green:#236b99;--accent:#df5e43}*{box-sizing:border-box}body{margin:0;overflow:hidden}button,input,select{font:inherit}button{cursor:pointer}.app{height:100vh;display:flex;flex-direction:column;background:#e7eae7}.topbar{height:62px;flex:0 0 62px;background:#17201c;color:#fff;display:flex;align-items:center;padding:0 18px;gap:28px;border-bottom:1px solid #303934}.brand{display:flex;align-items:center;font-family:Manrope,sans-serif;font-size:14px;letter-spacing:.5px;white-space:nowrap}.brand b{font-weight:700;color:#9dd8be;margin-left:4px}.brandmark{width:32px;height:32px;display:grid;place-items:center;background:#34795f;border-radius:6px;margin-right:9px}.project-title{display:flex;flex-direction:column;min-width:0;flex:1;border-left:1px solid #36403b;padding-left:24px}.project-title input{background:transparent;border:0;color:#fff;font-size:14px;font-weight:600;padding:0;outline:none;width:250px}.project-title span{color:#9ba49f;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}.top-actions{display:flex;align-items:center;gap:7px}.top-actions button{height:36px}.icon-btn{border:0;background:transparent;color:inherit;width:34px;height:34px;display:grid;place-items:center;border-radius:5px}.icon-btn:hover{background:rgba(255,255,255,.08)}.icon-btn:disabled{opacity:.32;cursor:not-allowed}.outline,.primary{display:flex;align-items:center;justify-content:center;gap:7px;border-radius:5px;border:1px solid #48514d;background:transparent;color:#fff;padding:0 13px;font-weight:600;font-size:13px}.outline span{background:#35403a;padding:2px 6px;border-radius:9px;font-size:10px}.primary{background:#df5e43;border-color:#df5e43}.primary:hover{background:#ca4d34}.primary:disabled{opacity:.45}.workspace{flex:1;min-height:0;display:flex;position:relative}.sidebar{width:176px;background:#f7f8f6;border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;z-index:3}.upload{height:42px;border:0;background:#246d54;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:5px;font-weight:600;font-size:13px;margin-bottom:16px}.sidebar nav,.sidebar-bottom{display:flex;flex-direction:column;gap:3px}.sidebar nav button,.sidebar-bottom button,.demo{border:0;background:transparent;display:grid;grid-template-columns:25px 1fr 20px;align-items:center;gap:7px;color:#4b5550;text-align:left;padding:9px 9px;border-radius:5px;font-size:12px}.sidebar nav button:hover,.sidebar nav button.active,.demo:hover{background:#e6ede9;color:#205f49}.sidebar nav button.active{font-weight:700}.sidebar kbd{font-size:9px;color:#939b97;border:1px solid #d4d9d6;border-radius:3px;text-align:center;padding:1px}.side-sep{height:1px;background:var(--line);margin:14px 8px}.demo{grid-template-columns:25px 1fr;color:#58625d}.sidebar-bottom{margin-top:auto}.sidebar-bottom button{grid-template-columns:25px 1fr}.stage{flex:1;min-width:0;position:relative;overflow:hidden;background:#dde1de}.stagebar{position:absolute;z-index:2;left:0;right:0;top:0;height:44px;background:rgba(249,250,248,.95);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#66706b;font-size:12px}.document{display:flex;align-items:center;gap:7px}.document strong{color:#303934;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pages{display:flex;align-items:center;margin-left:8px;border-left:1px solid var(--line);padding-left:8px}.pages button{border:0;background:transparent;font-size:18px}.pages span{min-width:48px;text-align:center}.scale{display:flex;align-items:center;gap:7px}.scale .dot{width:7px;height:7px;border-radius:50%;background:#d66b52}.scale.ok .dot{background:#3b9a70}.stage canvas{width:100%;height:100%;display:block;cursor:crosshair}.zoom{position:absolute;z-index:2;bottom:16px;left:16px;height:36px;background:#fff;display:flex;align-items:center;border:1px solid #cfd5d1;border-radius:5px;box-shadow:0 3px 12px #1b251f15}.zoom button{width:34px;height:34px;border:0;background:transparent;display:grid;place-items:center}.zoom span{font-size:11px;width:52px;text-align:center;color:#55605a}.hint{position:absolute;left:50%;bottom:17px;transform:translateX(-50%);background:#17201ce8;color:#fff;padding:9px 14px;border-radius:5px;font-size:11px;pointer-events:none}.empty-demo{position:absolute;left:50%;top:calc(50% + 40px);transform:translate(-50%,-50%);border:1px solid #aeb7b2;background:#f5f6f4;border-radius:5px;padding:9px 13px;color:#295f4b;font-weight:600}.inspector{width:292px;flex:0 0 292px;background:#fbfcfa;border-left:1px solid var(--line);padding:18px 18px;overflow:auto;z-index:3}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}.panel-head span,.panel-section>span{font-size:9px;font-weight:700;color:#87908b;letter-spacing:1.2px}.panel-head h2{font:700 17px Manrope;margin:4px 0 0}.inspector label{display:block;color:#5d6762;font-size:11px;font-weight:600;margin:14px 0}.inspector input,.inspector select,.panel-section select{margin-top:6px;width:100%;height:38px;border:1px solid #ccd3cf;background:#fff;border-radius:4px;padding:0 9px;color:#26302b;font-size:12px;outline:none}.inspector input:focus,.inspector select:focus{border-color:#3b8065}.quantity{background:#eef3f0;border-left:3px solid #2f775c;padding:14px;margin:18px 0}.quantity span{display:block;font-size:9px;font-weight:700;letter-spacing:.8px;color:#77817b}.quantity strong{display:block;font:700 28px Manrope;margin-top:2px}.quantity small{font-size:12px}.input-unit{position:relative}.input-unit span{position:absolute;right:10px;top:18px;color:#758079}.total-line{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e3e7e4;font-size:11px}.status-note{display:flex;align-items:flex-start;gap:8px;background:#edf6f1;color:#28684f;padding:10px;border-radius:4px;font-size:11px}.status-note span,.status-note small{display:block}.status-note small{font-size:9px;color:#718078;margin-top:2px}.danger{margin-top:24px;border:0;background:transparent;color:#c24f3c;display:flex;align-items:center;gap:7px;font-size:11px;padding:0}.panel-section{border-bottom:1px solid var(--line);padding-bottom:19px;margin-bottom:19px}.swatch-line{display:grid;grid-template-columns:15px 1fr auto;align-items:center;gap:7px;margin-top:10px}.swatch-line i,.mini-total i{width:10px;height:10px;border-radius:2px}.swatch-line b{font-size:11px}.swatch-line small{font-size:9px;color:#7d8581}.mini-total{display:grid;grid-template-columns:12px 1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #e7eae8}.mini-total div b,.mini-total div small{display:block}.mini-total div b{font-size:11px}.mini-total div small{font-size:9px;color:#8a928e}.mini-total strong{font-size:12px}.empty-copy{font-size:11px;line-height:1.55;color:#7a847e}.warning{display:flex;gap:9px;background:#fff5df;border:1px solid #edd7a3;color:#765b20;padding:11px;border-radius:4px}.warning b,.warning span{display:block;font-size:10px}.warning span{margin-top:3px;line-height:1.4}.reopen{position:absolute;right:10px;top:54px;z-index:4;width:36px;height:36px;border:1px solid #cfd5d1;background:#fff;border-radius:5px;display:grid;place-items:center}.modal-back,.drawer-back{position:fixed;inset:0;background:#10171388;z-index:20;display:grid;place-items:center}.cal-modal{width:390px;background:#fff;padding:27px;border-radius:7px;box-shadow:0 25px 70px #1119}.modal-icon{width:42px;height:42px;background:#e6f0eb;color:#23684f;border-radius:6px;display:grid;place-items:center}.cal-modal h2{font:700 21px Manrope;margin:16px 0 5px}.cal-modal p{margin:0 0 18px;color:#6d7671;font-size:13px}.cal-modal label{font-size:11px;font-weight:700}.cal-input{display:flex;margin-top:7px}.cal-input input,.cal-input select{height:42px;border:1px solid #ccd3cf;padding:0 10px}.cal-input input{flex:1;border-radius:4px 0 0 4px}.cal-input select{width:100px;border-left:0;border-radius:0 4px 4px 0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:24px}.modal-actions button{height:37px;border:1px solid #d2d7d4;background:#fff;padding:0 14px;border-radius:4px}.modal-actions .primary{background:#df5e43;border-color:#df5e43}.drawer-back{display:flex;justify-content:flex-end}.takeoff{width:min(820px,90vw);height:100%;background:#f9faf8;box-shadow:-15px 0 50px #1113;display:flex;flex-direction:column}.takeoff header{height:80px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.takeoff header span{font-size:9px;letter-spacing:1px;color:#858e89}.takeoff h2{font:700 20px Manrope;margin:3px 0}.takeoff-summary{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}.takeoff-summary div{padding:20px 24px;border-right:1px solid var(--line)}.takeoff-summary span,.takeoff-summary strong{display:block}.takeoff-summary span{font-size:10px;color:#7d8681}.takeoff-summary strong{font:700 20px Manrope;margin-top:4px}.search{margin:18px 24px 8px;display:flex;align-items:center;gap:8px;border:1px solid #d3d8d5;background:#fff;padding:0 11px;border-radius:4px}.search input{height:38px;flex:1;border:0;outline:0;font-size:12px}.table-wrap{padding:0 24px;overflow:auto;flex:1}table{width:100%;border-collapse:collapse;font-size:11px}th{text-align:left;color:#7c8580;font-size:9px;letter-spacing:.5px;padding:11px 8px;border-bottom:1px solid #cfd5d1}td{padding:12px 8px;border-bottom:1px solid #e0e4e1}tbody tr{cursor:pointer}tbody tr:hover{background:#f0f4f1}td small{display:block;color:#8b938f;margin-top:2px}.badge{display:inline-block;padding:4px 7px;border-radius:10px;background:#e1f0e8;color:#25674d;font-size:9px}.badge.estimée{background:#fff0d2;color:#855f17}.badge.valider{background:#fee4df;color:#a64837}.takeoff footer{border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:14px 24px}.takeoff footer p{font-size:10px;color:#7a837f;max-width:390px}.takeoff footer .primary{height:38px}.toast{position:fixed;z-index:30;left:50%;bottom:25px;transform:translateX(-50%);background:#17201c;color:#fff;border-radius:5px;padding:11px 15px;display:flex;align-items:center;gap:8px;font-size:12px;box-shadow:0 8px 25px #1115;animation:rise .2s ease-out}@keyframes rise{from{opacity:0;transform:translate(-50%,8px)}}
 @media(max-width:900px){.sidebar{width:58px}.sidebar span,.sidebar kbd{display:none}.sidebar nav button,.sidebar-bottom button,.demo{display:grid;grid-template-columns:1fr;place-items:center}.upload span{display:none}.inspector{width:250px;flex-basis:250px}.outline{display:none}.brand b{display:none}.project-title{padding-left:12px}.project-title input{width:160px}.takeoff{width:100vw}}@media(max-width:650px){.topbar{gap:10px;padding:0 10px}.brand span,.project-title span,.top-actions>.icon-btn{display:none}.brandmark{margin:0}.project-title{border:0;padding:0}.project-title input{width:110px}.primary{font-size:0;padding:0;width:38px}.primary svg{width:17px}.inspector{position:absolute;right:0;top:0;bottom:0;width:255px}.takeoff-summary div{padding:14px 10px}.takeoff-summary strong{font-size:15px}.table-wrap{padding:0 10px}.takeoff footer p{display:none}}
 
 /* Workstation layout: ribbon, project tree, drawing surface and live takeoff grid. */
-.topbar{height:38px;flex-basis:38px;padding:0 10px;gap:14px;background:#17231e}.brandmark{width:26px;height:26px}.brand{font-size:12px}.menu{display:flex;height:100%;align-items:stretch}.menu button{border:0;background:transparent;color:#aeb9b3;padding:0 10px;font-size:11px}.menu button:hover,.menu button.active{background:#2b3a33;color:#fff}.project-title{margin-left:auto;flex:0 1 250px;padding-left:12px}.project-title input{font-size:11px}.top-actions button{height:28px}.ribbon{height:86px;flex:0 0 86px;background:#edf2ef;border-bottom:1px solid #bfc9c3;display:flex;align-items:stretch;padding:5px 8px 0;box-shadow:0 1px 2px #17201c15;z-index:4}.ribbon-group{position:relative;display:flex;align-items:flex-start;gap:2px;padding:2px 10px 17px;border-right:1px solid #cbd3ce}.ribbon-group>button{min-width:58px;height:60px;border:0;background:transparent;color:#32413a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:3px;font-size:10px;line-height:1.15}.ribbon-group>button:hover,.ribbon-group>button.active{background:#dce9e2;color:#145b42}.ribbon-group>button svg{width:25px;height:25px;color:#287259}.ribbon-group>button kbd{position:absolute;margin:0 0 31px 40px;font-size:8px;background:#fff;border:1px solid #cad2cd;border-radius:2px;padding:1px 3px;color:#6d7771}.ribbon-group>small{position:absolute;bottom:3px;left:0;right:0;text-align:center;color:#7b8780;font-size:8px;letter-spacing:.4px}.ribbon-group.compact>button{min-width:47px}.ai-group{background:#e6f0eb}.ribbon-group .ai-action{min-width:130px;flex-direction:row;text-align:left;color:#165f45}.ribbon-group .ai-action svg{width:29px;height:29px;color:#df5e43}.ribbon-group .ai-action span{font-size:10px}.ribbon-group .ai-action b{font-size:12px}.workspace{background:#dce1de}.sidebar{width:238px;flex:0 0 238px;padding:0;background:#f7f9f7}.pane-title{height:34px;display:flex;align-items:center;justify-content:space-between;background:#e5ebe7;border-bottom:1px solid #c9d1cc;padding:0 9px;color:#4f5b55}.pane-title span{font-size:9px;font-weight:800;letter-spacing:.8px}.pane-title button{border:0;background:transparent;color:#738078}.side-tabs{display:flex;height:31px;border-bottom:1px solid #d0d6d2}.side-tabs button{flex:1;border:0;background:#f8faf8;font-size:10px;color:#66716b}.side-tabs button.active{color:#1f684d;font-weight:700;border-bottom:2px solid #2e8060}.side-search{height:41px;padding:7px 8px;display:flex;align-items:center;gap:6px}.side-search svg{width:14px;color:#78837d}.side-search input{width:100%;height:27px;border:1px solid #cbd2ce;border-radius:3px;padding:0 7px;font-size:10px}.tree{height:150px;border-bottom:1px solid #cbd2ce;overflow:auto;padding:7px}.tree-root,.tree-page{display:grid;grid-template-columns:17px 1fr;align-items:center;gap:4px;padding:5px 4px;font-size:10px}.tree-page{grid-template-columns:17px 1fr auto;margin-left:11px}.tree-page.active{background:#dcebe3;color:#1f634a}.tree-page em{font-size:8px;font-style:normal;color:#7d8781}.split-title b{background:#2c785b;color:#fff;font-size:9px;border-radius:8px;padding:2px 6px}.measure-tree{flex:1;overflow:auto;padding:7px}.measure-tree p{font-size:10px;color:#8b948f;text-align:center;margin-top:24px}.measure-row{display:grid;grid-template-columns:11px 1fr auto;gap:7px;align-items:center;padding:7px 5px;border-bottom:1px solid #e4e8e5;cursor:pointer}.measure-row:hover,.measure-row.active{background:#e7f0eb}.measure-row i{width:9px;height:9px;border-radius:2px}.measure-row span b,.measure-row span small{display:block}.measure-row span b{font-size:10px}.measure-row span small{font-size:8px;color:#7b8580}.measure-row strong{font-size:9px}.stage{display:flex;flex-direction:column}.stagebar{position:relative;height:34px;flex:0 0 34px}.canvas-wrap{position:relative;flex:1;min-height:180px;overflow:hidden}.stage canvas{width:100%;height:100%}.quantity-grid{height:176px;flex:0 0 176px;background:#fbfcfb;border-top:1px solid #bfc8c2;display:flex;flex-direction:column}.grid-head{height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;background:#e9eeeb;border-bottom:1px solid #cad2cd}.grid-head b{font-size:9px;letter-spacing:.8px}.grid-head span{font-size:9px;color:#737e77}.grid-head button{margin-left:auto;border:0;background:transparent;display:grid;place-items:center}.grid-scroll{overflow:auto;flex:1}.quantity-grid table{font-size:10px}.quantity-grid th{position:sticky;top:0;background:#f4f7f5;padding:7px 9px}.quantity-grid td{padding:7px 9px}.quantity-grid tr.selected{background:#e2eee8}.grid-empty{text-align:center;color:#87918b;padding:28px!important}.inspector{width:258px;flex-basis:258px;padding:0;background:#f9fbf9}.inspector .panel-head{height:48px;margin:0;padding:0 10px;align-items:center;background:#e5ebe7}.inspector .panel-head h2{font-size:13px}.inspector>label,.inspector>.quantity,.inspector>.total-line,.inspector>.status-note,.inspector>.danger,.inspector>.panel-section,.inspector>.warning{margin-left:12px;margin-right:12px}.library-list{padding:7px 0}.library-item{display:grid;grid-template-columns:14px 1fr auto;gap:7px;align-items:center;padding:7px 4px;border-bottom:1px solid #e4e8e5;cursor:pointer}.library-item:hover,.library-item.active{background:#e4eee8}.library-item i{width:11px;height:11px}.library-item span b,.library-item span small{display:block}.library-item span b{font-size:10px}.library-item span small{font-size:8px;color:#7a857e}.library-item em{font-size:8px;font-style:normal;color:#6d7872}.ai-progress{margin:12px;background:#17231e;color:#fff;padding:12px;border-radius:4px}.ai-progress header{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700}.ai-progress p{font-size:9px;color:#b7c3bd;line-height:1.4}.ai-bar{height:4px;background:#3e4b45;border-radius:3px;overflow:hidden}.ai-bar i{display:block;height:100%;width:0;background:#df5e43;transition:width .8s}.ai-progress.running .ai-bar i{width:88%}.ai-progress.done .ai-bar i{width:100%;background:#54b486}@media(max-width:1100px){.ribbon-group.compact{display:none}.menu button:nth-child(n+5){display:none}.sidebar{width:205px;flex-basis:205px}.inspector{width:230px;flex-basis:230px}.ribbon-group{padding-left:4px;padding-right:4px}}@media(max-width:800px){.sidebar{width:54px;flex-basis:54px}.sidebar .pane-title span,.side-tabs,.side-search,.tree,.measure-tree{display:none}.split-title b{margin:auto}.inspector{position:absolute;right:0;top:0;bottom:0;z-index:7}.menu,.project-title{display:none}.ribbon{overflow-x:auto}.quantity-grid{height:145px}.ribbon-group>button{min-width:48px}.ai-group #aiReview{display:none}}
+.topbar{height:38px;flex-basis:38px;padding:0 10px;gap:14px;background:#d9efff}.brandmark{width:26px;height:26px}.brand{font-size:12px}.menu{display:flex;height:100%;align-items:stretch}.menu button{border:0;background:transparent;color:#aeb9b3;padding:0 10px;font-size:11px}.menu button:hover,.menu button.active{background:#2b3a33;color:#fff}.project-title{margin-left:auto;flex:0 1 250px;padding-left:12px}.project-title input{font-size:11px}.top-actions button{height:28px}.ribbon{height:86px;flex:0 0 86px;background:#e6f3fc;border-bottom:1px solid #bfc9c3;display:flex;align-items:stretch;padding:5px 8px 0;box-shadow:0 1px 2px #17201c15;z-index:4}.ribbon-group{position:relative;display:flex;align-items:flex-start;gap:2px;padding:2px 10px 17px;border-right:1px solid #cbd3ce}.ribbon-group>button{min-width:58px;height:60px;border:0;background:transparent;color:#32413a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:3px;font-size:10px;line-height:1.15}.ribbon-group>button:hover,.ribbon-group>button.active{background:#dce9e2;color:#145b42}.ribbon-group>button svg{width:25px;height:25px;color:#287259}.ribbon-group>button kbd{position:absolute;margin:0 0 31px 40px;font-size:8px;background:#fff;border:1px solid #cad2cd;border-radius:2px;padding:1px 3px;color:#6d7771}.ribbon-group>small{position:absolute;bottom:3px;left:0;right:0;text-align:center;color:#7b8780;font-size:8px;letter-spacing:.4px}.ribbon-group.compact>button{min-width:47px}.ai-group{background:#e6f0eb}.ribbon-group .ai-action{min-width:130px;flex-direction:row;text-align:left;color:#165f45}.ribbon-group .ai-action svg{width:29px;height:29px;color:#df5e43}.ribbon-group .ai-action span{font-size:10px}.ribbon-group .ai-action b{font-size:12px}.workspace{background:#dce1de}.sidebar{width:238px;flex:0 0 238px;padding:0;background:#f7f9f7}.pane-title{height:34px;display:flex;align-items:center;justify-content:space-between;background:#e5ebe7;border-bottom:1px solid #c9d1cc;padding:0 9px;color:#4f5b55}.pane-title span{font-size:9px;font-weight:800;letter-spacing:.8px}.pane-title button{border:0;background:transparent;color:#738078}.side-tabs{display:flex;height:31px;border-bottom:1px solid #d0d6d2}.side-tabs button{flex:1;border:0;background:#f8faf8;font-size:10px;color:#66716b}.side-tabs button.active{color:#1f684d;font-weight:700;border-bottom:2px solid #2e8060}.side-search{height:41px;padding:7px 8px;display:flex;align-items:center;gap:6px}.side-search svg{width:14px;color:#78837d}.side-search input{width:100%;height:27px;border:1px solid #cbd2ce;border-radius:3px;padding:0 7px;font-size:10px}.tree{height:150px;border-bottom:1px solid #cbd2ce;overflow:auto;padding:7px}.tree-root,.tree-page{display:grid;grid-template-columns:17px 1fr;align-items:center;gap:4px;padding:5px 4px;font-size:10px}.tree-page{grid-template-columns:17px 1fr auto;margin-left:11px}.tree-page.active{background:#dcebe3;color:#1f634a}.tree-page em{font-size:8px;font-style:normal;color:#7d8781}.split-title b{background:#2c785b;color:#fff;font-size:9px;border-radius:8px;padding:2px 6px}.measure-tree{flex:1;overflow:auto;padding:7px}.measure-tree p{font-size:10px;color:#8b948f;text-align:center;margin-top:24px}.measure-row{display:grid;grid-template-columns:11px 1fr auto;gap:7px;align-items:center;padding:7px 5px;border-bottom:1px solid #e4e8e5;cursor:pointer}.measure-row:hover,.measure-row.active{background:#e7f0eb}.measure-row i{width:9px;height:9px;border-radius:2px}.measure-row span b,.measure-row span small{display:block}.measure-row span b{font-size:10px}.measure-row span small{font-size:8px;color:#7b8580}.measure-row strong{font-size:9px}.stage{display:flex;flex-direction:column}.stagebar{position:relative;height:34px;flex:0 0 34px}.canvas-wrap{position:relative;flex:1;min-height:180px;overflow:hidden}.stage canvas{width:100%;height:100%}.quantity-grid{height:176px;flex:0 0 176px;background:#fbfcfb;border-top:1px solid #bfc8c2;display:flex;flex-direction:column}.grid-head{height:32px;display:flex;align-items:center;gap:9px;padding:0 10px;background:#e9eeeb;border-bottom:1px solid #cad2cd}.grid-head b{font-size:9px;letter-spacing:.8px}.grid-head span{font-size:9px;color:#737e77}.grid-head button{margin-left:auto;border:0;background:transparent;display:grid;place-items:center}.grid-scroll{overflow:auto;flex:1}.quantity-grid table{font-size:10px}.quantity-grid th{position:sticky;top:0;background:#f4f7f5;padding:7px 9px}.quantity-grid td{padding:7px 9px}.quantity-grid tr.selected{background:#e2eee8}.grid-empty{text-align:center;color:#87918b;padding:28px!important}.inspector{width:258px;flex-basis:258px;padding:0;background:#f9fbf9}.inspector .panel-head{height:48px;margin:0;padding:0 10px;align-items:center;background:#e5ebe7}.inspector .panel-head h2{font-size:13px}.inspector>label,.inspector>.quantity,.inspector>.total-line,.inspector>.status-note,.inspector>.danger,.inspector>.panel-section,.inspector>.warning{margin-left:12px;margin-right:12px}.library-list{padding:7px 0}.library-item{display:grid;grid-template-columns:14px 1fr auto;gap:7px;align-items:center;padding:7px 4px;border-bottom:1px solid #e4e8e5;cursor:pointer}.library-item:hover,.library-item.active{background:#e4eee8}.library-item i{width:11px;height:11px}.library-item span b,.library-item span small{display:block}.library-item span b{font-size:10px}.library-item span small{font-size:8px;color:#7a857e}.library-item em{font-size:8px;font-style:normal;color:#6d7872}.ai-progress{margin:12px;background:#d9efff;color:#fff;padding:12px;border-radius:4px}.ai-progress header{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700}.ai-progress p{font-size:9px;color:#b7c3bd;line-height:1.4}.ai-bar{height:4px;background:#3e4b45;border-radius:3px;overflow:hidden}.ai-bar i{display:block;height:100%;width:0;background:#df5e43;transition:width .8s}.ai-progress.running .ai-bar i{width:88%}.ai-progress.done .ai-bar i{width:100%;background:#54b486}@media(max-width:1100px){.ribbon-group.compact{display:none}.menu button:nth-child(n+5){display:none}.sidebar{width:205px;flex-basis:205px}.inspector{width:230px;flex-basis:230px}.ribbon-group{padding-left:4px;padding-right:4px}}@media(max-width:800px){.sidebar{width:54px;flex-basis:54px}.sidebar .pane-title span,.side-tabs,.side-search,.tree,.measure-tree{display:none}.split-title b{margin:auto}.inspector{position:absolute;right:0;top:0;bottom:0;z-index:7}.menu,.project-title{display:none}.ribbon{overflow-x:auto}.quantity-grid{height:145px}.ribbon-group>button{min-width:48px}.ai-group #aiReview{display:none}}
 /* The scale dialog follows the existing workstation palette. */
-button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #256d54;outline-offset:3px}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #236b99;outline-offset:3px}
 [hidden]{display:none!important}
 .ribbon{overflow-x:auto;overflow-y:hidden}
 .scale{max-width:55%;min-width:0;border:0;background:transparent;font:inherit;text-align:right;cursor:pointer;color:#4b5550}
 .scale span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scale.needs-check .dot{background:#a4680b}.scale.needs-check{color:#765013}
 .document{min-width:0}.document strong{overflow:hidden;text-overflow:ellipsis}
-.scale-modal{width:min(600px,calc(100% - 32px));max-height:90dvh;overflow:auto;padding:24px;font:13px/1.45 Arial,sans-serif;color:#19211d}
+.scale-modal{width:min(600px,calc(100% - 32px));max-height:90dvh;overflow:auto;padding:24px;font:13px/1.45 Arial,sans-serif;color:#18354d}
 .scale-heading{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
 .scale-modal h2{font:700 21px/1.2 Arial,sans-serif;margin:0 0 6px}
 .scale-modal p{font:13px/1.45 Arial,sans-serif;color:#4b5550;margin:6px 0 12px}
-.scale-modal .scale-current{border-left:3px solid #256d54;background:#edf2ef;padding:10px 12px;margin:8px 0 18px}
+.scale-modal .scale-current{border-left:3px solid #236b99;background:#e6f3fc;padding:10px 12px;margin:8px 0 18px}
 .scale-tabs{display:flex;gap:4px;border-bottom:1px solid #b6c2ba;margin-bottom:18px}
 .scale-tabs button{flex:1;border:0;border-bottom:3px solid transparent;background:transparent;color:#4b5550;padding:9px 4px;font-size:12px}
-.scale-tabs button[aria-selected=true]{border-bottom-color:#256d54;color:#19563e;font-weight:700}
+.scale-tabs button[aria-selected=true]{border-bottom-color:#236b99;color:#18537d;font-weight:700}
 .scale-fields{border:0;padding:0;margin:0 0 12px;min-width:0}
 .scale-fields legend{font-weight:700;margin-bottom:12px;font-size:13px}
-.scale-modal input:not([type=checkbox]),.scale-modal select{display:block;min-width:0;max-width:100%;width:100%;height:40px;border:1px solid #7a8980;border-radius:4px;background:#fff;color:#19211d;padding:0 9px;font:14px Arial,sans-serif;margin-top:6px}
+.scale-modal input:not([type=checkbox]),.scale-modal select{display:block;min-width:0;max-width:100%;width:100%;height:40px;border:1px solid #7a8980;border-radius:4px;background:#fff;color:#18354d;padding:0 9px;font:14px Arial,sans-serif;margin-top:6px}
 .scale-modal label,.scale-modal .field-label{font-size:12px;font-weight:700}
 .imperial-fields{display:grid;grid-template-columns:1fr 1fr 1.7fr;gap:12px}
 .fraction-fields{display:grid;grid-template-columns:1fr 10px 1fr;gap:6px;align-items:center}
 .fraction-fields span{text-align:center;margin-top:6px;font-size:18px}
 .metric-fields{display:grid;grid-template-columns:1fr 140px;gap:12px}
 .scale-modal .scale-help{font-size:12px;margin:9px 0;color:#4b5550}
-.scale-reference{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#edf2ef;border-radius:4px;padding:12px;margin:12px 0}
+.scale-reference{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#e6f3fc;border-radius:4px;padding:12px;margin:12px 0}
 .scale-reference span{min-width:0;font-size:12px}
-.scale-reference button,.selection-action{border:1px solid #256d54;border-radius:4px;color:#19563e;background:#fff;padding:8px 10px;flex-shrink:0;font-size:12px}
+.scale-reference button,.selection-action{border:1px solid #236b99;border-radius:4px;color:#18537d;background:#fff;padding:8px 10px;flex-shrink:0;font-size:12px}
 .scale-modal .scale-check{display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:12px 0;font-size:12px}
-.scale-check input{flex:0 0 16px;width:16px;height:16px;margin:0;accent-color:#256d54}
+.scale-check input{flex:0 0 16px;width:16px;height:16px;margin:0;accent-color:#236b99}
 .scale-modal .scale-error{color:#8e251b;background:#fff0ed;border:1px solid #b84d3e;padding:12px;border-radius:4px;margin:12px 0}
 .scale-modal .modal-actions{border-top:1px solid #c4cdc7;padding-top:18px;margin-top:18px}
-.scale-modal .modal-actions .primary{background:#256d54;border-color:#256d54;color:white;font-size:13px;min-width:150px;width:auto}
-.scale-modal .modal-actions .primary:disabled{background:#dce3df;color:#4b5550;border-color:#b6c2ba;opacity:1;cursor:not-allowed}
+.scale-modal .modal-actions .primary{background:#236b99;border-color:#236b99;color:white;font-size:13px;min-width:150px;width:auto}
+.scale-modal .modal-actions .primary:disabled{background:#d8e8f3;color:#4b5550;border-color:#b6c2ba;opacity:1;cursor:not-allowed}
 .selection-help{font-size:12px;line-height:1.5;color:#4b5550}
 .selection-action{display:block;width:100%;margin:12px 0;text-align:left}
 .selection-action.danger{color:#8e251b;border-color:#b84d3e;margin:12px 0;padding:8px 10px}
@@ -53,39 +53,39 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 
 /* V4 additions share the workstation's existing palette and geometry. */
 html,body{width:100%;height:100%}body{font-family:Arial,sans-serif}.app{height:100dvh;min-width:0}
-button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid #256d54;outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid #236b99;outline-offset:2px}
 .ribbon{overflow-x:auto;overflow-y:hidden;flex-shrink:0;scrollbar-width:thin}.ribbon-group{flex-shrink:0}.ribbon-group>button{flex-shrink:0}
 .workspace,.stage,.canvas-wrap{min-width:0;min-height:0}.canvas-wrap{touch-action:none;overscroll-behavior:contain}.stagebar .document{min-width:0;flex:1;overflow:hidden}.stagebar .document strong{max-width:min(420px,40vw);cursor:text}.scale{min-width:0;flex-shrink:1}.scale span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hint{max-width:calc(100% - 24px);text-align:center;line-height:1.45;bottom:54px}
-.sidebar{overflow:hidden}.tree{overflow-y:auto;max-height:46%;min-height:70px}.sheet-list{margin:6px 0}.sheet-row{display:flex;gap:6px;width:100%;border:0;border-left:3px solid transparent;background:transparent;color:#19211d;padding:8px 6px;text-align:left;align-items:center;min-width:0}.sheet-row:hover{background:#e6ede9}.sheet-row.active{border-left-color:#256d54;background:#dce9e2}.sheet-number{flex:0 0 22px;color:#4b5550;text-align:center;font-variant-numeric:tabular-nums;font-size:11px}.sheet-row>span:last-child{min-width:0}.sheet-row b{display:block;font-size:11px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-row small{display:block;font-size:10px;color:#4b5550;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-index-status{font-size:10px;color:#4b5550;padding:0 9px}.pages-folded .sidebar{display:none}.v4-small-button{border:1px solid #718078;color:#256d54;background:#fff;min-width:28px;min-height:28px;border-radius:4px;margin-right:4px;flex-shrink:0}.v4-properties{border-top:1px solid #d9dedb;margin-top:18px;padding-top:12px}.v4-properties h3{font-size:13px;margin:12px 0 6px}.v4-properties p{font-size:11px;line-height:1.5;color:#4b5550}.v4-properties .check-label{display:flex;align-items:center;gap:8px;line-height:1.4}.v4-properties .check-label input{width:16px;height:16px;margin:0;flex-shrink:0}.v4-properties .selection-action{width:100%;min-height:36px;font-size:11px;margin:6px 0;white-space:normal;text-align:left}.v4-dialog{background:#fff;color:#19211d;border:1px solid #718078;border-radius:6px;width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;box-shadow:0 20px 60px #10171344;font:13px/1.45 Arial,sans-serif}.v4-dialog.wide{width:min(820px,calc(100vw - 24px))}.v4-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.v4-dialog h2{font-size:21px;line-height:1.2;margin:0;font-weight:700}.v4-dialog header button{border:1px solid #718078;border-radius:4px;background:#fff;min-width:32px;min-height:32px;color:#19211d;font-size:20px}.v4-dialog p{color:#4b5550;line-height:1.5;margin:12px 0}.v4-dialog label{display:block;font-size:12px;font-weight:600;color:#19211d}.v4-dialog input:not([type=checkbox]),.v4-dialog select{display:block;width:100%;max-width:100%;min-width:0;height:38px;border:1px solid #718078;border-radius:4px;padding:6px 8px;color:#19211d;background:#fff;font:13px Arial,sans-serif;margin-top:6px}.v4-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.v4-dialog .modal-actions{flex-wrap:wrap}.v4-dialog .modal-actions button{min-height:38px;height:auto;white-space:normal}.v4-dialog .modal-actions .primary{color:#fff;background:#256d54;border-color:#256d54;font-size:13px;min-width:120px}.v4-dialog button:disabled{opacity:.5;cursor:not-allowed}.v4-error{color:#a13826!important}.detection-table{overflow:auto;max-height:44dvh;border:1px solid #d9dedb;margin:12px 0}.detection-table table{font-size:12px;min-width:570px}.detection-table th{background:#edf2ef;position:sticky;top:0;font-size:11px;color:#4b5550}.detection-table td{vertical-align:middle;padding:8px}.detection-table input{width:18px;height:18px}.detection-table select{min-width:150px;font-size:11px}.detection-table small{font-size:11px;max-width:270px;line-height:1.45;color:#4b5550}.shortcut-list>div{display:grid;grid-template-columns:minmax(150px,40%) 1fr;gap:12px;border-bottom:1px solid #d9dedb;padding:9px 0;align-items:center}.shortcut-list kbd{font:12px/1.4 Arial,sans-serif;font-weight:700;color:#256d54}.shortcut-list span{font-size:12px;color:#4b5550}.quantity-grid .grid-empty{font-size:12px;color:#4b5550}.toast{max-width:calc(100vw - 24px);line-height:1.45}.topbar,.topbar>*{min-width:0}.menu{flex-shrink:0}.takeoff small{line-height:1.5}.zoom button{font-size:18px}.zoom span{font-variant-numeric:tabular-nums}
+.sidebar{overflow:hidden}.tree{overflow-y:auto;max-height:46%;min-height:70px}.sheet-list{margin:6px 0}.sheet-row{display:flex;gap:6px;width:100%;border:0;border-left:3px solid transparent;background:transparent;color:#18354d;padding:8px 6px;text-align:left;align-items:center;min-width:0}.sheet-row:hover{background:#e6ede9}.sheet-row.active{border-left-color:#236b99;background:#dce9e2}.sheet-number{flex:0 0 22px;color:#4b5550;text-align:center;font-variant-numeric:tabular-nums;font-size:11px}.sheet-row>span:last-child{min-width:0}.sheet-row b{display:block;font-size:11px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-row small{display:block;font-size:10px;color:#4b5550;line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sheet-index-status{font-size:10px;color:#4b5550;padding:0 9px}.pages-folded .sidebar{display:none}.v4-small-button{border:1px solid #718078;color:#236b99;background:#fff;min-width:28px;min-height:28px;border-radius:4px;margin-right:4px;flex-shrink:0}.v4-properties{border-top:1px solid #d9dedb;margin-top:18px;padding-top:12px}.v4-properties h3{font-size:13px;margin:12px 0 6px}.v4-properties p{font-size:11px;line-height:1.5;color:#4b5550}.v4-properties .check-label{display:flex;align-items:center;gap:8px;line-height:1.4}.v4-properties .check-label input{width:16px;height:16px;margin:0;flex-shrink:0}.v4-properties .selection-action{width:100%;min-height:36px;font-size:11px;margin:6px 0;white-space:normal;text-align:left}.v4-dialog{background:#fff;color:#18354d;border:1px solid #718078;border-radius:6px;width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;box-shadow:0 20px 60px #10171344;font:13px/1.45 Arial,sans-serif}.v4-dialog.wide{width:min(820px,calc(100vw - 24px))}.v4-dialog>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px}.v4-dialog h2{font-size:21px;line-height:1.2;margin:0;font-weight:700}.v4-dialog header button{border:1px solid #718078;border-radius:4px;background:#fff;min-width:32px;min-height:32px;color:#18354d;font-size:20px}.v4-dialog p{color:#4b5550;line-height:1.5;margin:12px 0}.v4-dialog label{display:block;font-size:12px;font-weight:600;color:#18354d}.v4-dialog input:not([type=checkbox]),.v4-dialog select{display:block;width:100%;max-width:100%;min-width:0;height:38px;border:1px solid #718078;border-radius:4px;padding:6px 8px;color:#18354d;background:#fff;font:13px Arial,sans-serif;margin-top:6px}.v4-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.v4-dialog .modal-actions{flex-wrap:wrap}.v4-dialog .modal-actions button{min-height:38px;height:auto;white-space:normal}.v4-dialog .modal-actions .primary{color:#fff;background:#236b99;border-color:#236b99;font-size:13px;min-width:120px}.v4-dialog button:disabled{opacity:.5;cursor:not-allowed}.v4-error{color:#a13826!important}.detection-table{overflow:auto;max-height:44dvh;border:1px solid #d9dedb;margin:12px 0}.detection-table table{font-size:12px;min-width:570px}.detection-table th{background:#e6f3fc;position:sticky;top:0;font-size:11px;color:#4b5550}.detection-table td{vertical-align:middle;padding:8px}.detection-table input{width:18px;height:18px}.detection-table select{min-width:150px;font-size:11px}.detection-table small{font-size:11px;max-width:270px;line-height:1.45;color:#4b5550}.shortcut-list>div{display:grid;grid-template-columns:minmax(150px,40%) 1fr;gap:12px;border-bottom:1px solid #d9dedb;padding:9px 0;align-items:center}.shortcut-list kbd{font:12px/1.4 Arial,sans-serif;font-weight:700;color:#236b99}.shortcut-list span{font-size:12px;color:#4b5550}.quantity-grid .grid-empty{font-size:12px;color:#4b5550}.toast{max-width:calc(100vw - 24px);line-height:1.45}.topbar,.topbar>*{min-width:0}.menu{flex-shrink:0}.takeoff small{line-height:1.5}.zoom button{font-size:18px}.zoom span{font-variant-numeric:tabular-nums}
 @media(max-width:1100px){.menu{display:none}.sidebar{width:190px;flex-basis:190px}.inspector{width:245px;flex-basis:245px}.stagebar .document strong{max-width:220px}}
 @media(max-width:900px){.sidebar{width:176px;flex-basis:176px}.sidebar span,.sidebar kbd{display:initial}.sheet-row>span:last-child{display:block}.ribbon{height:90px;flex-basis:90px}.topbar .project-title{flex:1}.topbar .project-title input{width:100%}.stagebar .document strong{max-width:160px}.hint{font-size:11px}.tree{max-height:40%}}
 @media(max-width:780px){.inspector{position:absolute;top:0;right:0;bottom:0;width:min(290px,86vw);max-width:100%;background:#fbfcfa;box-shadow:-4px 0 16px #10171322}.sidebar{position:absolute;top:0;left:0;bottom:0;width:min(270px,85vw);z-index:5;box-shadow:4px 0 16px #10171322}.tree{flex:none;max-height:52%}.stagebar{padding:6px;flex-wrap:wrap;gap:4px}.scale{flex:1;max-width:100%}.document strong{max-width:160px!important}.topbar .brand span,.topbar .brand b{display:none}.topbar{gap:8px}.project-title input{max-width:100%}.quantity-grid{height:145px;flex-basis:145px}}
 @media(max-width:480px){.topbar{height:42px;flex-basis:42px;padding:0 8px}.project-title{max-width:calc(100% - 125px);margin-left:0;padding-left:0}.project-title input{font-size:12px;width:100%;max-width:100%}.top-actions{gap:4px}.top-actions .primary{width:38px;min-width:38px}.v4-dialog{padding:16px;box-shadow:none;width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}.v4-dialog h2{font-size:19px}.v4-fields{display:block}.v4-fields label{margin-bottom:12px}.v4-dialog .modal-actions{display:block}.v4-dialog .modal-actions button{display:block;width:100%;margin-top:10px;min-height:42px;font-size:13px}.shortcut-list>div{display:block}.shortcut-list kbd{display:block;margin-bottom:4px}.stagebar .document{width:100%;flex-basis:100%}.stagebar .document strong{max-width:150px!important}.hint{bottom:53px;font-size:10px;padding:6px;max-height:54px;overflow:hidden}.stagebar #showProperties{margin-left:auto}.stagebar .scale{max-width:calc(100% - 40px)}.scale-modal .modal-actions .primary{width:100%;font-size:13px}.v4-dialog .primary{width:auto}.quantity-grid{height:130px;flex-basis:130px}.quantity-grid table{min-width:600px}.quantity-grid .grid-scroll{overflow:auto}.ribbon{height:88px;flex-basis:88px}.modal-back{padding:0}.zoom{left:8px;bottom:10px}.sheet-row b,.sheet-row small{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
-.v4-dialog.v5-wide{width:min(1300px,calc(100vw - 24px))}.v5-wide h3,.v4-dialog h3{font-size:15px;margin:24px 0 12px}.v5-check{display:flex!important;align-items:center;gap:9px;margin:16px 0;line-height:1.45}.v5-check input{width:18px;height:18px;flex:0 0 18px}.v5-component{border:1px solid #b7c4bc;border-radius:6px;padding:12px;margin:18px 0}.v5-component legend{padding:0 6px;font-weight:700;color:#256d54}.v5-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.v5-stats>div{padding:16px;border:1px solid #b7c4bc;border-radius:6px;background:#edf2ef}.v5-stats span{display:block;font-size:12px;color:#4b5550;margin-bottom:8px}.v5-stats b{font-size:21px;line-height:1.2;font-variant-numeric:tabular-nums}.v5-toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:18px 0}.v5-toolbar label{flex:1 1 280px}.v5-toolbar button,.v5-sources button{border:1px solid #718078;border-radius:4px;padding:9px 12px;background:#fff;color:#19211d;min-height:38px;font:600 13px Arial,sans-serif}.v5-toolbar .primary{background:#256d54;color:#fff;border-color:#256d54}.v5-order-table{overflow:auto;max-height:42dvh;border:1px solid #b7c4bc;border-radius:4px;margin:12px 0}.v5-order-table table{min-width:1040px;width:100%;font-size:12px;border-collapse:collapse}.v5-order-table th{background:#edf2ef;position:sticky;top:0;color:#19211d;font-size:11px;text-align:left;padding:10px 9px;white-space:normal}.v5-order-table td{padding:10px 9px;vertical-align:top;min-width:90px;line-height:1.45;font-variant-numeric:tabular-nums;border-bottom:1px solid #d9dedb;white-space:normal}.v5-order-table td:first-child{min-width:150px}.v5-order-table td:last-child{min-width:180px;color:#75412c}.v5-order-table b,.v5-order-table small{display:block}.v5-order-table small{font-size:11px;color:#4b5550;margin-bottom:3px;line-height:1.4}.v5-sources{margin-top:18px}.v5-sources summary{cursor:pointer;font-weight:700;color:#256d54;min-height:32px;padding:6px 0}.v5-order-table td:empty:after{content:'—';color:#4b5550}.v5-wide .v5-order-table td{font-size:12px}.v4-dialog input:focus-visible,.v4-dialog select:focus-visible,.v4-dialog button:focus-visible,.v5-sources summary:focus-visible{outline:3px solid #256d54;outline-offset:2px}
+.v4-dialog.v5-wide{width:min(1300px,calc(100vw - 24px))}.v5-wide h3,.v4-dialog h3{font-size:15px;margin:24px 0 12px}.v5-check{display:flex!important;align-items:center;gap:9px;margin:16px 0;line-height:1.45}.v5-check input{width:18px;height:18px;flex:0 0 18px}.v5-component{border:1px solid #b7c4bc;border-radius:6px;padding:12px;margin:18px 0}.v5-component legend{padding:0 6px;font-weight:700;color:#236b99}.v5-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.v5-stats>div{padding:16px;border:1px solid #b7c4bc;border-radius:6px;background:#e6f3fc}.v5-stats span{display:block;font-size:12px;color:#4b5550;margin-bottom:8px}.v5-stats b{font-size:21px;line-height:1.2;font-variant-numeric:tabular-nums}.v5-toolbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:18px 0}.v5-toolbar label{flex:1 1 280px}.v5-toolbar button,.v5-sources button{border:1px solid #718078;border-radius:4px;padding:9px 12px;background:#fff;color:#18354d;min-height:38px;font:600 13px Arial,sans-serif}.v5-toolbar .primary{background:#236b99;color:#fff;border-color:#236b99}.v5-order-table{overflow:auto;max-height:42dvh;border:1px solid #b7c4bc;border-radius:4px;margin:12px 0}.v5-order-table table{min-width:1040px;width:100%;font-size:12px;border-collapse:collapse}.v5-order-table th{background:#e6f3fc;position:sticky;top:0;color:#18354d;font-size:11px;text-align:left;padding:10px 9px;white-space:normal}.v5-order-table td{padding:10px 9px;vertical-align:top;min-width:90px;line-height:1.45;font-variant-numeric:tabular-nums;border-bottom:1px solid #d9dedb;white-space:normal}.v5-order-table td:first-child{min-width:150px}.v5-order-table td:last-child{min-width:180px;color:#75412c}.v5-order-table b,.v5-order-table small{display:block}.v5-order-table small{font-size:11px;color:#4b5550;margin-bottom:3px;line-height:1.4}.v5-sources{margin-top:18px}.v5-sources summary{cursor:pointer;font-weight:700;color:#236b99;min-height:32px;padding:6px 0}.v5-order-table td:empty:after{content:'—';color:#4b5550}.v5-wide .v5-order-table td{font-size:12px}.v4-dialog input:focus-visible,.v4-dialog select:focus-visible,.v4-dialog button:focus-visible,.v5-sources summary:focus-visible{outline:3px solid #236b99;outline-offset:2px}
 @media(max-width:780px){.v5-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.v5-stats b{font-size:18px}.v5-toolbar button{flex:1 1 180px}.v5-order-table{max-height:48dvh}.v4-dialog.v5-wide{padding:16px}}
 @media(max-width:420px){.v5-stats{gap:6px}.v5-stats>div{padding:10px}.v5-stats span{font-size:11px}.v5-stats b{font-size:16px}.v5-component .v4-fields{display:block}.v5-toolbar{gap:8px}}
 
-.v6-surface-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.v6-surface-numbers>div{border:1px solid #718078;background:#edf2ef;border-radius:6px;padding:12px;min-width:0}.v6-surface-numbers span{display:block;font:12px/1.45 Arial,sans-serif;color:#4b5550;margin-bottom:6px}.v6-surface-numbers b{font:700 18px/1.3 Arial,sans-serif;font-variant-numeric:tabular-nums;color:#19211d}.v6-edit-section{border-top:1px solid #b7c4bc;margin-top:18px;padding-top:6px}.v6-edit-section h3{margin-top:12px}.v6-action-row{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.v6-action-row button,.v6-fixture-row button,.v6-edit-section>.selection-action{min-height:38px;max-width:100%;border:1px solid #718078;border-radius:4px;background:#fff;color:#256d54;font:600 12px/1.45 Arial,sans-serif;padding:8px 10px;white-space:normal}.v6-fixture-row{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9dedb;padding:12px 0}.v6-fixture-row>div:first-child{flex:1;min-width:0}.v6-fixture-row b,.v6-fixture-row small{display:block;line-height:1.45}.v6-fixture-row small{font-size:11px;color:#4b5550;margin-top:4px}.v6-pending{background:#fff5ed;border:1px solid #b65335;border-radius:6px;color:#873b23;padding:12px;margin:12px 0}.v6-pending p{color:#75412c}.v6-fixture-row button{flex:0 1 auto}.v6-action-row button:hover,.v6-fixture-row button:hover{background:#edf2ef}
+.v6-surface-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.v6-surface-numbers>div{border:1px solid #718078;background:#e6f3fc;border-radius:6px;padding:12px;min-width:0}.v6-surface-numbers span{display:block;font:12px/1.45 Arial,sans-serif;color:#4b5550;margin-bottom:6px}.v6-surface-numbers b{font:700 18px/1.3 Arial,sans-serif;font-variant-numeric:tabular-nums;color:#18354d}.v6-edit-section{border-top:1px solid #b7c4bc;margin-top:18px;padding-top:6px}.v6-edit-section h3{margin-top:12px}.v6-action-row{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.v6-action-row button,.v6-fixture-row button,.v6-edit-section>.selection-action{min-height:38px;max-width:100%;border:1px solid #718078;border-radius:4px;background:#fff;color:#236b99;font:600 12px/1.45 Arial,sans-serif;padding:8px 10px;white-space:normal}.v6-fixture-row{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9dedb;padding:12px 0}.v6-fixture-row>div:first-child{flex:1;min-width:0}.v6-fixture-row b,.v6-fixture-row small{display:block;line-height:1.45}.v6-fixture-row small{font-size:11px;color:#4b5550;margin-top:4px}.v6-pending{background:#fff5ed;border:1px solid #b65335;border-radius:6px;color:#873b23;padding:12px;margin:12px 0}.v6-pending p{color:#75412c}.v6-fixture-row button{flex:0 1 auto}.v6-action-row button:hover,.v6-fixture-row button:hover{background:#e6f3fc}
 @media(max-width:620px){.v6-fixture-row{flex-wrap:wrap}.v6-fixture-row>div:first-child{flex-basis:100%}.v6-surface-numbers b{font-size:16px}}
 @media(max-width:480px){.v6-surface-numbers{display:block}.v6-surface-numbers>div{margin-bottom:9px}.v6-action-row,.v6-fixture-row{display:block}.v6-action-row button,.v6-fixture-row button{display:block;width:100%;margin-top:9px}.v6-pending{padding:12px}.v6-edit-section .selection-action{width:100%}}
 
 
 /* V7 workstation and review panel. The visual tokens here own new UI. */
-:root{--v7-ink:#192b22;--v7-muted:#4b5c52;--v7-paper:#fff;--v7-ground:#eef2ef;--v7-line:#c6d0ca;--v7-accent:#256d54;--v7-focus:#17583f;--v7-warn:#8b4519;--v7-space:8px}
+:root{--v7-ink:#17354d;--v7-muted:#526b7f;--v7-paper:#fff;--v7-ground:#eef7fd;--v7-line:#bfd6e5;--v7-accent:#236b99;--v7-focus:#174b72;--v7-warn:#8b4519;--v7-space:8px}
 .app{color:var(--v7-ink);background:var(--v7-ground);font:13px/1.45 Arial,sans-serif}
 .app button,.app input,.app select{font-family:inherit}
 .app .primary{background:var(--v7-accent);border-color:var(--v7-accent);color:#fff}
 .topbar{height:48px;flex-basis:48px;padding:0 16px;gap:18px}
-.brand{font-size:12px;gap:6px;white-space:nowrap}.version-mark{font-size:10px;font-weight:700;border:1px solid #749486;border-radius:3px;padding:1px 4px;color:#dbe9e0;margin-left:4px}
+.brand{font-size:12px;gap:6px;white-space:nowrap}.version-mark{font-size:10px;font-weight:700;border:1px solid #74a5c8;border-radius:3px;padding:1px 4px;color:#254d6c;margin-left:4px}
 .project-title{min-width:0;flex:1}.project-title input{max-width:240px;font-size:13px}.top-actions{flex-shrink:0}
-.workspace{position:relative;min-width:0;min-height:0;flex:1;overflow:hidden}.sidebar{width:214px;flex-basis:214px;background:#f7faf8;border-right:1px solid var(--v7-line)}
+.workspace{position:relative;min-width:0;min-height:0;flex:1;overflow:hidden}.sidebar{width:214px;flex-basis:214px;background:#f3faff;border-right:1px solid var(--v7-line)}
 .pane-title{font-size:10px;letter-spacing:.08em;color:var(--v7-muted)}.measure-row b,.sheet-row strong{font-size:12px}.sheet-row small,.measure-row small{font-size:11px;color:var(--v7-muted)}
 .stage{min-width:0;min-height:0}.stagebar{height:42px;flex-basis:42px;background:#fff;padding:0 12px}.stagebar .document strong{font-size:12px;max-width:350px}
-.scale{font-size:11px;max-width:48%;color:var(--v7-muted)}.canvas-wrap{background:#dfe6e1;min-height:140px;flex:1}
+.scale{font-size:11px;max-width:48%;color:var(--v7-muted)}.canvas-wrap{background:#e3eef5;min-height:140px;flex:1}
 .hint{max-width:calc(100% - 24px);font-size:11px;line-height:1.45;bottom:56px;padding:8px 12px}.empty-demo{padding:12px 16px}
-.inspector{width:292px;flex-basis:292px;background:#f9fbfa;border-left:1px solid var(--v7-line);overflow:auto;min-width:0}.inspector label{font-size:12px}.inspector .panel-head h2{font:700 17px/1.3 Arial,sans-serif}
+.inspector{width:292px;flex-basis:292px;background:#f5faff;border-left:1px solid var(--v7-line);overflow:auto;min-width:0}.inspector label{font-size:12px}.inspector .panel-head h2{font:700 17px/1.3 Arial,sans-serif}
 .inspector-close{display:block;position:sticky;top:0;margin:8px 8px 0 auto;padding:6px 10px;z-index:2;background:white;border:1px solid #7b8b81;border-radius:4px;color:var(--v7-ink)}
 #compactValidation{display:flex;align-items:center;gap:12px;margin-left:auto;white-space:nowrap;flex-shrink:0}#compactValidation span{font-size:10px}#compactValidation strong{font-variant-numeric:tabular-nums}#compactValidation button{min-height:26px;padding:3px 7px;background:white;border:1px solid #7b8b81;border-radius:3px;color:var(--v7-accent);font-size:11px;cursor:pointer}#compactValidation button:disabled{color:#69746d;cursor:default}.grid-head{white-space:nowrap;overflow-x:auto;gap:10px}.grid-head>#collapseGrid{flex-shrink:0;margin-left:0}.sanitary-report{max-height:180px;overflow:auto;margin:6px 0}.sanitary-report button{margin:3px;padding:4px}.review-pagination{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px;border-bottom:1px solid var(--v7-line)}.review-pagination button{padding:4px 7px}.review-filter{margin:6px 0}
 @media(max-width:1000px){#compactValidation>span{display:none}}
@@ -133,7 +133,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 @media(max-width:520px){.surface-legend{font-size:10px}.space-legend-keys{order:3;width:100%}.surface-labels{margin-left:auto}.surface-legend-note{width:auto;order:4}}
 
 /* This file owns the single exposed ribbon and its manual status line. */
-:root{--manual-paper:#f4f7f5;--manual-white:#ffffff;--manual-ink:#192b22;--manual-muted:#4b5c52;--manual-border:#7b8b81;--manual-divider:#c6d0ca;--manual-focus:#17583f;--manual-area:#256d54;--manual-line:#25649a;--manual-segment:#8a5c16;--manual-count:#6846a3;--manual-active:#e4efe8;--manual-space:4px}
+:root{--manual-paper:#eff7fd;--manual-white:#ffffff;--manual-ink:#17354d;--manual-muted:#526b7f;--manual-border:#7b8b81;--manual-divider:#bfd6e5;--manual-focus:#174b72;--manual-area:#236b99;--manual-line:#25649a;--manual-segment:#8a5c16;--manual-count:#6846a3;--manual-active:#d7edfc;--manual-space:4px}
 .manual-ribbon{position:relative;display:flex;flex-direction:column;flex-shrink:0;min-width:0;max-width:100%;border-bottom:1px solid var(--manual-divider);background:var(--manual-paper);color:var(--manual-ink);font:12px/1.45 Arial,sans-serif;z-index:9}
 .manual-ribbon-main{display:flex;align-items:stretch;min-width:0;max-width:100%}
 .manual-ribbon-scroll{display:flex;align-items:stretch;flex:1;gap:0;min-width:0;max-width:100%;padding:4px 8px 3px;overflow:hidden}
@@ -154,7 +154,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .manual-overflow-holder{display:flex;flex:0 0 66px;flex-direction:column;align-items:center;justify-content:flex-start;min-width:0;padding:4px 6px 3px;border-left:1px solid var(--manual-divider)}
 .manual-overflow-holder[hidden]{display:none}.manual-overflow-holder .manual-group-label{font-size:7px;letter-spacing:0;white-space:nowrap}
 .manual-ribbon #advancedToggle[aria-expanded=true],.manual-ribbon #advancedToggle.contains-active-tool{border-color:var(--manual-area);background:var(--manual-active)}
-.advanced-tools{position:absolute;right:8px;width:430px;max-width:calc(100% - 16px);max-height:calc(100dvh - 160px);overflow:auto;padding:12px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);box-shadow:0 5px 16px #192b2226;color:var(--manual-ink);z-index:2}
+.advanced-tools{position:absolute;right:8px;width:430px;max-width:calc(100% - 16px);max-height:calc(100dvh - 160px);overflow:auto;padding:12px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);box-shadow:0 5px 16px #17354d26;color:var(--manual-ink);z-index:2}
 .advanced-tools[hidden],.ribbon-overflow-group[hidden]{display:none}
 .advanced-tools header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:1px solid var(--manual-divider)}
 .advanced-tools header strong{font:700 14px/1.4 Arial,sans-serif}.advanced-tools #closeAdvanced{width:30px;height:30px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:20px/1 Arial,sans-serif;cursor:pointer}
@@ -221,6 +221,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 #wallProposalList{max-width:100%;min-width:0}.wall-proposal .v4-fields{margin-top:8px}
 @media(max-width:520px){.wall-manual-row{display:block}.wall-manual-row button{width:100%;margin-top:8px}.wall-pan-list{display:block}.wall-pan-list label{margin:7px 0}.wall-quantity-preview{font-size:12px}}
 #zoomScaleText{display:inline-block;width:auto;max-width:270px;white-space:nowrap;font-size:11px;padding:0 10px;border-right:1px solid #ccd5cf} .zoom #zoomText{width:auto;min-width:48px;padding:0 7px} [data-confirm-material]{margin-top:4px;border:1px solid #b8cac0;background:#f2f7f4;color:#205c43;border-radius:3px;padding:4px 7px;font-size:11px}@media(max-width:700px){#zoomScaleText{max-width:160px;overflow:hidden;text-overflow:ellipsis}}
+
+/* Thème bleu clair demandé; les couleurs de revêtements restent liées à leur légende. */
+.topbar{background:#d9efff;color:#18354d;border-bottom:1px solid #91bddb}.topbar .brand,.topbar .brand b,.topbar .project-title input,.topbar .project-title span,.topbar .menu button{color:#18354d}.topbar .menu button:hover{background:#c5e5fa}.topbar .brandmark{background:#347fae;color:#fff}.topbar .version-mark{color:#254d6c;border-color:#74a5c8}.topbar .project-title{border-color:#a1c9e3}.sheet-row.active,.sheet-row:hover{background:#e1f1fc}.grid-head,.pane-title,.tree-title,.panel-section-title{background:#eaf5fd}.ribbon{background:#f5faff}.sidebar,.inspector{background:#f5faff}
+.topbar .outline{color:#18354d;border-color:#7faaca;background:#eff8ff}.measure-row.selected,.measure-row[aria-selected=true],.tree-project,.tree-doc{background:#e4f2fd}
 </style>
 </head>
 <body><div id="root"></div>
@@ -516,12 +520,46 @@ function applySanitaryProposals(candidates,info,scale,model,documentKey,page,roi
   for(const match of result.assignments) {
     const item=candidates[match.roomIndex],bath=baths.find(entry=>entry.id===match.symbolId);if(!item||!bath)continue;
     item.bathroom=true;item.spaceType='bathroom';if(item.unnamed)item.name='Salle de bains proposée '+(match.roomIndex+1);
-    if(item.materialSource!=='code du plan')Object.assign(item,finishProposals.propose({bathroom:true,spaceType:'bathroom',activeMaterial:item.material},MATERIALS.map(entry=>entry.code)));
+    if(item.materialSource!=='code du plan')Object.assign(item,detectionFinishes.propose({bathroom:true,spaceType:'bathroom',activeMaterial:item.material,name:item.name,page},MATERIALS.map(entry=>entry.code),S.settings.detectionFinishes));
     item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true}];
     applyRecognizedFixtures(item,info,scale);
   }
   return {...result,baths,warnings:detection.warnings||[],rejectedCount:detection.baths.length-baths.length};
 }
+function structuralEnvelope(model,info,scale) {
+  if(!info?.vectorWalls?.length)return;
+  const paths=info.vectorWalls.map(entry=>({...entry,fill:entry.fill&&entry.fillBrightness<=60,stroke:entry.stroke!==false&&entry.brightness<=60&&entry.width>=.8})).filter(entry=>entry.fill||entry.stroke);
+  if(!paths.length)return;
+  const off=document.createElement('canvas');off.width=model.width;off.height=model.height;
+  const context=off.getContext('2d',{willReadFrequently:true});context.fillStyle='#fff';context.fillRect(0,0,off.width,off.height);
+  // Masque auxiliaire seulement : les contours des pièces ne sont pas modifiés.
+  // Fenêtres jusqu’à 12 pi avec appuis colinéaires; ce seuil n’est pas une cote.
+  drawWallPaths(context,paths,model.factor,61,scale,info.texts,144,info.labels,'structure');
+  const pixels=context.getImageData(0,0,off.width,off.height).data,raw=new Uint8Array(model.mask.length);
+  for(let index=0;index<raw.length;index++)raw[index]=pixels[index*4]<180?1:0;
+  const gap=Math.min(130,Math.round(12/scale*model.factor)),mask=bridgeWallGaps(closeCracks(raw,model.width,model.height),model.width,model.height,gap),
+    envelope=segmentRooms(mask,model.width,model.height,1),enclosed=new Set(envelope.rooms.map(room=>room.id));
+  const trusted=new Set(),unitSeeds=new Map(),corridors=new Set();
+  for(const label of distinctRoomLabels(info.labels||[])) {
+    const x=Math.floor(label.cx*model.factor),y=Math.floor(label.cy*model.factor);if(x<0||y<0||x>=model.width||y>=model.height)continue;
+    const id=envelope.labels[y*model.width+x];if(!enclosed.has(id))continue;trusted.add(id);
+    if(spaceTypeFromName(label.text)==='circulation')corridors.add(id);
+    if(isDwellingName(label.text)){if(!unitSeeds.has(id))unitSeeds.set(id,[]);unitSeeds.get(id).push({id:'unit:'+Math.round(label.cx*100)+':'+Math.round(label.cy*100),label:label.text});}
+  }
+  const units=new Map([...unitSeeds].filter(([id,rows])=>rows.length===1&&!corridors.has(id)).map(([id,rows])=>[id,rows[0]]));
+  return {mask,labels:envelope.labels,enclosed,trusted,units};
+}
+function applyInteriorEnvelope(model,info,scale,settings) {
+  const envelope=model.structuralEnvelope||structuralEnvelope(model,info,scale);if(!envelope)return;
+  const {mask,enclosed}=envelope,stats=new Map(model.rooms.map(room=>[room.id,{source:'local-envelope',status:'proposed',inside:0,outside:0,walls:0,total:0,maximumClosureInches:144}])),regions=new Map(model.rooms.map(room=>[room.id,new Set()]));
+  for(let index=0;index<model.labels.length;index++) {
+    const stat=stats.get(model.labels[index]);if(!stat)continue;stat.total++;
+    if(mask[index])stat.walls++;else if(enclosed.has(envelope.labels[index])){stat.inside++;regions.get(model.labels[index]).add(envelope.labels[index]);}else stat.outside++;
+  }
+  model.floorEvidence=stats;model.unitEvidence=new Map();
+  for(const [id,ids]of regions)if(ids.size===1){const unit=envelope.units.get([...ids][0]);if(unit)model.unitEvidence.set(id,{...unit,source:'structural-envelope',status:'proposed'});}
+}
+
 function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   const factor=Math.min(1,(settings.roomPrecision==='fast'?2000:2600)/Math.max(image.width,image.height)),width=Math.round(image.width*factor),height=Math.round(image.height*factor);
   const off=document.createElement('canvas');off.width=width;off.height=height;
@@ -544,15 +582,29 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
     // Outside stays open, never an artificial enclosing wall.
     if(outside)mask[y*width+x]=0;
   }
+  const original=segmentRooms(mask,width,height,1),originalInside=new Set(original.rooms.map(room=>room.id));
+  const envelope=structuralEnvelope({width,height,factor,mask},info,scale);
+  if(envelope) {
+    const exterior=(x,y)=>x<0||y<0||x>=width||y>=height||!envelope.mask[y*width+x]&&!envelope.enclosed.has(envelope.labels[y*width+x]);
+    // Restaurer uniquement la face extérieure, notamment devant les fenêtres.
+    // Les fermetures auxiliaires à l’intérieur n’ajoutent aucune cloison.
+    for(let y=1;y<height-1;y++)for(let x=1;x<width-1;x++){const pos=y*width+x;if(envelope.mask[pos]&&(exterior(x-1,y)||exterior(x+1,y)||exterior(x,y-1)||exterior(x,y+1)))mask[pos]=1;}
+  }
   const minPixels=Math.max(4,settings.minArea/(scale*scale)*factor*factor),model=segmentRooms(mask,width,height,minPixels);
+  if(envelope) {
+    const supported=new Set();
+    for(let index=0;index<model.labels.length;index++)if(originalInside.has(original.labels[index])||envelope.trusted.has(envelope.labels[index]))supported.add(model.labels[index]);
+    model.rooms=model.rooms.filter(room=>supported.has(room.id));
+  }
   model.rooms=model.rooms.filter(r=>r.right-r.x>=2&&r.bottom-r.y>=2&&r.right<maxRight&&
     (roi?r.x>roi.x*factor&&r.y>roi.y*factor&&r.right<roi.right*factor&&r.bottom<roi.bottom*factor:
       r.x>width*.027&&r.y>height*.027&&r.right<width*.973&&r.bottom<height*.973));
-  const result=splitNarrowPassages({...model,factor,mask,source:vectorCount?'vector':'raster',wallDiagnostics},info,scale,settings.doorInches,{splitSingleDwelling:settings.splitSingleDwelling===true});
-  result.wallLayers=classifyWallBoundaries(result,info,scale);
+  const result=splitNarrowPassages({...model,factor,mask,structuralEnvelope:envelope,source:vectorCount?'vector':'raster',wallDiagnostics},info,scale,settings.doorInches,{splitSingleDwelling:settings.splitSingleDwelling===true});
+  applyInteriorEnvelope(result,info,scale,settings);
+  result.wallLayers=classifyWallBoundaries(result,info,scale,settings);
   return result;
 }
-function roomCandidate(model,room,info,material,settings,scale) {
+function roomCandidate(model,room,info,material,settings,scale,page=S.page) {
   const rings=simplifyRoomRings(componentRings(model,room,model.factor),model.factor),outer=rings[0];if(!outer)return null;
   const labels=(info?.labels||[]).filter(label=>componentAt(model,{x:label.cx,y:label.cy},model.factor,3)?.id===room.id);
   // PDF exports can overprint the same label. Separate occurrences of a
@@ -563,12 +615,13 @@ function roomCandidate(model,room,info,material,settings,scale) {
   const dwellingLabels=physicalLabels.filter(label=>isDwellingName(label.text)).length,types=[...new Set(names.map(spaceTypeFromName))];
   const openLiving=names.every(name=>isOpenLivingName(name)||isDwellingName(name)),allCirculation=types.length===1&&types[0]==='circulation';
   const bathroom=!!baths.length&&!mixed,needsSeparation=mixed||dwellingLabels>1||names.length>1&&!openLiving&&!allCirculation;
-  const spaceType=dwellingLabels===1&&openLiving?'dwelling':types.length===1?types[0]:'room';
+  let spaceType=dwellingLabels===1&&openLiving?'dwelling':types.length===1?types[0]:'room';
+  if(!names.length&&model.wallClassification?.roomKinds[room.id]?.kind==='circulation')spaceType='circulation';
   const holes=rings.slice(1).filter(r=>area(r)*scale*scale>=.01);
   const finishCodes=[...new Set((info?.texts||[]).filter(text=>componentAt(model,{x:text.cx,y:text.cy},model.factor,0)?.id===room.id).flatMap(text=>MATERIALS.filter(finish=>normalizeName(text.text)===normalizeName(finish.code)).map(finish=>finish.code)))];
   const item={kind:'area',points:outer,holes,name:names.join(' / ')||'Pièce détectée',material:finishCodes.length===1?finishCodes[0]:material,bathroom,spaceType,
-    ...finishProposals.propose({finishCodes,activeMaterial:material,bathroom,mixedBathroom:mixed,needsSeparation,spaceType},MATERIALS.map(entry=>entry.code)),
-    status:'à valider',method:'Contours intérieurs',mixedBathroom:mixed,needsSeparation,selected:!needsSeparation,unnamed:!names.length,sourceRoomId:room.id};
+    ...detectionFinishes.propose({finishCodes,activeMaterial:material,bathroom,mixedBathroom:mixed,needsSeparation,spaceType,name:names.join(' / '),page},MATERIALS.map(entry=>entry.code),settings.detectionFinishes),
+    status:'à valider',method:'Contours intérieurs',mixedBathroom:mixed,needsSeparation,selected:!needsSeparation,unnamed:!names.length,sourceRoomId:room.id,...(model.floorEvidence?.has(room.id)?{floorEvidence:{...model.floorEvidence.get(room.id)}}:{}),...(model.unitEvidence?.has(room.id)?{detectedUnit:{...model.unitEvidence.get(room.id)}}:{})};
   if(item.bathroom)applyRecognizedFixtures(item,info||{},scale);
   item.qty=netArea(item)*scale*scale;if(settings.minArea&&area(item.points)*scale*scale<settings.minArea)return null;return item;
 }
@@ -645,11 +698,13 @@ function isStrongWallStroke(width) {return width>=1.2;}
 function pairedWallSegments(paths,threshold,scale,texts=[]) {
   const minimum=threshold===135?.55:threshold===215?.25:.27,
     maximumBrightness=threshold;
-  const segments=lineSegments(paths,minimum,maximumBrightness),maxThickness=1.25/scale,minThickness=Math.max(1.5,1/12/scale);
+  const segments=lineSegments(paths,minimum,maximumBrightness),maxThickness=1.25/scale,minThickness=Math.max(1.5,2.5/12/scale);
   const dimensions=texts.filter(t=>t.text.length<45&&/\d.*['"′″]|\d\s*(?:po|pi)\b/i.test(t.text));
   return segments.filter((a,index)=>{
     if(a.length<Math.max(5,.5/scale))return false;
-    if(isStrongWallStroke(a.width)||threshold===215)return true;
+    // La plume du dessin ne suffit pas : une porte à double trait peut avoir
+    // le même trait qu’un mur. Exiger une largeur physique ou deux vraies faces.
+    if(a.width*scale>=2.5/12||threshold===215)return true;
     if(dimensions.some(t=>{
       const vertical=t.height>t.width*1.8;
       if(vertical?Math.abs(a.uy)<.98:Math.abs(a.ux)<.98)return false;
@@ -713,29 +768,111 @@ function structuralWallSegments(segments,labels=[],scale,mode='structure',anchor
 /* Classify the faces that bound the detected floors. The exterior envelope
    faces the unbounded outside; corridor faces require a recognized label.
    This inspection layer never changes the room mask or takeoff quantities. */
-function classifyWallBoundaries(model,info,scale) {
-  const layers={exterior:[],interior:[],circulation:[]},outside=new Set(),corridors=new Set();
+function wallStyleAt(model,info,point,scale,faceHint=null) {
+  if(!info.wallStyleIndex) {
+    const buckets=new Map(),large=[],cell=64;
+    for(const entry of info.vectorWalls||[])for(const segment of lineSegments([entry],0,255)) {
+      const row={...segment,brightness:entry.brightness},x0=Math.floor(Math.min(segment.a.x,segment.b.x)/cell),x1=Math.floor(Math.max(segment.a.x,segment.b.x)/cell),y0=Math.floor(Math.min(segment.a.y,segment.b.y)/cell),y1=Math.floor(Math.max(segment.a.y,segment.b.y)/cell);
+      if((x1-x0+1)*(y1-y0+1)>1024){large.push(row);continue;}
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const key=x+','+y;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(row);}
+    }
+    info.wallStyleIndex={buckets,large,cell};
+  }
+  const index=info.wallStyleIndex,cx=Math.floor(point.x/index.cell),cy=Math.floor(point.y/index.cell),near=new Set(index.large);
+  for(let y=cy-1;y<=cy+1;y++)for(let x=cx-1;x<=cx+1;x++)for(const segment of index.buckets.get(x+','+y)||[])near.add(segment);
+  let vector=null,best=1/scale;for(const segment of near){const distance=distanceToSegment(point,segment.a,segment.b);if(distance<best){best=distance;vector=segment;}}
+  const face=faceHint||Object.values(model.wallLayers||{}).flat().reduce((chosen,segment)=>!chosen||distanceToSegment(point,segment.a,segment.b)<distanceToSegment(point,chosen.a,chosen.b)?segment:chosen,null);
+  if(!face||distanceToSegment(point,face.a,face.b)>1/scale)return null;
+  const length=dist(face.a,face.b);if(!length)return null;
+  const nx=(face.b.y-face.a.y)/length,ny=-(face.b.x-face.a.x)/length;
+  let thickness=0;
+  for(const sign of [-1,1]) {
+    let started=false,pixels=0;
+    for(let step=.25;step<=3/scale*model.factor;step+=.5){
+      const x=Math.floor(point.x*model.factor+nx*step*sign),y=Math.floor(point.y*model.factor+ny*step*sign);
+      if(x<0||y<0||x>=model.width||y>=model.height)break;
+      if(model.mask[y*model.width+x]){started=true;pixels+=.5;}else if(started||step>3)break;
+    }
+    thickness=Math.max(thickness,pixels/model.factor*scale);
+  }
+  return {thickness:Math.max(thickness,scale/model.factor),stroke:Math.max(vector?.width||1/model.factor,.01)*scale,brightness:vector?.brightness||0};
+}
+function applyWallExamples(model,info,scale,classification,settings) {
+  const saved=settings.wallSamples?.[settings.detectionPage??S.page];if(!saved?.length)return classification;
+  const samples=saved.map(sample=>({kind:sample.kind,feature:wallStyleAt(model,info,sample.point,scale),point:sample.point})).filter(sample=>sample.feature);
+  const all=Object.values(classification.layers).flat(),assigned=new Map();
+  for(const sample of samples) {
+    let closest=null,best=1/scale;
+    for(const segment of all){const distance=distanceToSegment(sample.point,segment.a,segment.b);if(distance<best){best=distance;closest=segment;}}
+    if(closest)assigned.set(closest.boundaryIndex,sample.kind);
+  }
+  const layers={exterior:[],separating:[],circulation:[],interior:[],unknown:[]};let matched=0,ambiguous=0;
+  for(const [kind,segments]of Object.entries(classification.layers))for(const segment of segments) {
+    let target=kind,entry=segment;
+    if(assigned.has(segment.boundaryIndex)){target=assigned.get(segment.boundaryIndex);entry={...segment,reason:'sample-point',source:'manual',proposed:true};}
+    else if(kind==='unknown') {
+      const middle={x:(segment.a.x+segment.b.x)/2,y:(segment.a.y+segment.b.y)/2},feature=wallStyleAt(model,info,middle,scale,segment);
+      if(feature){const match=wallTopology.matchSamples(feature,samples.map(sample=>({kind:sample.kind,feature:sample.feature})));if(match.kind){target=match.kind;entry={...segment,reason:'sample-style',source:'samples',proposed:true};matched++;}else if(match.reason==='ambiguous-style')ambiguous++;}
+    }
+    layers[target].push(entry);
+  }
+  const counts=Object.fromEntries(Object.entries(layers).map(([key,rows])=>[key,rows.length]));counts.total=all.length;
+  return {...classification,layers,counts,training:{samples:samples.length,matched,ambiguous},warnings:layers.unknown.map(segment=>({boundaryIndex:segment.boundaryIndex,reason:segment.reason,message:'Type de mur à déterminer.'}))};
+}
+function startWallSamples() {
+  if(!S.plan||S.loading)return toast('Ouvrez un plan avant de donner des exemples de murs.');
+  if(!S.scale)return calibrationModal();
+  closeDialog();if(S.reviewOpen)closeReview();setSelection([]);S.previewFocus=null;
+  S.wallSamplingModel=detectorForPage();S.wallSampleDraft=[];S.tool='wallSamples';S.draft=[];refresh();canvas.focus();
+}
+function recordWallSample(point) {
+  const kinds=['exterior','separating','circulation'],kind=kinds[S.wallSampleDraft.length],feature=wallStyleAt(S.wallSamplingModel,S.pageInfo[S.page]||{},point,S.scale);
+  if(!feature)return toast('Cliquez sur un mur visible, à proximité de son trait.');
+  S.wallSampleDraft.push({kind,point:{...point},feature});
+  if(S.wallSampleDraft.length===3){remember();S.settings={...S.settings,wallSamples:{...S.settings.wallSamples,[S.page]:structuredClone(S.wallSampleDraft)},showWalls:true};S.wallSampleDraft=[];S.wallSamplingModel=null;S.detectorCache=null;S.tool='select';save();toast('Trois exemples enregistrés. Les types semblables sont proposés; vérifiez les cas indéterminés.');}
+  refresh();
+}
+function validateWallSamples(settings,pages=S.pages) {
+  if(settings?.wallSamples===undefined)return;
+  if(!settings.wallSamples||typeof settings.wallSamples!=='object'||Array.isArray(settings.wallSamples)||Object.keys(settings.wallSamples).length>pages)throw new Error('Exemples de murs invalides.');
+  for(const [page,samples]of Object.entries(settings.wallSamples)) {
+    if(!/^\d+$/.test(page)||+page<1||+page>pages||!Array.isArray(samples)||samples.length!==3)throw new Error('Trois exemples par feuille sont requis.');
+    const kinds=['exterior','separating','circulation'];
+    samples.forEach((sample,index)=>{if(!sample||sample.kind!==kinds[index]||!sample.point||!Number.isFinite(sample.point.x)||!Number.isFinite(sample.point.y)||Math.abs(sample.point.x)>1e7||Math.abs(sample.point.y)>1e7)throw new Error('Un point exemple de mur est invalide.');wallTopology.matchSamples(sample.feature,[{kind:sample.kind,feature:sample.feature}]);});
+  }
+}
+
+function classifyWallBoundaries(model,info,scale,settings={}) {
+  const outside=new Set([0]),boundaries=[],roomLabels=new Map(),rooms=[];
   const edgePixel=point=>{if(!model.mask[point]&&model.labels[point])outside.add(model.labels[point]);};
   for(let x=0;x<model.width;x++){edgePixel(x);edgePixel((model.height-1)*model.width+x);}
   for(let y=0;y<model.height;y++){edgePixel(y*model.width);edgePixel(y*model.width+model.width-1);}
-  for(const label of info?.labels||[])if(spaceTypeFromName(label.text)==='circulation'){
-    const room=componentAt(model,{x:label.cx,y:label.cy},model.factor,3);if(room)corridors.add(room.id);
-  }
-  for(const room of model.rooms)for(const ring of componentRings(model,room,1))for(let index=0;index<ring.length;index++){
-    const a=ring[index],b=ring[(index+1)%ring.length],length=dist(a,b);if(!length)continue;
-    // componentRings walks room pixels with the room on its right side.
-    const nx=(b.y-a.y)/length,ny=-(b.x-a.x)/length,middle={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-    let neighbor=null;
-    for(let step=.75;step<=Math.max(4,3/scale*model.factor);step+=1){
-      const x=Math.floor(middle.x+nx*step),y=Math.floor(middle.y+ny*step);
-      if(x<0||y<0||x>=model.width||y>=model.height){neighbor=0;break;}
-      const p=y*model.width+x;if(!model.mask[p]){neighbor=model.labels[p];break;}
+  for(const label of info?.labels||[]){const room=componentAt(model,{x:label.cx,y:label.cy},model.factor,3);if(room){if(!roomLabels.has(room.id))roomLabels.set(room.id,[]);roomLabels.get(room.id).push(label);}}
+  for(const room of model.rooms) {
+    const labels=distinctRoomLabels(roomLabels.get(room.id)||[]),units=labels.filter(label=>isDwellingName(label.text)),circulation=labels.some(label=>spaceTypeFromName(label.text)==='circulation');
+    const descriptor={id:room.id,area:room.pixels/(model.factor*model.factor),perimeter:0};
+    if(labels.length)descriptor.spaceType=circulation?'circulation':units.length===1?'dwelling':'room';
+    if(units.length===1)descriptor.unitId=model.unitEvidence?.get(room.id)?.id||'unit-region:'+room.id;
+    else if(!circulation&&model.unitEvidence?.has(room.id))descriptor.unitId=model.unitEvidence.get(room.id).id;
+    for(const ring of componentRings(model,room,1))for(let index=0;index<ring.length;index++) {
+      const a=ring[index],b=ring[(index+1)%ring.length],length=dist(a,b);if(!length)continue;
+      descriptor.perimeter+=length/model.factor;
+      const nx=(b.y-a.y)/length,ny=-(b.x-a.x)/length,middle={x:(a.x+b.x)/2,y:(a.y+b.y)/2};let neighbor=null;
+      for(let step=.75;step<=Math.max(4,3/scale*model.factor);step+=1) {
+        const x=Math.floor(middle.x+nx*step),y=Math.floor(middle.y+ny*step);
+        if(x<0||y<0||x>=model.width||y>=model.height){neighbor=0;break;}
+        const pos=y*model.width+x;if(!model.mask[pos]){neighbor=model.labels[pos]||null;break;}
+      }
+      boundaries.push({a:{x:a.x/model.factor,y:a.y/model.factor},b:{x:b.x/model.factor,y:b.y/model.factor},roomId:room.id,neighborId:neighbor});
     }
-    const kind=neighbor===0||outside.has(neighbor)?'exterior':corridors.has(room.id)||corridors.has(neighbor)?'circulation':'interior';
-    layers[kind].push({a:{x:a.x/model.factor,y:a.y/model.factor},b:{x:b.x/model.factor,y:b.y/model.factor}});
+    rooms.push(descriptor);
   }
-  return layers;
+  let classified=wallTopology.classify({rooms,boundaries,exteriorIds:[...outside]});
+  model.wallLayers=classified.layers;classified=applyWallExamples(model,info,scale,classified,settings);
+  model.wallClassification=classified;
+  return classified.layers;
 }
+
 function wallDoorBridges(segments,scale,doorInches) {
   if(!doorInches)return [];
   const maxGap=doorInches/12/scale,tolerance=Math.max(2,.25/scale),bridges=[];
@@ -895,6 +1032,7 @@ const SPACE_STYLES={
   room:{label:'Autre espace',color:'#526f76',fill:'#a8c9d14d'}
 };
 function surfaceSpaceType(item) {
+  if(item.spaceType==='room'&&item.detectedUnit)return 'dwelling';
   if(Object.hasOwn(SPACE_STYLES,item.spaceType))return item.spaceType;
   if(item.bathroom||isBathroom(item.name))return 'bathroom';
   return spaceTypeFromName(item.name);
@@ -917,20 +1055,26 @@ function initSurfaceLegend() {
   $('.stagebar').insertAdjacentHTML('afterend',`<section id="surfaceLegend" class="surface-legend" aria-label="Affichage des surfaces" hidden><label>Couleurs <select id="surfaceDisplay"><option value="spaces">Espaces</option><option value="materials">Revêtements</option></select></label><div id="spaceLegendKeys" class="space-legend-keys">${Object.values(SPACE_STYLES).map(style=>`<span><i style="--space-color:${style.color};--space-fill:${style.fill}"></i>${style.label}</span>`).join('')}</div><label class="surface-labels"><input id="surfaceLabels" type="checkbox"> Surfaces</label><span class="surface-legend-note">Repérage · finis à vérifier</span></section>`);
   $('#surfaceDisplay').onchange=event=>{S.settings.surfaceDisplay=event.target.value;save();refresh();};
   $('#surfaceLabels').onchange=event=>{S.settings.surfaceLabels=event.target.checked;save();refresh();};
-  $('#surfaceLegend').insertAdjacentHTML('beforeend','<div id="wallLegend" class="wall-legend" hidden><span>Murs retenus · à vérifier</span><b style="--wall-color:#9b3b20">Extérieurs</b><b style="--wall-color:#245a9c">Intérieurs</b><b style="--wall-color:#a9348c">Corridors</b></div>');
+  $('#surfaceLegend').insertAdjacentHTML('beforeend',`<div id="wallLegend" class="wall-legend" hidden aria-label="Types de murs proposés"><span>Faces de murs proposées · à vérifier</span>${wallTypeDefinitions.map(([kind,label,color])=>`<b data-wall-kind="${kind}" style="--wall-color:${color}">${label}</b>`).join('')}</div>`);
+}
+const wallTypeDefinitions=[['exterior','Extérieurs','#bf562b'],['separating','Séparateurs de logements','#7054bd'],['circulation','Murs de corridor','#a9348c'],['interior','Partitions du logement','#245a9c'],['unknown','À déterminer','#687482']];
+function refreshWallLegend(model) {
+  const legend=$('#wallLegend');if(!legend||legend.wallModel===model)return;
+  for(const [kind,label]of wallTypeDefinitions){const entry=$(`[data-wall-kind="${kind}"]`,legend);if(entry)entry.textContent=label+' · '+(model.wallClassification?.counts[kind]||0);}
+  legend.wallModel=model;
 }
 function toggleWallInspection() {
   if(!S.plan)return toast('Ouvrez un plan pour examiner les murs.');
   if(!S.scale)return calibrationModal();
   S.settings.showWalls=!S.settings.showWalls;
-  if(S.settings.showWalls)detectorForPage();
+  if(S.settings.showWalls)refreshWallLegend(detectorForPage());
   save();refresh();
 }
 function drawWallInspection(context) {
   if(!S.plan||!S.scale||!S.settings.showWalls)return;
-  const layers=detectorForPage().wallLayers;if(!layers)return;
+  const model=detectorForPage(),layers=model.wallLayers;if(!layers)return;refreshWallLegend(model);
   context.save();context.lineWidth=2.5/S.zoom;context.setLineDash([]);
-  for(const [name,color]of [['exterior','#9b3b20'],['interior','#245a9c'],['circulation','#a9348c']]) {
+  for(const [name,,color]of wallTypeDefinitions) {
     context.beginPath();
     for(const segment of layers[name]||[]){context.moveTo(segment.a.x,segment.a.y);context.lineTo(segment.b.x,segment.b.y);}
     context.strokeStyle=color;context.stroke();
@@ -1042,7 +1186,15 @@ function previewCandidate(index) {
 function detectionChoiceKey(documentKey,page,candidate) {
   return detectionDecisions.key(documentKey,page,{points:candidate.points,holes:getHoles(candidate)});
 }
-function validateDetectionOptions(settings) {
+function validateFloorEvidence(item) {
+  if(item.detectedUnit!==undefined){const unit=item.detectedUnit;if(!unit||typeof unit.id!=='string'||unit.id.length>120||typeof unit.label!=='string'||unit.label.length>120||unit.source!=='structural-envelope'||unit.status!=='proposed')throw new Error('Le rattachement proposé au logement est invalide.');}
+  const value=item.floorEvidence;if(value===undefined)return;
+  const keys=['source','status','inside','outside','walls','total','maximumClosureInches'];
+  if(item.kind!=='area'||!value||typeof value!=='object'||Object.keys(value).some(key=>!keys.includes(key))||value.source!=='local-envelope'||value.status!=='proposed'||value.maximumClosureInches!==144||!['inside','outside','walls','total'].every(key=>Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=100000000)||value.inside+value.outside+value.walls!==value.total)throw new Error('La preuve d’enveloppe intérieure est invalide.');
+}
+function validateDetectionOptions(settings,pages=S.pages) {
+  if(settings?.wallSamples!==undefined)validateWallSamples(settings,pages);
+  if(settings?.detectionFinishes!==undefined)detectionFinishes.validate(settings.detectionFinishes,MATERIALS.map(entry=>entry.code),pages);
   if(settings?.detectionChoices!==undefined)detectionDecisions.validate(settings.detectionChoices,MATERIALS.map(entry=>entry.code));
   if(settings?.splitSingleDwelling!==undefined&&typeof settings.splitSingleDwelling!=='boolean')throw new Error('Le réglage de séparation des logements doit être un booléen.');
   if(settings?.sanitaryRejects!==undefined&&(!Array.isArray(settings.sanitaryRejects)||settings.sanitaryRejects.length>5000||new Set(settings.sanitaryRejects).size!==settings.sanitaryRejects.length||!settings.sanitaryRejects.every(key=>typeof key==='string'&&key.startsWith('sanitary:')&&key.length<=600)))throw new Error('Les refus de symboles sanitaires sont invalides.');
@@ -1116,7 +1268,7 @@ function renderDetectionPanel() {
     ${sanitaryReviewMarkup(pack)}<label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter==='all'?'selected':''}>Toutes les propositions</option><option value="sanitary" ${filter==='sanitary'?'selected':''}>Salles de bains proposées</option><option value="unnamed" ${filter==='unnamed'?'selected':''}>Zones sans nom</option></select></label>
     <div class="review-pagination"><button type="button" id="reviewPrevious" ${offset===0?'disabled':''}>Précédent</button><span>${filtered.length} résultat(s) · page ${offset+1} / ${totalPages}</span><button type="button" id="reviewNext" ${offset+1>=totalPages?'disabled':''}>Suivant</button></div>
     <div class="review-scroll">${candidates.length?`<div class="detection-table"><table><thead><tr><th>Choix</th><th>Pièce et revêtement</th><th>Net</th></tr></thead><tbody>${visible.map(({item,index})=>`<tr data-review-candidate="${index}"><td><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected?'checked':''} ${item.duplicate||item.needsSeparation?'disabled':''}></td><td><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index===S.previewFocus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button><label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate?'disabled':''}>${!item.material?'<option value="">Choisir le revêtement</option>':''}${MATERIALS.map(material=>`<option value="${material.code}" ${item.material===material.code?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select>
-      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.importIssue&&!item.duplicate?`<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>`:''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?'<small>Zone sans nom : identifier et rattacher cette pièce; contour à vérifier.</small>':''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
+      ${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.importIssue&&!item.duplicate?`<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>`:''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?`<small>${item.floorEvidence?.inside>0&&item.floorEvidence.outside===0?'Zone sans nom · intérieur proposé par enveloppe des murs; fini à confirmer.':'Zone sans nom : intérieur/extérieur et rattachement à vérifier.'}</small>`:''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
     ${notes.length?`<details class="review-notes" open><summary>Bilan des feuilles</summary><ul>${notes.map(note=>`<li>Page ${note.page} : ${esc(note.message)}</li>`).join('')}</ul></details>`:''}</div>
     <footer class="review-actions"><button type="button" class="primary" id="addCandidates" ${!candidates.some(item=>item.selected&&!item.duplicate&&!item.needsSeparation)?'disabled':''}>Ajouter au relevé · à valider</button><div><button type="button" id="retryDetection">Réglages</button><button type="button" id="correctDetection">Fermer un passage</button><button type="button" id="cancelDetection">Fermer</button></div></footer>`;
   updateDetectionChoiceButton();
@@ -1151,36 +1303,47 @@ function floorPlanPages() {
     return /\bPLAN\b/.test(title)&&/SOUS[- ]?SOL|REZ[- ]?DE[- ]?CHAUSSEE|RDC|NIVEAU|ETAGE|FLOOR|BASEMENT|GROUND/.test(title)&&!/TOITURE|PLAFOND|DETAIL|AGRANDI|IMPLANTATION|LOGEMENTS?/.test(title);
   });
 }
-function openDetectionSettings() {
+function detectionFinishDefaults() {
+  return structuredClone(S.settings.detectionFinishes||{floor:'VP-01',bathroom:'CER-01',circulation:null,locations:[]});
+}
+function finishMaterialOptions(value,allowEmpty=false) {
+  return (allowEmpty?'<option value="">Selon le revêtement principal</option>':'')+MATERIALS.map(material=>`<option value="${material.code}" ${material.code===value?'selected':''}>${esc(material.name)} · ${material.code}</option>`).join('');
+}
+function detectionOtherFinishes(draft) {
+  const rules=structuredClone(draft.finishes.locations);
+  openDialog('Autres finis et localisations',`<form id="detectionFinishesForm"><p>Associez les finis aux noms des pièces du plan. Les espaces sans nom restent à rattacher.</p><div class="v4-fields"><label>Corridors<select id="detectionCorridorMaterial">${finishMaterialOptions(draft.finishes.circulation,true)}</select></label><label>Format de céramique de salle de bain<select id="detectionBathFormat">${!['CER-01','CER-12X24'].includes(draft.finishes.bathroom)?`<option value="${esc(draft.finishes.bathroom)}" selected>Conserver ${esc(mat(draft.finishes.bathroom).name)}</option>`:''}<option value="CER-01" ${draft.finishes.bathroom==='CER-01'?'selected':''}>24 × 24 po · CER-01</option><option value="CER-12X24" ${draft.finishes.bathroom==='CER-12X24'?'selected':''}>12 × 24 po · CER-12X24</option></select></label></div><p>Le format sélectionne le produit correspondant. La pose, les pertes et les boîtes restent à vérifier dans l’estimation.</p><div id="detectionLocationRows"></div><button type="button" id="addFinishLocation">Ajouter une localisation</button><p id="detectionFinishError" role="alert"></p><div class="modal-actions"><button type="button" id="cancelDetectionFinishes">Retour</button><button type="submit" class="primary">Appliquer les choix</button></div></form>`);
+  const render=()=>{
+    $('#detectionLocationRows').innerHTML=rules.map((row,index)=>`<div data-finish-location class="v4-fields"><label>Pièce ou localisation<input data-location-name maxlength="120" value="${esc(row.name)}" placeholder="Ex. Chambre, Cuisine"></label><label>Fini<select data-location-material>${finishMaterialOptions(row.material)}</select></label><label>Feuille<select data-location-page><option value="0" ${!row.page?'selected':''}>Toutes les feuilles</option>${Array.from({length:S.pages},(_,n)=>n+1).map(page=>`<option value="${page}" ${row.page===page?'selected':''}>${esc(pageName(page))}</option>`).join('')}</select></label><button type="button" data-remove-location="${index}">Retirer</button></div>`).join('');
+    $$('[data-remove-location]').forEach(button=>button.onclick=()=>{read();rules.splice(+button.dataset.removeLocation,1);render();});
+  };
+  const read=()=>{$$('[data-finish-location]').forEach((row,index)=>{rules[index]={name:$('[data-location-name]',row).value.trim(),material:$('[data-location-material]',row).value,page:+$('[data-location-page]',row).value};});};
+  $('#addFinishLocation').onclick=()=>{read();if(rules.length>=50)return toast('Au plus 50 localisations.');rules.push({name:'',material:draft.finishes.floor,page:0});render();};
+  $('#cancelDetectionFinishes').onclick=$('#closeV4Dialog').onclick=()=>openDetectionSettings(draft);
+  $('#detectionFinishesForm').onsubmit=event=>{event.preventDefault();try{read();const finishes={...draft.finishes,circulation:$('#detectionCorridorMaterial').value||null,bathroom:$('#detectionBathFormat').value,locations:rules};detectionFinishes.validate(finishes,MATERIALS.map(material=>material.code),S.pages);openDetectionSettings({...draft,finishes});}catch(error){$('#detectionFinishError').textContent=error.message;}};
+  render();
+}
+function openDetectionSettings(pending=null) {
   if(!S.plan||S.loading)return toast('Ouvrez un plan avant de détecter les pièces.');
   if(!S.scale&&(!S.pdf||S.pages===1))return calibrationModal();
-  const defaultScope=!S.scale&&S.pdf&&S.pages>1?'levels':'active';
-  openDialog('Détecter les pièces',`<form id="detectionForm"><p>Les faces et les connexions des murs délimitent d’abord les espaces. Le mode Structure filtre les réseaux isolés qui ressemblent à du mobilier. Vérifiez les murs retenus avec l’icône Murs, puis contrôlez les surfaces et les revêtements.</p>
-    <div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active" ${defaultScope==='active'?'selected':''}>Feuille active · ${S.page}</option>${S.pdf&&S.pages>1?`<option value="levels" ${defaultScope==='levels'?'selected':''}>Niveaux du projet · détection groupée</option>`:''}<option value="selected" ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Fermer les ouvertures jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===S.settings.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${S.settings.minArea}"></label><label>Précision<select id="roomPrecision"><option value="fine" ${S.settings.roomPrecision!=='fast'?'selected':''}>Précise</option><option value="fast" ${S.settings.roomPrecision==='fast'?'selected':''}>Rapide</option></select></label><label>Lecture des traits<select id="wallThreshold">${[[135,'Traits foncés'],[180,'Standard'],[215,'Traits pâles']].map(([n,label])=>`<option value="${n}" ${n===S.settings.threshold?'selected':''}>${label}</option>`).join('')}</select></label></div>
-    <label class="wall-mode-field"><span>Séparation géométrique</span><span><input type="checkbox" id="splitSingleDwelling" ${S.settings.splitSingleDwelling===true?'checked':''}> Séparer aussi les pièces sans nom dans un logement</span><small>Propositions à vérifier : aucun nom de pièce, équipement ou fini n’est déduit de cette séparation.</small></label>
-    <label class="wall-mode-field">Lecture des murs<select id="wallMode"><option value="structure" ${S.settings.wallMode!=='all'?'selected':''}>Structure du bâtiment</option><option value="all" ${S.settings.wallMode==='all'?'selected':''}>Tous les traits admissibles</option></select></label>
-    <p>Le mode Niveaux analyse les plans d’étage et exclut les détails et la toiture. Une feuille type de plusieurs niveaux est comptée une fois; les répétitions restent à renseigner.</p>
-    <fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${page===S.page?'checked':''}> ${esc(pageName(page))} <small>${S.scales[page]?(S.scaleMeta[page]?.verified?'Échelle vérifiée':'Échelle à vérifier'):'Sans échelle'}</small></label>`).join('')}</fieldset>
-    <p class="scale-help">Le seuil des ouvertures est un réglage de fermeture, pas une mesure de porte. B permet une fermeture manuelle ; R limite l’analyse à un cadre. Un fini absent du plan devra être choisi.</p><p id="detectionError" class="v4-error" role="alert" hidden></p>
-    <div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter la feuille</button></div></form>`);
-  $('#detectionScope').onchange=event=>{$('#detectionPages').hidden=event.target.value!=='selected';$('#runDetection').textContent=event.target.value==='levels'?'Détecter les niveaux':event.target.value==='selected'?'Détecter les feuilles choisies':'Détecter la feuille';};
-  $('#removeDetectionFrame').onclick=()=>{remember();delete S.detectBounds[S.page];S.detectorCache=null;save();toast('Cadre retiré de la feuille active.');};
+  const draft=pending?.detectionDraft===true?pending:{detectionDraft:true,scope:!S.scale&&S.pdf&&S.pages>1?'levels':'active',finishes:detectionFinishDefaults(),doorInches:36,minArea:1,selectedPages:[S.page]};
+  openDialog('Relevé automatique des planchers',`<form id="detectionForm"><p>Le logiciel repère les murs, sépare les espaces et propose leurs surfaces et leurs finis. Vérifiez ensuite les contours et les quantités.</p><div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active" ${draft.scope==='active'?'selected':''}>Feuille active · ${S.page}</option>${S.pdf&&S.pages>1?`<option value="levels" ${draft.scope==='levels'?'selected':''}>Niveaux du projet · détection groupée</option>`:''}<option value="selected" ${draft.scope==='selected'?'selected':''} ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Revêtement de plancher principal<select id="detectionFloorMaterial">${finishMaterialOptions(draft.finishes.floor)}</select></label><label>Salles de bain<select id="detectionBathroomMaterial">${finishMaterialOptions(draft.finishes.bathroom)}</select></label></div><button type="button" id="detectionOtherFinishes">Autres finis, localisations et formats de tuiles</button><p>Les codes de finis reconnus sur le plan et vos corrections restent prioritaires. Une salle de bain reçoit le fini choisi; l’emprise du bain ou de la douche reste à vérifier.</p><details id="detectionPassages"><summary>Passages et petites surfaces</summary><div class="v4-fields"><label>Fermer les passages jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===draft.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${draft.minArea}"></label></div><p>Ce réglage n’est pas une mesure de porte. Les murs extérieurs, séparateurs et corridors sont analysés automatiquement.</p></details><fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${(draft.selectedPages||[S.page]).includes(page)?'checked':''}> ${esc(pageName(page))}</label>`).join('')}</fieldset><p>Le mode Niveaux exclut les détails et la toiture. Une feuille type est comptée une fois.</p><p id="detectionError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter les surfaces</button></div></form>`);
+  const read=()=>({...draft,scope:$('#detectionScope').value,selectedPages:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage),doorInches:+$('#doorGap').value,minArea:+$('#minRoomArea').value,finishes:{...draft.finishes,floor:$('#detectionFloorMaterial').value,bathroom:$('#detectionBathroomMaterial').value}});
+  $('#detectionOtherFinishes').onclick=()=>detectionOtherFinishes(read());
+  $('#detectionScope').onchange=event=>{$('#detectionPages').hidden=event.target.value!=='selected';};
   $('#detectionScope').dispatchEvent(new Event('change'));
+  $('#removeDetectionFrame').onclick=()=>{remember();delete S.detectBounds[S.page];S.detectorCache=null;save();toast('Cadre retiré de la feuille active.');};
   $('#detectionForm').onsubmit=async event=>{
-    event.preventDefault();const minArea=Number($('#minRoomArea').value),scope=$('#detectionScope').value,key=S.documentKey,form=event.currentTarget;
-    if(scope==='levels'&&S.indexTask){
-      $('#runDetection').disabled=true;$('#runDetection').textContent='Lecture des feuilles…';
-      await S.indexTask;
-      if(S.documentKey!==key||!form.isConnected)return;
-      $('#runDetection').disabled=false;$('#runDetection').textContent='Détecter les niveaux';
-      if(S.indexedPages<S.pages){$('#detectionError').hidden=false;$('#detectionError').textContent='Lecture des titres incomplète. Choisissez explicitement les feuilles à analyser.';return;}
-    }
+    event.preventDefault();const options=read(),scope=options.scope,key=S.documentKey,form=event.currentTarget;
+    if(scope==='levels'&&S.indexTask){$('#runDetection').disabled=true;$('#runDetection').textContent='Lecture des feuilles…';await S.indexTask;if(S.documentKey!==key||!form.isConnected)return;$('#runDetection').disabled=false;if(S.indexedPages<S.pages){$('#detectionError').hidden=false;$('#detectionError').textContent='Lecture des titres incomplète : choisissez les feuilles.';return;}}
     const pages=scope==='levels'?floorPlanPages():scope==='active'?[S.page]:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage);
-    if(!Number.isFinite(minArea)||minArea<1||minArea>500||!pages.length){$('#detectionError').hidden=false;$('#detectionError').textContent=scope==='levels'&&!pages.length?'Aucun plan d’étage identifié : choisissez explicitement les feuilles à analyser.':'Choisissez au moins une feuille et une surface minimale de 1 à 500 pi².';return;}
-    S.settings={...S.settings,minArea,roomPrecision:$('#roomPrecision').value,doorInches:+$('#doorGap').value,threshold:+$('#wallThreshold').value,wallMode:$('#wallMode').value,splitSingleDwelling:$('#splitSingleDwelling').checked};S.detectorCache=null;save();
-    runDetectionPages(pages);
+    try {
+      if(!Number.isFinite(options.minArea)||options.minArea<1||options.minArea>500||!pages.length)throw new Error('Choisissez les feuilles et une surface minimale de 1 à 500 pi².');
+      detectionFinishes.validate(options.finishes,MATERIALS.map(entry=>entry.code),S.pages);
+      S.settings={...S.settings,minArea:options.minArea,roomPrecision:'fine',doorInches:options.doorInches,threshold:180,wallMode:'structure',splitSingleDwelling:false,detectionFinishes:options.finishes};S.detectorCache=null;save();runDetectionPages(pages);
+    }catch(error){$('#detectionError').hidden=false;$('#detectionError').textContent=error.message;}
   };
 }
+
 async function detectionSource(pageNumber) {
   if(pageNumber===S.page&&S.plan) {
     const image=S.plan,pdf=S.pdf;let info=S.pageInfo[pageNumber]||{};
@@ -1209,14 +1372,14 @@ async function runDetectionPages(pages) {
       if(!S.scales[page]&&info.candidates?.length===1&&!info.ambiguous){const candidate=info.candidates[0];S.scales[page]=candidate.feetPerInch/PDF_DPI;S.scaleMeta[page]={...candidate,source:'automatic',verified:false};}
       const scale=S.scales[page];
       if(!scale){notes.push({page,message:'Non analysée : calibre ou choisissez l’échelle de cette feuille.'});continue;}
-      const model=makeWallModel(image,info,settings,scale,S.dividers[page]||[],S.detectBounds[page]);
-      let candidates=model.rooms.map(room=>roomCandidate(model,room,info,material,settings,scale)).filter(Boolean);
+      const model=makeWallModel(image,info,{...settings,detectionPage:page},scale,S.dividers[page]||[],S.detectBounds[page]);
+      let candidates=model.rooms.map(room=>roomCandidate(model,room,info,material,settings,scale,page)).filter(Boolean);
       const sanitary=applySanitaryProposals(candidates,info,scale,model,job.key,page,S.detectBounds[page]);
       const hasNames=candidates.some(item=>!item.unnamed);
       candidates.sort((a,b)=>boundsOf(a.points).y-boundsOf(b.points).y||boundsOf(a.points).x-boundsOf(b.points).x);
-      candidates=candidates.slice(0,3000).map((candidate,n)=>({...candidate,page,selected:candidate.selected&&(!hasNames||!candidate.unnamed||candidate.bathroom),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
+      candidates=candidates.slice(0,3000).map((candidate,n)=>({...candidate,page,selected:candidate.selected&&(!candidate.unnamed||candidate.bathroom||candidate.spaceType==='circulation'||(candidate.floorEvidence?candidate.floorEvidence.inside>0&&candidate.floorEvidence.outside===0:!hasNames)),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
       candidates=candidates.map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
-      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-3-sanitary',sanitary};
+      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-4-topology',sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
       if(model.rooms.length>3000)notes.push({page,message:'Limite de 3000 propositions atteinte : analyser les zones séparément.'});
       notes.push({page,message:`${candidates.length} proposition(s)${S.scaleMeta[page]?.verified?'':' · échelle à vérifier avant confirmation'}`});
     } catch(error){notes.push({page,message:'Analyse impossible : '+error.message});}
@@ -1327,6 +1490,8 @@ function initManualUI() {
   moveButton('[data-tool="region"]',detection,'scan','Cadre','Limiter la détection à un cadre · R');
   detection.insertAdjacentHTML('beforeend',manualButton('wallLayersToggle','brick-wall','Murs','Afficher les murs extérieurs, intérieurs et de corridor proposés'));
   $('#wallLayersToggle').onclick=toggleWallInspection;
+  $('#wallLayersToggle').insertAdjacentHTML('afterend','<button type="button" id="wallSamplesBtn" class="manual-button manual-area" title="Trois exemples : mur extérieur, séparateur de logements, mur de corridor"><i data-lucide="scan-line"></i><span>3 exemples<br>de murs</span></button>');
+  $('#wallSamplesBtn').onclick=startWallSamples;
   moveButton('[data-tool="edit"]',corrections,'square-pen','Sommets','Modifier les sommets de la surface sélectionnée · E');
   moveButton('[data-tool="split"]',corrections,'scissors','Découpe','Découper une surface par une ligne · F');
   moveButton('#deleteSelection',corrections,'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
@@ -1432,6 +1597,7 @@ function manualStatusText() {
   if(!S.plan)return 'Ouvrez un plan pour commencer le relevé manuel.';
   if(S.loading||S.detectJob)return 'Chargement ou analyse en cours…';
   const n=S.draft.length,scale=S.scale,point=S.mouseWorld;
+  if(S.tool==='wallSamples')return ['1/3 · Cliquez un mur extérieur.','2/3 · Cliquez un mur séparateur de logements.','3/3 · Cliquez un mur de corridor.'][S.wallSampleDraft?.length||0];
   if(S.tool==='count')return `${n} élément${n>1?'s':''} pointé${n>1?'s':''} · Cliquez chaque élément, puis Terminer ou Entrée. Aucune échelle requise.`;
   if(S.tool==='rectangle') {
     const quantity=n&&point&&scale?Math.abs((point.x-S.draft[0].x)*(point.y-S.draft[0].y))*scale*scale:null;
@@ -1441,12 +1607,12 @@ function manualStatusText() {
     const quantity=n&&point&&scale?dist(S.draft[0],point)*scale:null;
     const name=S.tool==='dimension'?'Cote de référence':'Segment';
     if(!n)return name+' : cliquez les deux extrémités'+(S.tool==='dimension'?' · exclue des commandes.':' · chaque paire crée une ligne indépendante.');
-    return name+' : cliquez l’autre extrémité'+(quantity!==null?' · aperçu '+fmt(quantity)+' pi':'')+'.';
+    return name+' : cliquez l’autre extrémité'+(quantity!==null?' · aperçu '+formatFeet(quantity):'')+'.';
   }
   if(S.tool==='split')return n?'Découpe : cliquez l’autre extrémité de la ligne traversant la surface.':'Découpe : cliquez deux extrémités d’une ligne traversant la surface sélectionnée.';
   if(['area','exclude'].includes(S.tool))return `${S.tool==='exclude'?'Exclusion':'Surface'} : ${n} point${n>1?'s':''}${n>=3&&scale?' · '+fmt(area(S.draft)*scale*scale)+' pi²':''} · Cliquez les coins, puis Terminer ou Entrée.`;
-  if(S.tool==='wallTrace')return `Parcours mural : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+fmt(lineLength(S.draft)*scale)+' pi':''} · Cliquez les pans, puis Terminer pour vérifier la hauteur.`;
-  if(S.tool==='linear')return `Ligne : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+fmt(lineLength(S.draft)*scale)+' pi':''} · Cliquez les points, puis Terminer ou Entrée.`;
+  if(S.tool==='wallTrace')return `Parcours mural : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+formatFeet(lineLength(S.draft)*scale):''} · Cliquez les pans, puis Terminer pour vérifier la hauteur.`;
+  if(S.tool==='linear')return `Ligne : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+formatFeet(lineLength(S.draft)*scale):''} · Cliquez les points, puis Terminer ou Entrée.`;
   if(S.tool==='calibrate')return 'Échelle : cliquez les extrémités d’une cote connue, puis saisissez sa longueur.';
   if(S.tool==='hand')return 'Déplacer : glissez le plan · molette pour zoomer · V pour sélectionner.';
   if(S.tool==='auto')return 'Pièce au clic : cliquez à l’intérieur d’une pièce fermée.';
@@ -1488,6 +1654,7 @@ function refreshManualUI() {
   $('#tileOriginBtn').disabled=busy||!measuredArea||!measuredArea.material.startsWith('CER');
   $('#toggleTileGrid').disabled=busy;
   $('#wallLayersToggle').disabled=busy||!S.scale;
+  if($('#wallSamplesBtn')){$('#wallSamplesBtn').disabled=busy||!S.scale;$('#wallSamplesBtn').setAttribute('aria-pressed',String(S.tool==='wallSamples'));}
   $('#wallLayersToggle').setAttribute('aria-pressed',String(!!S.settings.showWalls));
   $('#wallLayersToggle').title=busy?(!S.plan?'Ouvrez un plan pour examiner les murs.':'Attendez la fin du chargement ou de l’analyse.'):!S.scale?'Calibrez le plan avant d’examiner les murs.':$('#wallLayersToggle').getAttribute('aria-label');
   for(const id of ['tileSettings','tileOriginBtn'])$('#'+id).title=busy?(!S.plan?'Ouvrez un plan pour régler le calepinage.':'Attendez la fin du chargement ou de l’analyse.'):!measuredArea?'Sélectionnez une surface ajoutée au relevé pour régler le calepinage.':id==='tileOriginBtn'&&!measuredArea.material.startsWith('CER')?'Sélectionnez une surface de céramique pour placer le départ.':$('#'+id).getAttribute('aria-label');
@@ -1566,7 +1733,7 @@ function drawManualLineDecorations(context,item) {
   const nx=-(b.y-a.y)/length,ny=(b.x-a.x)/length,tick=6/S.zoom;
   context.save();context.strokeStyle=colorForItem(item);context.lineWidth=1.5/S.zoom;
   for(const point of [a,b]){context.beginPath();context.moveTo(point.x-nx*tick,point.y-ny*tick);context.lineTo(point.x+nx*tick,point.y+ny*tick);context.stroke();}
-  const x=(a.x+b.x)/2+nx*12/S.zoom,y=(a.y+b.y)/2+ny*12/S.zoom,label=fmt(item.qty,2)+' pi';
+  const x=(a.x+b.x)/2+nx*12/S.zoom,y=(a.y+b.y)/2+ny*12/S.zoom,label=formatFeet(item.qty);
   context.font=`700 ${12/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';context.lineWidth=4/S.zoom;context.strokeStyle='#ffffff';context.strokeText(label,x,y);context.fillStyle=colorForItem(item);context.fillText(label,x,y);context.restore();
 }
 function drawManualGuides(context) {
@@ -1922,7 +2089,7 @@ function openWallTakeoffEditor(points,existing=null,context={}) {
     scope=wallTakeoffWork(height,openings,waste,existing?.work);
   const basis=existing?.wallTakeoff?.heightBasis,initialMode=type==='bath-shower'?(basis?.mode||(existing?'manual':'floor-minus-bath')):'manual';
   S.wallTakeoffPreview=[{points,type}];
-  openDialog(existing?'Modifier le relevé mural':'Relever les murs et dosserets',`<form id="wallTakeoffForm"><p>${fmt(lineLength(points)*S.scale)} pi de murs tracés sur ${esc(pageName(S.page))}. Surface nette = longueur × hauteur − ouvertures.</p><div class="v4-fields"><label>Type de revêtement mural<select id="wallTakeoffType">${Object.entries(WALL_TAKEOFF_TYPES).map(([key,entry])=>`<option value="${key}" ${type===key?'selected':''}>${entry.label}</option>`).join('')}</select></label><label id="wallHeightModeField">Mode de hauteur<select id="wallHeightMode"><option value="manual" ${initialMode==='manual'?'selected':''}>Hauteur particulière saisie</option><option value="floor-minus-bath" ${initialMode==='floor-minus-bath'?'selected':''}>Étage moins rebord du bain</option></select></label><label>Hauteur carrelée (pi)<input id="wallHeightFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(height)}" placeholder="À saisir"></label><label>Ouvertures à retrancher (pi²)<input id="wallOpenings" type="number" min="0" step="any" value="${openings}"></label><label>Perte de revêtement mural (%)<input id="wallWaste" type="number" min="0" max="1000" step="any" value="${waste}"></label></div><fieldset id="wallBathHeightInputs"><legend>Cotes du bain-douche, à vérifier pour ce relevé</legend><div class="v4-fields"><label>Hauteur de l’étage (pi)<input id="wallFloorHeightFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(basis?.floorHeightInches)}" placeholder="À saisir"></label><label>Hauteur du bain, du sol au rebord (pi)<input id="wallBathRimFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(basis?.bathRimHeightInches)}" placeholder="À saisir"></label></div><p>Hauteur carrelée = hauteur d’étage − hauteur du rebord. Aucune hauteur de bain n’est déduite automatiquement.</p></fieldset><p class="wall-default-note">Douche : 8 pi proposés, à confirmer. Bain-douche : renseignez les deux cotes ou une hauteur particulière vérifiée. Le dosseret doit être coté. Les anciennes hauteurs manuelles restent conservées.</p><label class="wall-review-check"><input id="wallRunsReviewed" type="checkbox" ${reviewed?'checked':''}> J’ai vérifié les pans carrelés, les hauteurs et les ouvertures à déduire.</label><p id="wallQuantityPreview" class="wall-quantity-preview" role="status"></p><fieldset class="wall-work-scope"><legend>Localisation et estimation</legend><label class="wall-review-check"><input id="wallWorkIncluded" type="checkbox" ${scope.included?'checked':''}> Inclure ce relevé dans l’estimation après confirmation</label><div class="v4-fields">${[['wallWorkBlock','Bloc',scope.block],['wallWorkLevel','Étage',scope.level],['wallWorkUnit','Unité / modèle',scope.unit],['wallWorkType','Type d’unité',scope.type]].map(([id,label,value])=>`<label>${label}<input id="${id}" maxlength="80" value="${esc(value)}"></label>`).join('')}<label>Répétitions<input id="wallWorkRepeat" type="number" min="1" max="999" step="1" required value="${scope.repeat}"></label></div><p>La mesure du plan reste unique. Les répétitions multiplient les quantités de l’estimation.</p></fieldset><p id="wallTakeoffError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="cancelWallTakeoff">Annuler</button><button type="submit" id="saveWallTakeoff" class="primary">${existing?'Enregistrer la correction':'Ajouter au relevé · à valider'}</button></div></form>`,'wide');
+  openDialog(existing?'Modifier le relevé mural':'Relever les murs et dosserets',`<form id="wallTakeoffForm"><p>${esc(formatFeet(lineLength(points)*S.scale))} de murs tracés sur ${esc(pageName(S.page))}. Surface nette = longueur × hauteur − ouvertures.</p><div class="v4-fields"><label>Type de revêtement mural<select id="wallTakeoffType">${Object.entries(WALL_TAKEOFF_TYPES).map(([key,entry])=>`<option value="${key}" ${type===key?'selected':''}>${entry.label}</option>`).join('')}</select></label><label id="wallHeightModeField">Mode de hauteur<select id="wallHeightMode"><option value="manual" ${initialMode==='manual'?'selected':''}>Hauteur particulière saisie</option><option value="floor-minus-bath" ${initialMode==='floor-minus-bath'?'selected':''}>Étage moins rebord du bain</option></select></label><label>Hauteur carrelée (pi)<input id="wallHeightFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(height)}" placeholder="À saisir"></label><label>Ouvertures à retrancher (pi²)<input id="wallOpenings" type="number" min="0" step="any" value="${openings}"></label><label>Perte de revêtement mural (%)<input id="wallWaste" type="number" min="0" max="1000" step="any" value="${waste}"></label></div><fieldset id="wallBathHeightInputs"><legend>Cotes du bain-douche, à vérifier pour ce relevé</legend><div class="v4-fields"><label>Hauteur de l’étage (pi)<input id="wallFloorHeightFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(basis?.floorHeightInches)}" placeholder="À saisir"></label><label>Hauteur du bain, du sol au rebord (pi)<input id="wallBathRimFeet" type="number" min="0.001" max="100" step="any" value="${wallHeightInputValue(basis?.bathRimHeightInches)}" placeholder="À saisir"></label></div><p>Hauteur carrelée = hauteur d’étage − hauteur du rebord. Aucune hauteur de bain n’est déduite automatiquement.</p></fieldset><p class="wall-default-note">Douche : 8 pi proposés, à confirmer. Bain-douche : renseignez les deux cotes ou une hauteur particulière vérifiée. Le dosseret doit être coté. Les anciennes hauteurs manuelles restent conservées.</p><label class="wall-review-check"><input id="wallRunsReviewed" type="checkbox" ${reviewed?'checked':''}> J’ai vérifié les pans carrelés, les hauteurs et les ouvertures à déduire.</label><p id="wallQuantityPreview" class="wall-quantity-preview" role="status"></p><fieldset class="wall-work-scope"><legend>Localisation et estimation</legend><label class="wall-review-check"><input id="wallWorkIncluded" type="checkbox" ${scope.included?'checked':''}> Inclure ce relevé dans l’estimation après confirmation</label><div class="v4-fields">${[['wallWorkBlock','Bloc',scope.block],['wallWorkLevel','Étage',scope.level],['wallWorkUnit','Unité / modèle',scope.unit],['wallWorkType','Type d’unité',scope.type]].map(([id,label,value])=>`<label>${label}<input id="${id}" maxlength="80" value="${esc(value)}"></label>`).join('')}<label>Répétitions<input id="wallWorkRepeat" type="number" min="1" max="999" step="1" required value="${scope.repeat}"></label></div><p>La mesure du plan reste unique. Les répétitions multiplient les quantités de l’estimation.</p></fieldset><p id="wallTakeoffError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="cancelWallTakeoff">Annuler</button><button type="submit" id="saveWallTakeoff" class="primary">${existing?'Enregistrer la correction':'Ajouter au relevé · à valider'}</button></div></form>`,'wide');
   const readHeight=()=>{
     if($('#wallTakeoffType').value!=='bath-shower'||$('#wallHeightMode').value==='manual')return{height:readWallHeight($('#wallHeightFeet')),basis:{mode:'manual'},issues:[]};
     const floorHeightInches=readWallHeight($('#wallFloorHeightFeet')),bathRimHeightInches=readWallHeight($('#wallBathRimFeet')),result=wallHeights.bathShower(floorHeightInches,bathRimHeightInches);
@@ -2011,7 +2178,7 @@ function openWallTakeoffDialog(id=null) {
 function appendWallTakeoffInspector(host,item) {
   if(S.selection.size!==1||!isWallTakeoff(item))return;
   const wall=item.work.wall||{},height=wall.height,quantity=wallTakeoffQuantity(item);
-  host.insertAdjacentHTML('beforeend',`<section class="wall-inspector"><h3>${esc(wallTakeoffLabel(item))}</h3><p>${fmt(lineLength(item.points)*S.scales[item.page])} pi de murs · ${height===null||!Number.isFinite(height)?'hauteur à saisir':fmt(height/12)+' pi de hauteur'} · ${fmt(wall.openings||0)} pi² d’ouvertures</p><strong>${quantity===null?'Surface à compléter':fmt(quantity)+' pi² nets'}</strong><p>${item.wallTakeoff?.reviewed===false?'Pans et ouvertures à vérifier avant confirmation.':'Les quantités murales restent séparées du plancher.'}</p><button type="button" id="editWallTakeoff">Hauteur, pans et ouvertures</button></section>`);
+  host.insertAdjacentHTML('beforeend',`<section class="wall-inspector"><h3>${esc(wallTakeoffLabel(item))}</h3><p>${esc(formatFeet(lineLength(item.points)*S.scales[item.page]))} de murs · ${height===null||!Number.isFinite(height)?'hauteur à saisir':fmt(height/12)+' pi de hauteur'} · ${fmt(wall.openings||0)} pi² d’ouvertures</p><strong>${quantity===null?'Surface à compléter':fmt(quantity)+' pi² nets'}</strong><p>${item.wallTakeoff?.reviewed===false?'Pans et ouvertures à vérifier avant confirmation.':'Les quantités murales restent séparées du plancher.'}</p><button type="button" id="editWallTakeoff">Hauteur, pans et ouvertures</button></section>`);
   $('#editWallTakeoff').onclick=()=>openWallTakeoffEditor(item.points,item);
 }
 function drawWallTakeoffGuides(context) {
@@ -3826,6 +3993,285 @@ const sanitaryRooms = (function createSanitaryRooms(geometry) {
   }
   return { associate };
 })(geometry);
+const imperialDisplay = (function createImperialDisplay() {
+  function formatFeet(feet, { denominator = 16 } = {}) {
+    if (typeof feet !== 'number' || !Number.isFinite(feet)) {
+      throw new TypeError('La longueur doit être un nombre fini exprimé en pieds.');
+    }
+    if (![2, 4, 8, 16, 32, 64].includes(denominator)) {
+      throw new RangeError('Le dénominateur doit être 2, 4, 8, 16, 32 ou 64.');
+    }
+
+    const magnitude = Math.abs(feet);
+    const ticksPerFoot = 12 * denominator;
+    const scaled = magnitude * ticksPerFoot;
+    let wholeFeet;
+    let ticks;
+    if (scaled <= Number.MAX_SAFE_INTEGER) {
+      // Arrondir la longueur complète évite les erreurs de soustraction près
+      // des demi-fractions. BigInt garde quotient et reste entiers exacts.
+      const rounded = BigInt(Math.round(scaled));
+      wholeFeet = rounded / BigInt(ticksPerFoot);
+      ticks = Number(rounded % BigInt(ticksPerFoot));
+    } else {
+      // Décomposer les très grandes longueurs : le produit peut déborder
+      // alors que la valeur reçue reste finie.
+      const integerFeet = Math.floor(magnitude);
+      wholeFeet = BigInt(integerFeet);
+      ticks = Math.round((magnitude - integerFeet) * ticksPerFoot);
+      if (ticks === ticksPerFoot) {
+        wholeFeet += 1n;
+        ticks = 0;
+      }
+    }
+
+    const inches = Math.floor(ticks / denominator);
+    let numerator = ticks % denominator;
+    let divisor = denominator;
+    while (numerator !== 0 && numerator % 2 === 0) {
+      numerator /= 2;
+      divisor /= 2;
+    }
+    const fraction = numerator === 0 ? '' : `${numerator}/${divisor}`;
+    const inchText = fraction ? (inches === 0 ? fraction : `${inches} ${fraction}`) : String(inches);
+    const sign = feet < 0 && (wholeFeet !== 0n || ticks !== 0) ? '-' : '';
+    return `${sign}${wholeFeet}'-${inchText}"`;
+  }
+
+  return { formatFeet };
+})();
+const wallTopology = (function createWallTopology() {
+  const maxId = 2147483647;
+  const maxCoordinate = 1e9;
+  const maxRooms = 100000;
+  const maxBoundaries = 1000000;
+  const spaceTypes = new Set(['dwelling', 'bathroom', 'circulation', 'room']);
+  const manualTypes = new Set(['exterior', 'separating', 'circulation']);
+
+  function object(value, label) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(label + ' doit être un objet.');
+  }
+
+  function list(value, label, limit) {
+    if (!Array.isArray(value)) throw new Error(label + ' doit être un tableau.');
+    if (value.length > limit) throw new Error(label + ' dépasse la limite de ' + limit + ' éléments.');
+  }
+
+  function identifier(value) {
+    if (!Number.isInteger(value) || value < 0 || value > maxId) {
+      throw new Error('Un identifiant doit être un entier de 0 à ' + maxId + '.');
+    }
+  }
+
+  function point(value) {
+    object(value, 'Une extrémité');
+    if (!Number.isFinite(value.x) || !Number.isFinite(value.y) ||
+        Math.abs(value.x) > maxCoordinate || Math.abs(value.y) > maxCoordinate) {
+      throw new Error('Chaque coordonnée doit être finie et comprise entre −1e9 et 1e9 pixels.');
+    }
+    return { x: value.x, y: value.y };
+  }
+
+  function dimension(value, label, limit) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > limit)) {
+      throw new Error(label + ' doit être un nombre fini positif ou nul, au plus ' + limit + '.');
+    }
+  }
+
+  function wallFeature(feature) {
+    object(feature, 'Les caractéristiques du mur');
+    if (!Number.isFinite(feature.thickness) || feature.thickness <= 0) {
+      throw new Error('L’épaisseur du mur doit être finie, strictement positive et exprimée en pieds.');
+    }
+    if (!Number.isFinite(feature.stroke) || feature.stroke <= 0) {
+      throw new Error('L’épaisseur du trait doit être finie, strictement positive et exprimée en pieds.');
+    }
+    if (!Number.isFinite(feature.brightness) || feature.brightness < 0 || feature.brightness > 255) {
+      throw new Error('La luminosité du mur doit être un nombre fini de 0 à 255.');
+    }
+  }
+
+  // Comparaison locale de style seulement : les épaisseurs sont déjà converties
+  // en pieds physiques. Aucun angle ni rattachement topologique n’est déduit ici.
+  function matchSamples(feature, samples) {
+    wallFeature(feature);
+    list(samples, 'Les échantillons de murs', 3);
+    const kinds = new Set();
+    function close(value, reference, tolerance) {
+      const rounding = Number.EPSILON * Math.max(Math.abs(value), Math.abs(reference), tolerance) * 4;
+      return Math.abs(value - reference) <= tolerance + rounding;
+    }
+    for (const sample of samples) {
+      object(sample, 'Un échantillon');
+      if (!manualTypes.has(sample.kind)) throw new Error('Le type d’échantillon de mur est inconnu.');
+      wallFeature(sample.feature);
+      const reference = sample.feature;
+      if (close(feature.thickness, reference.thickness, Math.max(reference.thickness * 0.2, 1 / 48)) &&
+          close(feature.stroke, reference.stroke, Math.max(reference.stroke * 0.2, 1e-4)) &&
+          close(feature.brightness, reference.brightness, 12)) kinds.add(sample.kind);
+    }
+    return {
+      kind: kinds.size === 1 ? kinds.values().next().value : null,
+      reason: kinds.size === 1 ? 'unique-style' : kinds.size > 1 ? 'ambiguous-style' : 'no-match',
+      proposed: true,
+    };
+  }
+
+  function classify(input) {
+    object(input, 'La topologie');
+    const { rooms, boundaries, exteriorIds = [] } = input;
+    list(rooms, 'La liste des pièces', maxRooms);
+    list(boundaries, 'La liste des frontières', maxBoundaries);
+    list(exteriorIds, 'La liste des identifiants extérieurs', maxRooms);
+    const outside = new Set();
+    for (const id of exteriorIds) {
+      identifier(id);
+      outside.add(id);
+    }
+    const roomById = new Map();
+    const roomKinds = {};
+    for (const room of rooms) {
+      object(room, 'Une pièce');
+      identifier(room.id);
+      if (roomById.has(room.id)) throw new Error('Un identifiant de pièce est répété : ' + room.id + '.');
+      if (room.unitId !== undefined && (typeof room.unitId !== 'string' || room.unitId.length > 200)) {
+        throw new Error('L’identifiant d’unité doit être une chaîne d’au plus 200 caractères.');
+      }
+      if (room.spaceType !== undefined && !spaceTypes.has(room.spaceType)) throw new Error('Le type d’espace est inconnu.');
+      dimension(room.area, 'L’aire', 1e18);
+      dimension(room.perimeter, 'Le périmètre', 1e12);
+      const unitId = room.unitId && room.unitId.trim() ? room.unitId : null;
+      roomById.set(room.id, { id: room.id, unitId, spaceType: room.spaceType, area: room.area, perimeter: room.perimeter });
+      roomKinds[room.id] = {
+        kind: room.spaceType || 'unknown', provenance: room.spaceType ? 'label' : 'unknown', proposed: false, unitId,
+      };
+    }
+
+    // Copier chaque entrée; les doublons et les deux côtés éventuellement fournis
+    // sont conservés avec leur index, sans fusion de longueur ou de quantité.
+    const segments = [];
+    const adjacentUnits = new Map();
+    function addAdjacent(roomId, neighborId) {
+      if (outside.has(roomId) || outside.has(neighborId) || roomId === neighborId || !roomById.has(roomId)) return;
+      const neighbor = roomById.get(neighborId);
+      if (!neighbor || !neighbor.unitId) return;
+      if (!adjacentUnits.has(roomId)) adjacentUnits.set(roomId, new Set());
+      adjacentUnits.get(roomId).add(neighbor.unitId);
+    }
+    let boundaryIndex = 0;
+    for (const boundary of boundaries) {
+      object(boundary, 'Une frontière');
+      identifier(boundary.roomId);
+      if (boundary.neighborId !== null) identifier(boundary.neighborId);
+      if (boundary.manualType !== undefined && !manualTypes.has(boundary.manualType)) {
+        throw new Error('Le type de mur manuel est inconnu.');
+      }
+      const segment = { a: point(boundary.a), b: point(boundary.b), roomId: boundary.roomId, neighborId: boundary.neighborId, boundaryIndex };
+      if (boundary.manualType !== undefined) segment.manualType = boundary.manualType;
+      segments.push(segment);
+      if (segment.a.x !== segment.b.x || segment.a.y !== segment.b.y) {
+        addAdjacent(segment.roomId, segment.neighborId);
+        addAdjacent(segment.neighborId, segment.roomId);
+      }
+      boundaryIndex++;
+    }
+
+    for (const room of roomById.values()) {
+      if (room.spaceType !== undefined || outside.has(room.id) || !(room.area > 0) || room.perimeter === undefined) continue;
+      const elongation = room.perimeter * room.perimeter / (16 * room.area);
+      const adjacentUnitCount = adjacentUnits.get(room.id)?.size || 0;
+      if (Number.isFinite(elongation) && elongation >= 2 && adjacentUnitCount >= 3) {
+        roomKinds[room.id] = {
+          kind: 'circulation', provenance: 'geometry-adjacency', proposed: true, unitId: room.unitId,
+          features: { area: room.area, perimeter: room.perimeter, elongation, adjacentUnitCount },
+        };
+      }
+    }
+
+    const layers = { exterior: [], separating: [], circulation: [], interior: [], unknown: [] };
+    const warnings = [];
+    const messages = {
+      'missing-neighbor': 'Frontière inconnue : le voisin n’est pas identifié.',
+      'unknown-room': 'Frontière inconnue : une pièce adjacente n’est pas identifiée.',
+      'missing-unit': 'Frontière inconnue : le rattachement des deux pièces aux unités est incomplet.',
+      'same-room': 'Frontière inconnue : les deux côtés désignent la même pièce.',
+      'both-exterior': 'Frontière inconnue : les deux côtés sont déclarés extérieurs.',
+      'zero-length': 'Frontière inconnue : le segment a une longueur nulle.',
+    };
+    for (const segment of segments) {
+      const left = roomById.get(segment.roomId);
+      const right = roomById.get(segment.neighborId);
+      const leftOutside = outside.has(segment.roomId);
+      const rightOutside = outside.has(segment.neighborId);
+      let layer = 'unknown';
+      let reason;
+      let proposed = false;
+      let source = 'adjacency';
+      if (segment.a.x === segment.b.x && segment.a.y === segment.b.y) reason = 'zero-length';
+      // Une indication manuelle est une proposition de classe, sans confirmer
+      // de quantité ni créer un segment lorsque ses deux extrémités coïncident.
+      else if (segment.manualType !== undefined) {
+        layer = segment.manualType;
+        reason = 'manual-hint';
+        proposed = true;
+        source = 'manual';
+      }
+      else if (leftOutside && rightOutside) reason = 'both-exterior';
+      else if (segment.roomId === segment.neighborId) reason = 'same-room';
+      else if ((leftOutside && right) || (rightOutside && left)) {
+        layer = 'exterior';
+        reason = 'known-exterior';
+      } else {
+        const circulation = [left, right].filter(room => room && !outside.has(room.id) && roomKinds[room.id].kind === 'circulation');
+        if (circulation.length) {
+          layer = 'circulation';
+          proposed = circulation.some(room => roomKinds[room.id].proposed);
+          reason = proposed ? 'proposed-circulation' : 'labelled-circulation';
+        } else if (segment.neighborId === null) reason = 'missing-neighbor';
+        else if (!left || !right || leftOutside || rightOutside) reason = 'unknown-room';
+        else if (!left.unitId || !right.unitId) reason = 'missing-unit';
+        else if (left.unitId === right.unitId) {
+          layer = 'interior';
+          reason = 'same-unit';
+        } else {
+          layer = 'separating';
+          reason = 'different-units';
+        }
+      }
+      layers[layer].push({ ...segment, reason, proposed, source });
+      if (layer === 'unknown') warnings.push({ boundaryIndex: segment.boundaryIndex, reason, message: messages[reason] });
+    }
+    const counts = {};
+    for (const layer of Object.keys(layers)) counts[layer] = layers[layer].length;
+    counts.total = segments.length;
+    return { layers, roomKinds, counts, warnings };
+  }
+
+  return { classify, matchSamples };
+})();
+const detectionFinishes = (function createDetectionFinishes(base) {
+  const normalize=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim().replace(/\s+/g,' ');
+  function validate(config,codes,pages=1000000) {
+    if(config===undefined)return;
+    if(!config||typeof config!=='object'||Array.isArray(config)||Object.keys(config).some(key=>!['floor','bathroom','circulation','locations'].includes(key)))throw new Error('Préférences de finis invalides.');
+    for(const key of ['floor','bathroom','circulation'])if(config[key]!==null&&!codes.includes(config[key]))throw new Error('Choisissez un fini disponible pour '+key+'.');
+    if(!Array.isArray(config.locations)||config.locations.length>50)throw new Error('Au plus 50 localisations de finis sont permises.');
+    const seen=new Set();
+    for(const row of config.locations){
+      if(!row||Object.keys(row).some(key=>!['name','material','page'].includes(key))||typeof row.name!=='string'||!row.name.trim()||row.name.length>120||/[\u0000-\u001f]/.test(row.name)||!codes.includes(row.material)||!Number.isInteger(row.page)||row.page<0||row.page>pages)throw new Error('Une localisation de fini est invalide.');
+      const key=row.page+':'+normalize(row.name);if(seen.has(key))throw new Error('Cette localisation est déjà renseignée.');seen.add(key);
+    }
+  }
+  function propose(input,codes,config) {
+    const result=base.propose(input,codes);if(config===undefined)return result;validate(config,codes);
+    if(input.needsSeparation||input.mixedBathroom||input.finishCodes?.length)return result;
+    const name=normalize(input.name||''),matching=config.locations.filter(row=>(row.page===0||row.page===input.page)&&(name===normalize(row.name)||name.startsWith(normalize(row.name)+' ')));
+    if(new Set(matching.map(row=>row.material)).size>1)return {...result,materialNeedsReview:true,reason:'Plusieurs localisations de finis se contredisent; choisissez le fini.'};
+    const material=matching[0]?.material||(input.bathroom?config.bathroom:input.spaceType==='circulation'?(config.circulation||config.floor):config.floor);
+    return material?{...result,material,materialSource:matching.length?'localisation choisie':'préférence du projet',materialNeedsReview:true,reason:'Fini proposé selon les préférences du projet; contour et localisation à confirmer.'}:result;
+  }
+  return {validate,propose};
+})(finishProposals);
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -6518,7 +6964,7 @@ function itemQuantityText(item,withWaste=false) {
   if(hasPendingFixtures(item))return 'À délimiter';
   const quantity=displayQuantityForItem(item);if(quantity===null)return 'À compléter';
   const value=withWaste?quantity*(1+displayWasteForItem(item)/100):quantity;
-  return fmt(value,item.kind==='count'?0:1)+' '+unitForItem(item);
+  return item.kind==='linear'&&!isWallTakeoff(item)?formatFeet(value):fmt(value,item.kind==='count'?0:1)+' '+unitForItem(item);
 }
 function displayQuantityForItem(item) {return isWallTakeoff(item)?wallTakeoffQuantity(item):item.qty;}
 function displayWasteForItem(item) {return isWallTakeoff(item)?workOf(item).wall.waste:item.waste;}
@@ -6533,9 +6979,9 @@ function renderInspectorBase() {
     host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div></div>
       <label>Nom du relevé<input id="itemName" maxlength="300" value="${esc(item.name)}"></label>
       ${item.kind==='area'?`<label>Type d’espace<select id="itemSpaceType">${Object.entries(SPACE_STYLES).map(([type,style])=>`<option value="${type}" ${surfaceSpaceType(item)===type?'selected':''}>${style.label}</option>`).join('')}</select></label><label>Fini<select id="itemMaterial">${MATERIALS.map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
-      <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':isWallTakeoff(item)?'SURFACE MURALE NETTE':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':displayQuantityForItem(item)===null?'À compléter':fmt(displayQuantityForItem(item),item.kind==='count'?0:1)} <small>${unitForItem(item)}</small></strong></div>
+      <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':isWallTakeoff(item)?'SURFACE MURALE NETTE':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':displayQuantityForItem(item)===null?'À compléter':item.kind==='linear'&&!isWallTakeoff(item)?formatFeet(displayQuantityForItem(item)):fmt(displayQuantityForItem(item),item.kind==='count'?0:1)} <small>${item.kind==='linear'&&!isWallTakeoff(item)?'':unitForItem(item)}</small></strong></div>
       ${item.kind!=='count'&&!item.measureOnly&&!isWallTakeoff(item)?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${item.waste}"><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
-      ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${fmt(perimeter(item.points)*S.scales[item.page])} pi</b></div>`:''}
+      ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${esc(formatFeet(perimeter(item.points)*S.scales[item.page]))}</b></div>`:''}
       ${item.measureOnly?'<p class="selection-help">Cote de référence : exclue des commandes et des plinthes.</p>':''}
       <label>Statut<select id="itemStatus">${['confirmée','estimée','à valider'].map(status=>`<option ${status===item.status?'selected':''}>${status}</option>`).join('')}</select></label>
       <div class="status-note"><i data-lucide="check"></i><span>Page ${item.page}<small>${esc(item.method)}${item.kind==='count'?' · échelle non requise':S.scaleMeta[item.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer le relevé</button>`;
@@ -6693,19 +7139,15 @@ function imperialFeet(feet,inches,numerator,denominator) {
   if (value <= 0) throw new Error('La longueur connue doit être supérieure à zéro.');
   return value;
 }
-function formatFeet(value) {
-  const total = Math.round(value*192), feet = Math.floor(total/192), inches = Math.floor(total%192/16);
-  let n = total%16, d = 16;
-  while (n && n%2 === 0) { n /= 2; d /= 2; }
-  return feet + "′ " + inches + (n ? ' '+n+'/'+d : '') + '″';
-}
+function formatFeet(value) {return imperialDisplay.formatFeet(value);}
+
 function decodeImage(src) { return new Promise((resolve,reject) => {const image = new Image(); image.onload = () => resolve(image); image.onerror = () => reject(new Error('Image illisible.')); image.src = src;}); }
 async function loadImage(src,name='Plan exemple') {
   const image = await decodeImage(src); S.plan = image; S.fileName = name; fitPlan(image); refresh();
 }
 function openDocument(key,name,pdf,pages) {
   save();
-  const record = readSaved('quantif-document-v3:'+key,{});validateDetectionOptions(record.settings);
+  const record = readSaved('quantif-document-v3:'+key,{});validateDetectionOptions(record.settings,pages);
   if(S.detectJob)S.detectJob.cancelled=true;S.reviewByPage={};S.reviewOpen=false;S.detectionNotes=[];S.detectJob=null;if($('#reviewPanel')){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
   S.documentKey = key; S.fileName = name; S.pdf = pdf; S.pages = pages; S.page = 1;
   S.items = Array.isArray(record.items) ? record.items : [];S.folders=Array.isArray(record.folders)?record.folders:[];
@@ -7082,7 +7524,7 @@ function tileModal() {
 function detectorForPage() {
   const key=JSON.stringify([S.documentKey,S.page,S.settings,S.scales[S.page],S.dividers[S.page],S.detectBounds[S.page]]);
   if(S.detectorCache?.image===S.plan&&S.detectorCache.key===key)return S.detectorCache.model;
-  const model=makeWallModel(S.plan,S.pageInfo[S.page],S.settings,S.scale,S.dividers[S.page]||[],S.detectBounds[S.page]);
+  const model=makeWallModel(S.plan,S.pageInfo[S.page],{...S.settings,detectionPage:S.page},S.scale,S.dividers[S.page]||[],S.detectBounds[S.page]);
   S.detectorCache={key,image:S.plan,model};return model;
 }
 function duplicateCandidate(candidate,item) {
@@ -7500,7 +7942,7 @@ function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
     if((item.kind==='count'||item.measureOnly)&&item.waste!==0)throw new Error('Les comptages et les cotes ne portent pas de perte.');
     if(item.kind==='count'&&(item.holes?.length||Object.keys(item.subzones||{}).length||item.layout||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId))throw new Error('Un comptage ne porte pas d’exclusion ou de calepinage.');
     if(item.wasteConfirmed!==undefined&&typeof item.wasteConfirmed!=='boolean')throw new Error('Statut du taux de perte invalide.');
-    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);if(item.sanitaryEvidence!==undefined)validateSanitaryData(item);validateWallTakeoffData(item);ids.add(item.id);
+    if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);if(item.sanitaryEvidence!==undefined)validateSanitaryData(item);if(item.floorEvidence!==undefined||item.detectedUnit!==undefined)validateFloorEvidence(item);validateWallTakeoffData(item);ids.add(item.id);
     if((item.holes&&!Array.isArray(item.holes))||!getHoles(item).every(ring=>points(ring,3)))throw new Error('Une exclusion est invalide.');
     if(item.layout&&(!points([item.layout.origin,item.layout.origin])||!Number.isFinite(item.layout.angle)||!Number.isFinite(item.layout.joint)||item.layout.joint<0||item.layout.joint>1))throw new Error('Un départ de céramique est invalide.');
   }
@@ -7509,7 +7951,7 @@ function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
   for(const [page,list]of Object.entries(data.dividers||{}))if(!/^\d+$/.test(page)||+page<1||+page>pages||!Array.isArray(list)||list.length>500||!list.every(divider=>points(divider.points)&&divider.points.length===2))throw new Error('Une séparation est invalide.');
   for(const rect of Object.values(data.detectBounds||{}))if(!['x','y','right','bottom'].every(key=>Number.isFinite(rect[key])))throw new Error('Un cadre est invalide.');
   if(data.settings?.pageRotations)for(const [page,rotation]of Object.entries(data.settings.pageRotations))if(!/^\d+$/.test(page)||+page<1||+page>pages||![0,90,180,270].includes(rotation))throw new Error('Rotation de vue invalide.');
-  validateDetectionOptions(data.settings);validateFolders(data);return data;
+  validateDetectionOptions(data.settings,pages);validateFolders(data);return data;
 }
 async function importProject(file) {
   if(!file)return;
@@ -7520,7 +7962,7 @@ async function importProject(file) {
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
-    for(const key of ['detectionChoices','splitSingleDwelling','sanitaryRejects']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
+    for(const key of ['detectionChoices','splitSingleDwelling','sanitaryRejects','detectionFinishes','wallSamples']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
@@ -8115,6 +8557,7 @@ canvas.onclick=event=>{
   if(!S.plan||S.loading||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
   const point=snapPoint(canvasPoint(event),event);
+  if(S.tool==='wallSamples'){recordWallSample(point);return;}
   if(handleManualClick(point,event))return;
   if(['fixtureBox','fixturePolygon'].includes(S.tool)){if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);if(S.tool==='fixtureBox'&&S.draft.length===2)finishFixtureDrawing();}
   else if(S.tool==='select')selectSurfaceAt(point,event);
