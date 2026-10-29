@@ -597,7 +597,7 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   const off=document.createElement('canvas');off.width=width;off.height=height;
   const context=off.getContext('2d',{willReadFrequently:true});context.fillStyle='#ffffff';context.fillRect(0,0,width,height);
   const wallDiagnostics={mode:settings.wallMode==='all'?'all':'structure',capturePhysical:true};
-  const sanitary=sanitaryForPage(info,scale,roi),wallPaths=laundryFixtures.filter(sanitaryWallPaths(info?.vectorWalls||[],sanitary.baths,scale),[...(info?.labels||[]),...(info?.texts||[])],{scale});
+  const sanitary=sanitaryForPage(info,scale,roi),wallPaths=closetHatching.filter(laundryFixtures.filter(sanitaryWallPaths(info?.vectorWalls||[],sanitary.baths,scale),[...(info?.labels||[]),...(info?.texts||[])],{scale}),{scale});
   const vectorCount=wallPaths.length?drawWallPaths(context,wallPaths,factor,settings.threshold,scale,info.texts,settings.doorInches,info.labels,wallDiagnostics.mode,wallDiagnostics):0;
   if(!vectorCount)context.drawImage(image,0,0,width,height);
   // Suppress readable PDF labels so letters cannot masquerade as wall fragments.
@@ -1236,6 +1236,7 @@ function validateDetectionOptions(settings,pages=S.pages) {
   if(settings?.wallSamples!==undefined)validateWallSamples(settings,pages);
   if(settings?.detectionFinishes!==undefined)detectionFinishes.validate(settings.detectionFinishes,MATERIALS.map(entry=>entry.code),pages);
   if(settings?.detectionChoices!==undefined)detectionDecisions.validate(settings.detectionChoices,MATERIALS.map(entry=>entry.code));
+  if(settings?.detectionBaseboardChoices!==undefined)detectionDecisions.validate(settings.detectionBaseboardChoices,Object.keys(catalogDefaults()).filter(code=>code.startsWith('PL-')));
   if(settings?.splitSingleDwelling!==undefined&&typeof settings.splitSingleDwelling!=='boolean')throw new Error('Le réglage de séparation des logements doit être un booléen.');
   if(settings?.sanitaryRejects!==undefined&&(!Array.isArray(settings.sanitaryRejects)||settings.sanitaryRejects.length>5000||new Set(settings.sanitaryRejects).size!==settings.sanitaryRejects.length||!settings.sanitaryRejects.every(key=>typeof key==='string'&&key.startsWith('sanitary:')&&key.length<=600)))throw new Error('Les refus de symboles sanitaires sont invalides.');
 }
@@ -1271,7 +1272,17 @@ function reviewBatchCandidates() {return reviewBatchPages().flatMap(page=>S.revi
 function updateDetectionChoiceButton() {
   const candidates=reviewBatchCandidates();
   const count=candidates.filter(item=>item.selected&&!item.duplicate&&!item.needsSeparation).length,button=$('#addCandidates');
-  if(button){button.disabled=!count;button.textContent=`Ajouter ${count} choix · ${reviewBatchPages().length} feuille(s) · à valider`;}
+  if(button){button.disabled=S.reviewMode==='count'?false:!count;button.textContent=S.reviewMode==='count'?'Revenir aux surfaces':`Ajouter ${count} choix · ${reviewBatchPages().length} feuille(s) · à valider`;}
+}
+function applyDetectionBaseboard(candidate,documentKey,page) {
+  const entries=S.settings.detectionBaseboardChoices;if(!entries?.length)return candidate;
+  const key=detectionChoiceKey(documentKey,page,candidate),entry=entries.find(choice=>choice.key===key);if(!entry)return candidate;
+  const work=workOf(candidate);candidate.work={...work,baseboard:{...work.baseboard,enabled:entry.selected,code:entry.material}};return candidate;
+}
+function rememberDetectionBaseboard(candidate,code) {
+  const codes=Object.keys(catalogDefaults()).filter(value=>value.startsWith('PL-')),work=workOf(candidate),enabled=!!code,selectedCode=code||work.baseboard.code;
+  const entries=detectionDecisions.set(S.settings.detectionBaseboardChoices||[],detectionChoiceKey(S.documentKey,candidate.page||S.page,candidate),{material:selectedCode,selected:enabled,materialNeedsReview:true},codes);
+  remember();candidate.work={...work,baseboard:{...work.baseboard,enabled,code:selectedCode}};S.settings={...S.settings,detectionBaseboardChoices:entries};save();
 }
 function sanitaryReviewMarkup(pack) {
   const data=pack?.sanitary;if(!data)return '';
@@ -1304,16 +1315,17 @@ function renderDetectionPanel() {
     filtered=candidates.map((item,index)=>({item,index})).filter(({item})=>filter==='all'||filter==='sanitary'&&(item.bathroom||item.sanitaryEvidence?.length)||filter==='unnamed'&&item.unnamed),
     totalPages=Math.max(1,Math.ceil(filtered.length/100)),offset=Math.max(0,Math.min(S.reviewOffset||0,totalPages-1));
   S.reviewOffset=offset;const visible=filtered.slice(offset*100,(offset+1)*100);
-  panel.innerHTML=`<header class="review-head"><div><span>RELEVÉ AUTOMATIQUE</span><h2>Réviser les pièces</h2></div><button type="button" id="closeReview" aria-label="Fermer la révision">×</button></header>
-    <div class="review-intro"><p>${candidates.length} proposition(s) · ${esc(pageName(S.page))}</p><p id="detectionEngine" data-detection-engine="${esc(pack?.engineSource||'unknown')}">Lecture : ${pack?.engineSource==='vector'?'tracés PDF':pack?.engineSource==='raster'?'image du plan':'source à vérifier'} · propositions à valider.</p><p>${candidates.filter(item=>item.unnamed).length} zone(s) sans nom à rattacher · ${candidates.filter(item=>item.materialNeedsReview).length} fini(s) proposé(s) à confirmer.</p><p>Affichez un contour, vérifiez son fini, puis ajoutez-le au relevé. La confirmation se fait ensuite dans le tableau.</p>
-    ${pages.length>1?`<label>Feuille analysée<select id="reviewPage">${pages.map(page=>`<option value="${page}" ${page===S.page?'selected':''}>${esc(pageName(page))}</option>`).join('')}</select></label>`:''}</div>
-    ${sanitaryReviewMarkup(pack)}<label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter==='all'?'selected':''}>Toutes les propositions</option><option value="sanitary" ${filter==='sanitary'?'selected':''}>Salles de bains proposées</option><option value="unnamed" ${filter==='unnamed'?'selected':''}>Zones sans nom</option></select></label>
-    <div class="review-pagination"><button type="button" id="reviewPrevious" ${offset===0?'disabled':''}>Précédent</button><span>${filtered.length} résultat(s) · page ${offset+1} / ${totalPages}</span><button type="button" id="reviewNext" ${offset+1>=totalPages?'disabled':''}>Suivant</button></div>
-    <div class="review-scroll">${candidates.length?`<div class="detection-table"><table><thead><tr><th>Choix</th><th>Pièce et revêtement</th><th>Net</th></tr></thead><tbody>${visible.map(({item,index})=>`<tr data-review-candidate="${index}"><td><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected?'checked':''} ${item.duplicate||item.needsSeparation?'disabled':''}></td><td><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index===S.previewFocus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button><label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate?'disabled':''}>${!item.material?'<option value="">Choisir le revêtement</option>':''}${MATERIALS.map(material=>`<option value="${material.code}" ${item.material===material.code?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select>
-      ${item.unitGrouping?`<small>${item.unitGrouping.sourceRoomIds.length} zones réunies · un seul sol de logement.</small>`:''}${item.duplicate?'<small class="review-ok">Déjà mesurée</small>':''}${item.importIssue&&!item.duplicate?`<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>`:''}${item.needsSeparation?'<small class="review-warning">Pièces communicantes : fermez le passage et relancez.</small>':''}${item.unnamed?`<small>${item.floorEvidence?.inside>0&&item.floorEvidence.outside===0?'Zone sans nom · intérieur proposé par enveloppe des murs; fini à confirmer.':'Zone sans nom : intérieur/extérieur et rattachement à vérifier.'}</small>`:''}${item.materialNeedsReview?`<small class="review-warning">Fini proposé · à confirmer (${esc(item.materialSource||'défaut')}).</small><button type="button" data-confirm-material="${index}">Confirmer ce fini</button>`:`<small class="review-ok">${item.materialSource==='choix estimateur'?'Fini choisi':'Fini renseigné'} · contour à valider.</small>`}${hasPendingFixtures(item)?'<small class="review-warning">Équipement à délimiter avant commande.</small>':''}${item.fixtureCuts?.length?`<small>${item.fixtureCuts.length} emprise(s) proposée(s) à contrôler.</small>`:''}${item.sanitaryEvidence?.length?`<small class="review-warning">Hypothèse sanitaire : vérifiez le sol et l’emprise extérieure.</small><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button>`:''}</td><td>${fmt(item.qty)}<small>pi²</small></td></tr>`).join('')}</tbody></table></div>`:'<p class="review-empty">Aucune pièce fermée reconnue sur cette feuille. Fermez une ouverture ou limitez le cadre de détection.</p>'}
-    ${notes.length?`<details class="review-notes" open><summary>Bilan des feuilles</summary><ul>${notes.map(note=>`<li>Page ${note.page} : ${esc(note.message)}</li>`).join('')}</ul></details>`:''}</div>
-    <footer class="review-actions"><button type="button" class="primary" id="addCandidates" ${!candidates.some(item=>item.selected&&!item.duplicate&&!item.needsSeparation)?'disabled':''}>Ajouter au relevé · à valider</button><div><button type="button" id="retryDetection">Réglages</button><button type="button" id="correctDetection">Fermer un passage</button><button type="button" id="cancelDetection">Fermer</button></div></footer>`;
+  const mode=['area','baseboard','count'].includes(S.reviewMode)?S.reviewMode:'area',baseboardChoices={},baseboardLengths={};
+  for(const {item,index}of visible){const work=workOf(item);baseboardChoices[index]=work.baseboard.enabled?work.baseboard.code:'';baseboardLengths[index]=perimeter(item.points)*(S.scales[S.page]||0);}
+  panel.innerHTML=detectionReviewUI.render({candidates,visible,pages:pages.map(page=>({page,title:pageName(page)})),page:S.page,pageTitle:pageName(S.page),engineSource:pack?.engineSource,filter,offset,totalPages,filteredCount:filtered.length,focus:S.previewFocus,sanitaryMarkup:sanitaryReviewMarkup(pack),pendingSanitaryCount:pack?.sanitary?.pending?.length||0,warningCount:pack?.sanitary?.warnings?.length||0,notes,mode,materials:MATERIALS,
+    baseboardProducts:Object.entries(catalogDefaults()).filter(([code])=>code.startsWith('PL-')).map(([code])=>({code,name:profile(code).name})),baseboardChoices,baseboardLengths});
   updateDetectionChoiceButton();
+  const selectMode=next=>{S.reviewMode=next;renderDetectionPanel();$(`[data-review-mode="${next}"]`)?.focus({preventScroll:true});};
+  $$('[data-review-mode]',panel).forEach(button=>{
+    button.tabIndex=button.dataset.reviewMode===mode?0:-1;button.onclick=()=>selectMode(button.dataset.reviewMode);
+    button.onkeydown=event=>{const keys=['ArrowLeft','ArrowRight','Home','End'];if(!keys.includes(event.key))return;event.preventDefault();const modes=['area','baseboard','count'],index=modes.indexOf(mode);selectMode(event.key==='Home'?'area':event.key==='End'?'count':modes[(index+(event.key==='ArrowRight'?1:2))%3]);};
+  });
+  $$('[data-candidate-baseboard]',panel).forEach(select=>select.onchange=()=>{const index=+select.dataset.candidateBaseboard;try{rememberDetectionBaseboard(candidates[index],select.value);renderDetectionPanel();$(`[data-candidate-baseboard="${index}"]`)?.focus({preventScroll:true});}catch(error){toast(error.message);}});
   $('#reviewFilter').onchange=event=>{S.reviewFilter=event.target.value;S.reviewOffset=0;renderDetectionPanel();};
   $('#reviewPrevious').onclick=()=>{S.reviewOffset=offset-1;renderDetectionPanel();};
   $('#reviewNext').onclick=()=>{S.reviewOffset=offset+1;renderDetectionPanel();};
@@ -1333,6 +1345,7 @@ function renderDetectionPanel() {
   $$('[data-candidate-material]',panel).forEach(select=>select.onchange=()=>{const index=+select.dataset.candidateMaterial,item=candidates[index];if(select.value)try{rememberDetectionChoice(item,{material:select.value,materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){select.value=item.material;toast(error.message);}});
   $$('[data-confirm-material]',panel).forEach(button=>button.onclick=()=>{const index=+button.dataset.confirmMaterial,item=candidates[index];try{rememberDetectionChoice(item,{materialNeedsReview:false});redrawDetectionChoices(index);}catch(error){toast(error.message);}});
   $('#addCandidates').onclick=()=>{
+    if(S.reviewMode==='count'){selectMode('area');return;}
     if(pack?.key!==S.documentKey)return closeReview();
     const result=addDetected(reviewBatchCandidates());renderDetectionPanel();
     if(result.skipped.length)toast(`${result.accepted} ajout(s) ; ${result.skipped.length} contour(s) à corriger.`);
@@ -1491,7 +1504,7 @@ async function detectionSource(pageNumber) {
 }
 async function runDetectionPages(pages) {
   const job={cancelled:false,key:S.documentKey},notes=[];S.detectJob=job;S.detectionNotes=[];
-  S.reviewBatchPages=[...pages];S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.reviewOffset=0;S.reviewFilter='all';
+  S.reviewMode='area';S.reviewBatchPages=[...pages];S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.reviewOffset=0;S.reviewFilter='all';
   for(const page of pages)delete S.reviewByPage[page];
   openDialog('Analyse des feuilles',`<p id="detectionProgress" role="status" aria-live="polite">Préparation…</p><progress id="detectionProgressBar" max="${pages.length}" value="0"></progress><p>L’arrêt prend effet entre deux feuilles. Les résultats déjà obtenus sont conservés.</p><button type="button" id="stopDetection">Arrêter après cette feuille</button>`);
   $('#stopDetection').onclick=()=>{job.cancelled=true;$('#stopDetection').disabled=true;$('#stopDetection').textContent='Arrêt demandé…';};
@@ -1515,7 +1528,8 @@ async function runDetectionPages(pages) {
       candidates=candidates.map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
       model.minimumCandidateArea=settings.minArea;
       candidates=groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material).map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
-      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-9-dwelling-partitions',sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
+      candidates=candidates.map(candidate=>applyDetectionBaseboard(candidate,job.key,page));
+      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-10-closet-patterns',sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
       if(model.rooms.length>3000)notes.push({page,message:'Limite de 3000 propositions atteinte : analyser les zones séparément.'});
       const grouped=candidates.filter(item=>item.unitGrouping).length,unresolved=(model.groupUnresolved||[]).filter(entry=>entry.reason!=='missing-dwelling').length;
       if(grouped||unresolved)notes.push({page,message:`${grouped} logement(s) regroupé(s)${unresolved?' · '+unresolved+' rattachement(s) ambigus à vérifier':''}`});
@@ -5010,6 +5024,219 @@ const laundryFixtures = (function createLaundryFixtures() {
   }
   return { filter };
 })();
+const detectionReviewUI = (function createDetectionReviewUI() {
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const number = value => Number.isFinite(value) ? value.toLocaleString('fr-CA', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) : '—';
+  const icons = {
+    area: '<path d="M4 4h16v16H4zM4 9h16M9 4v16"/>',
+    baseboard: '<path d="M4 5v15h16M8 5v11h12M12 12v4M16 12v4M20 12v4"/>',
+    count: '<path d="M4 5h16v15H4zM4 10h16M10 5v15M15 13v4M13 15h4"/>',
+  };
+  const icon = mode => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">${icons[mode]}</svg>`;
+
+  function summarize(candidates = []) {
+    const byId = new Map(); let unresolvedCount = 0;
+    candidates.forEach((item, index) => {
+      const unit = item?.detectedUnit;
+      if (!unit || typeof unit.id !== 'string' || !unit.id.trim() || typeof unit.label !== 'string') {
+        if (!item?.bathroom && item?.spaceType !== 'circulation') unresolvedCount++;
+        return;
+      }
+      const current = byId.get(unit.id), principal = !item.bathroom && item.spaceType === 'dwelling';
+      if (!current || principal && !current.principal || !item.bathroom && current.bathroom) {
+        byId.set(unit.id, { id: unit.id, label: unit.label, index, principal, bathroom: !!item.bathroom });
+      }
+    });
+    const units = [...byId.values()].map(({ principal, bathroom, ...unit }) => unit);
+    return { units, unitCount: units.length, unresolvedCount };
+  }
+
+  function materialSelect(item, index, materials) {
+    return `<label class="sr-only" for="candidateMaterial${index}">Fini de ${esc(item.name)}</label><select id="candidateMaterial${index}" data-candidate-material="${index}" ${item.duplicate ? 'disabled' : ''}>${!item.material ? '<option value="">Choisir le revêtement</option>' : ''}${materials.map(material => `<option value="${esc(material.code)}" ${item.material === material.code ? 'selected' : ''}>${esc(material.code)} · ${esc(material.name)}</option>`).join('')}</select>`;
+  }
+
+  function areaRow({ item, index }, input, mode) {
+    const pending = !!item.fixturePending?.length;
+    const materialReview = item.materialNeedsReview ? `<small class="review-warning">Fini à confirmer <button type="button" data-confirm-material="${index}" aria-label="Confirmer le fini de ${esc(item.name)}">Confirmer ce fini</button></small>` : `<small class="review-ok">${item.materialSource === 'choix estimateur' ? 'Fini choisi' : 'Fini renseigné'} · contour à valider</small>`;
+    const controls = mode === 'baseboard' ? `<label class="sr-only" for="candidateBaseboard${index}">Plinthe de ${esc(item.name)}</label><select id="candidateBaseboard${index}" data-candidate-baseboard="${index}" ${item.duplicate ? 'disabled' : ''}><option value="" ${!input.baseboardChoices?.[index] ? 'selected' : ''}>Sans plinthe</option>${(input.baseboardProducts || []).map(product => `<option value="${esc(product.code)}" ${input.baseboardChoices?.[index] === product.code ? 'selected' : ''}>${esc(product.name)} · ${esc(product.code)}</option>`).join('')}</select><small>Brut · déductions à vérifier</small>` : materialSelect(item, index, input.materials || []) + materialReview;
+    const quantity = mode === 'baseboard' ? input.baseboardLengths?.[index] : item.qty;
+    return `<article class="review-measure" data-review-candidate="${index}"><div class="review-check"><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected ? 'checked' : ''} ${item.duplicate || item.needsSeparation ? 'disabled' : ''}></div><div class="review-measure-body"><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index === input.focus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button>${controls}
+      ${item.unitGrouping ? `<small>${item.unitGrouping.sourceRoomIds.length} zones réunies · un seul sol de logement.</small>` : ''}${item.bathroomGrouping ? '<small>Salle de bain et lavage réunis.</small>' : ''}${item.duplicate ? '<small class="review-ok">Déjà mesurée</small>' : ''}${item.importIssue && !item.duplicate ? `<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>` : ''}${item.needsSeparation ? '<small class="review-warning">Séparation à corriger avant ajout.</small>' : ''}${item.unnamed ? '<small>Zone sans nom · rattachement à vérifier.</small>' : ''}${pending ? '<small class="review-warning">Équipement à délimiter avant commande.</small>' : ''}${item.fixtureCuts?.length ? `<small>${item.fixtureCuts.length} emprise(s) à contrôler.</small>` : ''}${item.sanitaryEvidence?.length ? `<details class="review-row-details"><summary>Indice sanitaire à vérifier</summary><p>Vérifiez le sol et l’emprise extérieure.</p><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button></details>` : ''}</div><div class="review-measure-quantity">${number(quantity)}<small>${mode === 'baseboard' ? 'pi lin.' : 'pi²'}</small></div></article>`;
+  }
+
+  function countRows(input, summary) {
+    if (!summary.units.length) return '<p class="review-empty">Aucun logement rattaché avec une identité distincte. Les surfaces sans rattachement ne sont pas transformées en unités.</p>';
+    return `<p class="review-mode-note">${summary.unitCount} logement(s) repéré(s) · rattachements proposés. Les types identiques restent des logements distincts.</p>${summary.units.map(unit => {
+      const item = input.candidates[unit.index];
+      return `<article class="review-measure review-unit" data-review-unit="${esc(unit.id)}"><div class="review-unit-symbol" aria-hidden="true">${icon('count')}</div><div class="review-measure-body"><button type="button" class="review-name" data-preview="${unit.index}" aria-label="Afficher le logement ${esc(unit.label)}">${esc(unit.label)} <span aria-hidden="true">Voir</span></button><small>Fini du plancher associé</small>${materialSelect(item, unit.index, input.materials || [])}${item.materialNeedsReview ? '<small class="review-warning">Fini et rattachement à confirmer.</small>' : ''}</div><div class="review-measure-quantity">1<small>unité</small></div></article>`;
+    }).join('')}<p class="review-mode-note">${summary.unresolvedCount} zone(s) sans rattachement hors de ce comptage. Aucune mesure de comptage créée automatiquement.</p>`;
+  }
+
+  function render(input = {}) {
+    const candidates = Array.isArray(input.candidates) ? input.candidates : [];
+    const mode = ['area', 'baseboard', 'count'].includes(input.mode) ? input.mode : 'area';
+    const pages = input.pages || [], visible = input.visible || candidates.map((item, index) => ({ item, index }));
+    const summary = summarize(candidates), offset = input.offset || 0, totalPages = input.totalPages || 1;
+    const engine = input.engineSource || 'unknown';
+    const filter = ['all', 'sanitary', 'unnamed'].includes(input.filter) ? input.filter : 'all';
+    const chosen = candidates.some(item => item.selected && !item.duplicate && !item.needsSeparation);
+    return `<header class="review-head"><div><span>RELEVÉ AUTOMATIQUE</span><h2>Quantités</h2></div><button type="button" id="closeReview" aria-label="Fermer la révision">×</button></header>
+      <div class="review-intro"><p>${candidates.length} proposition(s) · ${esc(input.pageTitle || '')}</p>${pages.length > 1 ? `<label class="sr-only" for="reviewPage">Feuille analysée</label><select id="reviewPage" aria-label="Feuille analysée">${pages.map(entry => `<option value="${esc(entry.page)}" ${entry.page === input.page ? 'selected' : ''}>${esc(entry.title)}</option>`).join('')}</select>` : ''}</div>
+      <div class="review-mode-tabs" role="tablist" aria-label="Type de relevé">${[['area', 'Surface'], ['baseboard', 'Plinthes'], ['count', 'Comptage']].map(([key, label]) => `<button type="button" role="tab" id="reviewTab${key}" data-review-mode="${key}" aria-controls="reviewModePanel" aria-selected="${key === mode}">${icon(key)}<span>${label}</span>${key === 'count' ? `<b>${summary.unitCount}</b>` : ''}</button>`).join('')}</div>
+      <details class="review-audit"><summary>${candidates.filter(item => item.unnamed).length} zones sans nom · ${candidates.filter(item => item.materialNeedsReview).length} finis à confirmer${input.pendingSanitaryCount ? ` · ${esc(input.pendingSanitaryCount)} équipement(s) à délimiter` : ''}${input.warningCount ? ` · ${esc(input.warningCount)} alerte(s)` : ''}</summary><p id="detectionEngine" data-detection-engine="${esc(engine)}">Lecture : ${engine === 'vector' ? 'tracés PDF' : engine === 'raster' ? 'image du plan' : 'source à vérifier'} · propositions à valider.</p><p>Vérifiez contours, finis et équipements. La confirmation des quantités reste distincte.</p>${input.sanitaryMarkup || ''}${input.notes?.length ? `<details class="review-notes"><summary>Bilan des feuilles</summary><ul>${input.notes.map(note => `<li>Page ${esc(note.page)} : ${esc(note.message)}</li>`).join('')}</ul></details>` : ''}</details>
+      <label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter === 'all' ? 'selected' : ''}>Toutes les propositions</option><option value="sanitary" ${filter === 'sanitary' ? 'selected' : ''}>Salles de bains proposées</option><option value="unnamed" ${filter === 'unnamed' ? 'selected' : ''}>Zones sans nom</option></select></label>
+      <div class="review-pagination" ${mode === 'count' ? 'hidden' : ''}><button type="button" id="reviewPrevious" ${offset === 0 ? 'disabled' : ''}>Précédent</button><span>${input.filteredCount ?? candidates.length} résultat(s) · ${offset + 1} / ${totalPages}</span><button type="button" id="reviewNext" ${offset + 1 >= totalPages ? 'disabled' : ''}>Suivant</button></div>
+      <div class="review-scroll" id="reviewModePanel" role="tabpanel" aria-labelledby="reviewTab${mode}">${mode === 'count' ? countRows({ ...input, candidates }, summary) : `${mode === 'baseboard' ? '<p class="review-mode-note">Plinthes associées aux surfaces ajoutées. Périmètres bruts; ouvertures, parties sans plinthe et pertes à vérifier.</p>' : ''}${candidates.length ? visible.map(row => areaRow(row, input, mode)).join('') : '<p class="review-empty">Aucune pièce fermée reconnue. Fermez une ouverture ou limitez le cadre de détection.</p>'}`}</div>
+      <footer class="review-actions"><button type="button" class="primary" id="addCandidates" ${mode !== 'count' && !chosen ? 'disabled' : ''}>${mode === 'count' ? 'Revenir aux surfaces' : 'Ajouter au relevé · à valider'}</button><div><button type="button" id="retryDetection">Réglages</button><button type="button" id="correctDetection">Fermer un passage</button><button type="button" id="cancelDetection">Fermer</button></div></footer>`;
+  }
+
+  function styles() {
+    return `.review-panel{width:300px;flex-basis:300px}.review-head{min-height:54px;padding:10px 12px}.review-head h2{font-size:17px;margin:2px 0}.review-intro{padding:8px 12px}.review-intro p{margin:0 0 6px;font-size:11px}.review-intro select{width:100%;min-width:0;font-size:11px}.review-mode-tabs{display:flex;gap:4px;padding:4px 8px 8px;border-bottom:1px solid var(--line)}.review-mode-tabs button{display:flex;flex:1;align-items:center;justify-content:center;gap:4px;min-height:40px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--ink);font-size:10px;padding:4px}.review-mode-tabs button[aria-selected=true]{background:#e6f3ff;border-color:#8ab9dd;color:#155d88}.review-mode-tabs svg,.review-unit-symbol svg{width:19px;height:19px;flex:none}.review-mode-tabs b{font-size:9px}.review-mode-tabs button:focus-visible,.review-measure button:focus-visible{outline:2px solid #236b99;outline-offset:2px}.review-audit{font-size:10px;padding:7px 12px;border-bottom:1px solid var(--line)}.review-audit>summary{cursor:pointer;color:#45667c}.review-audit p{font-size:10px;line-height:1.4}.review-filter{display:flex;align-items:center;gap:6px;padding:7px 12px;font-size:10px}.review-filter select{flex:1;min-width:0;font-size:10px}.review-pagination{padding:0 8px 6px;font-size:9px;gap:4px}.review-pagination button{font-size:10px;padding:4px 6px}.review-pagination[hidden]{display:none}.review-scroll{min-height:80px}.review-measure{display:grid;grid-template-columns:20px minmax(0,1fr) 46px;gap:6px;padding:10px 10px;border-bottom:1px solid var(--line);background:#fff}.review-check input{width:16px;height:16px;margin:3px 0}.review-measure-body{min-width:0}.review-measure .review-name{font-size:11px;line-height:1.35;text-align:left;width:100%;min-height:24px;padding:0;border:0;background:transparent}.review-name span{font-size:9px;color:#2377a5;float:right;margin-left:4px}.review-measure-body>select{display:block;max-width:100%;width:100%;height:30px;margin-top:5px;font-size:10px;padding:3px 4px;background:#fff;color:var(--ink);border:1px solid #c6d5df;border-radius:3px}.review-measure-body small{display:block;font-size:9px;line-height:1.4;margin-top:4px}.review-measure-body small button{font-size:9px;border:0;background:transparent;color:#155d88;padding:0 0 0 3px;text-decoration:underline}.review-measure-quantity{text-align:right;font-size:11px;font-weight:600;padding-top:3px}.review-measure-quantity small{display:block;font-size:9px;font-weight:400;margin-top:3px}.review-row-details{font-size:9px;margin-top:5px}.review-row-details summary{cursor:pointer}.review-row-details button{font-size:9px}.review-mode-note{font-size:10px;line-height:1.5;margin:0;padding:8px 12px;background:#f5faff;color:#45667c}.review-unit-symbol{color:#2377a5;padding-top:3px}.review-actions{padding:8px}.review-actions>.primary{min-height:36px;font-size:11px}.review-actions>div{gap:4px;margin-top:6px}.review-actions>div>button{min-height:30px;padding:3px 5px;font-size:10px}@media(max-width:1100px){.review-panel{width:280px;flex-basis:280px}}@media(max-width:680px){.review-panel{width:min(300px,92vw);flex-basis:auto}}`;
+  }
+
+  return { render, summarize, styles };
+})();
+const closetHatching = (function createClosetHatching() {
+  const MAX_PATHS = 250000, MAX_EDGES = 120000, MAX_SHAPES = 12000;
+  const length = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const dot = (a, b) => a.x * b.x + a.y * b.y;
+  const project = (p, u) => p.x * u.x + p.y * u.y;
+
+  function parts(values) {
+    if (!Array.isArray(values) || values.length > 200000) return [];
+    const result = []; let current = null, point = null;
+    const finish = end => { if (current) { current.end = end; result.push(current); } current = null; };
+    for (let index = 0; index < values.length;) {
+      const start = index, code = values[index++], count = code === 0 || code === 1 ? 2 : code === 2 ? 6 : code === 3 ? 4 : code === 4 ? 0 : -1;
+      if (count < 0 || index + count > values.length || !values.slice(index, index + count).every(Number.isFinite)) return [];
+      const args = values.slice(index, index + count); index += count;
+      if (code === 0) { finish(start); point = { x: args[0], y: args[1] }; current = { start, end: index, points: [point], edges: [], curved: false }; }
+      else if (!current) return [];
+      else if (code === 1) { const next = { x: args[0], y: args[1] }; if (length(point, next) > 1e-9) current.edges.push({ a: point, b: next }); current.points.push(next); point = next; }
+      else if (code === 4) { const next = current.points[0]; if (length(point, next) > 1e-9) current.edges.push({ a: point, b: next }); point = next; }
+      else { current.curved = true; point = { x: args.at(-2), y: args.at(-1) }; }
+    }
+    finish(values.length); return result;
+  }
+  function inside(point, ring) {
+    let result = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) result = !result;
+    }
+    return result;
+  }
+  function filter(paths, options = {}) {
+    const scale = options.scale;
+    if (!Array.isArray(paths)) return [];
+    if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(4 / scale) || paths.length > MAX_PATHS) return paths;
+    const tolerance = .006 / scale, nodes = [], bins = new Map(), edges = [], parsed = new Map(), allLines = [], fills = [];
+    const nodeAt = (p, style) => {
+      const x = Math.floor(p.x / tolerance), y = Math.floor(p.y / tolerance);
+      if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y)) return -1;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const bucket = bins.get(style + ':' + (x + dx) + ':' + (y + dy));
+        if (!bucket) continue;
+        for (const id of bucket) if (length(nodes[id].point, p) <= tolerance) return id;
+      }
+      const id = nodes.length, key = style + ':' + x + ':' + y;
+      nodes.push({ point: p, edges: [] }); if (!bins.has(key)) bins.set(key, []); bins.get(key).push(id); return id;
+    };
+    for (let pathIndex = 0; pathIndex < paths.length; pathIndex++) {
+      const entry = paths[pathIndex]; if (!entry || !Number.isFinite(entry.width) || !Number.isFinite(entry.brightness)) continue;
+      const list = parts(entry.path); if (!list.length) continue;
+      if (entry.fill && (entry.fillBrightness ?? entry.brightness) <= 210) {
+        for (const part of list) if (!part.curved && part.points.length >= 3 && part.points.length <= 200) fills.push(part.points);
+      }
+      if (!entry.stroke || entry.brightness > 210 || entry.width <= 0) continue;
+      for (const part of list) if (!part.curved) for (const edge of part.edges) {
+        const size = length(edge.a, edge.b); if (size * scale >= 1) allLines.push({ ...edge, size });
+      }
+      if (entry.fill || entry.brightness < 90 || entry.width * scale > .09 || entry.width * scale < .025) continue;
+      const style = Math.round(entry.brightness) + ':' + Math.round(entry.width * scale * 10000);
+      parsed.set(pathIndex, list);
+      for (const part of list) {
+        if (part.curved) continue;
+        for (const segment of part.edges) {
+          const size = length(segment.a, segment.b); if (size * scale < .005 || size * scale > 2.6) continue;
+          const a = nodeAt(segment.a, style), b = nodeAt(segment.b, style); if (a < 0 || b < 0 || a === b) continue;
+          if (edges.length >= MAX_EDGES) return paths;
+          const id = edges.length; edges.push({ a, b, segment, part, pathIndex, style }); nodes[a].edges.push(id); nodes[b].edges.push(id); segment.id = id;
+        }
+      }
+    }
+    const visited = new Set(), shapes = [];
+    for (let start = 0; start < edges.length; start++) {
+      if (visited.has(start)) continue;
+      const pending = [start], component = [], vertices = new Set(); visited.add(start);
+      for (let read = 0; read < pending.length; read++) {
+        const id = pending[read], edge = edges[id]; component.push(id);
+        for (const node of [edge.a, edge.b]) { vertices.add(node); for (const next of nodes[node].edges) if (!visited.has(next)) { visited.add(next); pending.push(next); } }
+      }
+      if (component.length !== 4 || vertices.size !== 4 || [...vertices].some(node => nodes[node].edges.length !== 2)) continue;
+      const lengths = component.map(id => ({ id, value: length(nodes[edges[id].a].point, nodes[edges[id].b].point) })).sort((a, b) => b.value - a.value);
+      const long = lengths[0].value, short = lengths[3].value;
+      if (long * scale < .75 || long * scale > 2.5 || short * scale < .015 || short * scale > .1 || long / short < 12 ||
+          Math.abs(long - lengths[1].value) * scale > .015 || Math.abs(short - lengths[2].value) * scale > .015) continue;
+      const first = edges[lengths[0].id], a = nodes[first.a].point, b = nodes[first.b].point;
+      let u = { x: (b.x - a.x) / long, y: (b.y - a.y) / long }; if (u.x < 0 || Math.abs(u.x) < 1e-8 && u.y < 0) u = { x: -u.x, y: -u.y };
+      const points = [...vertices].map(node => nodes[node].point), center = { x: points.reduce((s, p) => s + p.x, 0) / 4, y: points.reduce((s, p) => s + p.y, 0) / 4 };
+      const longOther = edges[lengths[1].id], c = nodes[longOther.a].point, d = nodes[longOther.b].point;
+      if (Math.abs(((d.x - c.x) * u.x + (d.y - c.y) * u.y) / lengths[1].value) < .999) continue;
+      shapes.push({ edges: component, points, center, u, long, short, style: first.style });
+      if (shapes.length > MAX_SHAPES) return paths;
+    }
+    if (shapes.length < 6) return paths;
+    const spatial = new Map(), cell = 3 / scale;
+    for (let i = 0; i < shapes.length; i++) { const p = shapes[i].center, key = Math.floor(p.x / cell) + ':' + Math.floor(p.y / cell); if (!spatial.has(key)) spatial.set(key, []); spatial.get(key).push(i); }
+    const neighbors = shapes.map(() => []), cosine = Math.cos(24 * Math.PI / 180);
+    for (let i = 0; i < shapes.length; i++) {
+      const a = shapes[i], x = Math.floor(a.center.x / cell), y = Math.floor(a.center.y / cell);
+      let work = 0;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of spatial.get((x + dx) + ':' + (y + dy)) || []) {
+        if (++work > 512) break;
+        if (j <= i) continue; const b = shapes[j];
+        if (a.style !== b.style || Math.abs(dot(a.u, b.u)) < cosine || Math.abs(a.long / b.long - 1) > .06 || Math.abs(a.short / b.short - 1) > .25) continue;
+        const sign = dot(a.u, b.u) < 0 ? -1 : 1, sum = { x: a.u.x + b.u.x * sign, y: a.u.y + b.u.y * sign }, norm = Math.hypot(sum.x, sum.y), u = { x: sum.x / norm, y: sum.y / norm }, v = { x: -u.y, y: u.x };
+        const delta = { x: a.center.x - b.center.x, y: a.center.y - b.center.y }, along = Math.abs(dot(delta, u)) * scale, pitch = Math.abs(dot(delta, v)) * scale;
+        if (along <= .2 && pitch >= .08 && pitch <= .75) { neighbors[i].push(j); neighbors[j].push(i); }
+      }
+    }
+    const seen = new Set(), removed = new Set();
+    for (let start = 0; start < shapes.length; start++) {
+      if (seen.has(start)) continue; const group = [start]; seen.add(start);
+      for (let read = 0; read < group.length; read++) for (const next of neighbors[group[read]]) if (!seen.has(next)) { seen.add(next); group.push(next); }
+      if (group.length < 6) continue;
+      const rows = group.map(id => shapes[id]), sum = rows.reduce((s, row) => ({ x: s.x + row.u.x * row.u.x - row.u.y * row.u.y, y: s.y + 2 * row.u.x * row.u.y }), { x: 0, y: 0 }), angle = Math.atan2(sum.y, sum.x) / 2, u = { x: Math.cos(angle), y: Math.sin(angle) }, v = { x: -u.y, y: u.x };
+      const angles = rows.map(row => { const sign = dot(u, row.u) < 0 ? -1 : 1; return Math.atan2((u.x * row.u.y - u.y * row.u.x) * sign, dot(u, row.u) * sign) * 180 / Math.PI; });
+      if (angles.some(angle => Math.abs(angle) < 3 || Math.abs(angle) > 13) || angles.filter(angle => angle < 0).length < 3 || angles.filter(angle => angle > 0).length < 3) continue;
+      const across = rows.map(row => project(row.center, u)), positions = rows.map(row => project(row.center, v)).sort((a, b) => a - b), pitch = positions.slice(1).map((p, i) => (p - positions[i]) * scale);
+      if ((Math.max(...across) - Math.min(...across)) * scale > .35 || (positions.at(-1) - positions[0]) * scale < 1 || Math.min(...pitch) < .08 || Math.max(...pitch) > .75 || Math.max(...pitch) / Math.min(...pitch) > 2.1) continue;
+      if (rows.some(row => fills.some(ring => inside(row.center, ring)))) continue;
+      const points = rows.flatMap(row => row.points), lo = Math.min(...points.map(p => project(p, u))), hi = Math.max(...points.map(p => project(p, u))), bottom = positions[0], top = positions.at(-1), span = top - bottom;
+      let left = false, right = false;
+      for (const line of allLines) {
+        if (Math.abs((line.b.x - line.a.x) * v.x + (line.b.y - line.a.y) * v.y) / line.size < .995) continue;
+        const a = project(line.a, v), b = project(line.b, v), overlap = Math.min(Math.max(a, b), top) - Math.max(Math.min(a, b), bottom);
+        if (overlap < Math.max(1 / scale, span * .7)) continue;
+        const middle = (project(line.a, u) + project(line.b, u)) / 2;
+        if (Math.abs(middle - lo) * scale <= .35) left = true;
+        if (Math.abs(middle - hi) * scale <= .35) right = true;
+      }
+      if (left && right) continue; // Studs inside two continuous wall faces.
+      for (const row of rows) for (const edge of row.edges) removed.add(edge);
+    }
+    if (!removed.size) return paths;
+    return paths.flatMap((entry, index) => {
+      const list = parsed.get(index); if (!list) return [entry];
+      const discarded = list.filter(part => !part.curved && part.edges.length && part.edges.every(edge => edge.id !== undefined && removed.has(edge.id)));
+      if (!discarded.length) return [entry]; const values = []; let from = 0;
+      for (const part of discarded) { values.push(...entry.path.slice(from, part.start)); from = part.end; }
+      values.push(...entry.path.slice(from)); return values.length ? [{ ...entry, path: values }] : [];
+    });
+  }
+  return { filter };
+})();
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -8310,7 +8537,7 @@ function addDetected(candidates) {
   for(const source of chosen) {
     const page=source.page??S.page;
     if(!Number.isInteger(page)||page<1||page>S.pages||!Number.isFinite(S.scales[page])||S.scales[page]<=0){skipped.push({name:source.name,reason:'échelle de la feuille source absente'});continue;}
-    const candidate={...structuredClone(source),id:uid(),page,status:'à valider',waste:0,wasteConfirmed:false,work:{layer:'finish'}};
+    const candidate={...structuredClone(source),id:uid(),page,status:'à valider',waste:0,wasteConfirmed:false,work:{layer:'finish',...(source.work?.baseboard?{baseboard:structuredClone(source.work.baseboard)}:{})}};
     candidate.work=workOf(candidate);delete candidate.selected;delete candidate.mixedBathroom;delete candidate.importIssue;
     const result=integrateCandidate(items,candidate);
     if(result.ok){delete source.importIssue;items.push(candidate);accepted.push(candidate.id);}else{source.importIssue=result.reason;skipped.push({name:source.name,reason:result.reason});}
@@ -8468,7 +8695,7 @@ function keyboard(event) {
     return;
   }
   if(event.target.closest?.('input,select,textarea,[contenteditable="true"],[contenteditable=""]'))return;
-  if(event.target.closest?.('button')&&(key==='enter'||key===' '))return;
+  if(event.target.closest?.('button,summary')&&(key==='enter'||key===' '))return;
   if(S.selectionBox){if(key==='escape'){event.preventDefault();S.selectionBox=null;S.dragged=true;}return;}
   if(S.dragging){if(key==='escape'){event.preventDefault();const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);S.dragged=true;}return;}
   if(S.loading)return;
@@ -8680,6 +8907,7 @@ function renderInspector() {
 }
 function refresh() {
   refreshBase();renderPages();$('#stageFile').textContent=S.plan?pageName(S.page):S.fileName;
+  refreshPlanAngles();
   $('#stageFile').title=S.fileName;$('#fitView')?.setAttribute('title','Afficher toute la feuille · 0');
   const hints={fixtureBox:'Cliquez deux coins opposés autour du bain ou de la douche · Échap : annuler',fixturePolygon:'Cliquez le contour du bain ou de la douche · Entrée : retrancher · Échap : annuler',fixtureEdit:'Glissez les coins orange de l’emprise · Ctrl+Z : annuler · double-clic : propriétés',hand:'Glissez pour déplacer le plan · molette : zoom au pointeur',
     divider:'Cliquez les deux extrémités du passage à fermer · Maj : aligner · Ctrl+Z : annuler',
@@ -8740,7 +8968,7 @@ async function importProject(file) {
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
-    for(const key of ['detectionChoices','splitSingleDwelling','sanitaryRejects','detectionFinishes','wallSamples']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
+    for(const key of ['detectionChoices','detectionBaseboardChoices','splitSingleDwelling','sanitaryRejects','detectionFinishes','wallSamples']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
@@ -9486,10 +9714,52 @@ legendUI.install();
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="projectArchiveBtn">Sauvegarde</button>');
 $('#projectArchiveBtn').onclick=projectArchiveDialog;
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="rotatePlan">Tourner 90°</button>');
-$('#rotatePlan').onclick=()=>{if(!S.plan||S.loading)return toast('Ouvrez un plan avant de tourner la vue.');const rotation=(viewRotation()+90)%360;const rotations={...(S.settings.pageRotations||{})};if(rotation)rotations[S.page]=rotation;else delete rotations[S.page];if(Object.keys(rotations).length)S.settings.pageRotations=rotations;else delete S.settings.pageRotations;fitPlan();save();refresh();};
+$('#rotatePlan').onclick=()=>setPlanAngle((viewRotation()+90)%360);
 $('#workspaceTools').insertAdjacentHTML('afterend','<label style="display:block;padding:4px 10px;font-size:11px">Couche de mesure<input id="measurementLayer" aria-label="Couche de mesure" maxlength="80" style="width:100%;min-width:0" value="finish"></label>');
 $('#measurementLayer').onchange=event=>{const layer=event.target.value.trim();if(!layer)return toast('Indiquez une couche de mesure.');S.settings.activeLayer=layer;save();};
+const reviewStyle=document.createElement('style');reviewStyle.textContent=detectionReviewUI.styles();document.head.append(reviewStyle);
 const workspaceStyle=document.createElement('style');workspaceStyle.textContent='#workspaceTools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}#workspaceTools button{min-width:0;white-space:normal;width:auto}';document.head.appendChild(workspaceStyle);
+
+function setPlanAngle(rotation) {
+  if(!S.plan||S.loading||S.detectJob)return toast('Ouvrez un plan et attendez la fin de son chargement.');
+  if(![0,90,180,270].includes(rotation))return;
+  if(rotation!==viewRotation()){
+    remember();const rotations={...(S.settings.pageRotations||{})};
+    if(rotation)rotations[S.page]=rotation;else delete rotations[S.page];
+    if(Object.keys(rotations).length)S.settings.pageRotations=rotations;else delete S.settings.pageRotations;
+    fitPlan();save();refresh();
+  }
+  const menu=$('#planAngleMenu');if(menu){menu.open=false;menu.querySelector('summary').focus({preventScroll:true});}
+}
+function refreshPlanAngles() {
+  const value=$('#planAngleValue');if(!value)return;
+  value.textContent=viewRotation()+'°';
+  $$('[data-plan-angle]').forEach(button=>{button.setAttribute('aria-pressed',String(+button.dataset.planAngle===viewRotation()));button.disabled=!S.plan||S.loading||!!S.detectJob;});
+  $('#rotatePlan').disabled=!S.plan||S.loading||!!S.detectJob;
+}
+function installCompactProjectTools() {
+  const title=$('.project-title'),tools=$('#workspaceTools'),count=$('#zoneCount'),layer=$('#measurementLayer').closest('label');
+  title.insertAdjacentHTML('afterend','<div class="project-command-bar" aria-label="Commandes du projet"><span class="project-measure-count" title="Mesures du plan">Mesures </span></div>');
+  const host=$('.project-command-bar');host.querySelector('.project-measure-count').append(count);host.append(tools);
+  const icons={workspaceProjectBtn:'folder-cog',workspaceRollsBtn:'scroll-text',workspaceQuoteBtn:'file-text',revisionToolsBtn:'history',legendToolBtn:'list',projectArchiveBtn:'archive'};
+  for(const [id,icon] of Object.entries(icons)){
+    const button=$('#'+id),label=button.textContent.trim();button.title=label;button.setAttribute('aria-label',label);button.innerHTML=`<i data-lucide="${icon}" aria-hidden="true"></i><span class="sr-only">${esc(label)}</span>`;
+  }
+  host.insertAdjacentHTML('beforeend','<div class="plan-angle-control"><details id="planAngleMenu"><summary aria-label="Choisir l’angle du plan"><i data-lucide="rotate-cw" aria-hidden="true"></i><span>Angle <b id="planAngleValue">0°</b></span><i data-lucide="chevron-down" aria-hidden="true"></i></summary><div class="plan-angle-options" role="group" aria-label="Angles du plan">'+[0,90,180,270].map(angle=>`<button type="button" data-plan-angle="${angle}" aria-pressed="false">${angle}°</button>`).join('')+'</div></details></div>');
+  const rotate=$('#rotatePlan');rotate.title='Tourner la vue de 90°';rotate.setAttribute('aria-label','Tourner la vue de 90°');rotate.innerHTML='<i data-lucide="rotate-cw" aria-hidden="true"></i><span class="sr-only">Tourner 90°</span>';$('.plan-angle-control').prepend(rotate);
+  const advanced=$('#ribbonOverflowGroups');if(advanced){layer.classList.add('advanced-measurement-layer');advanced.append(layer);}
+  $$('.sidebar>.split-title').forEach(element=>element.hidden=true);
+  $$('[data-plan-angle]').forEach(button=>button.onclick=()=>setPlanAngle(+button.dataset.planAngle));
+  document.addEventListener('pointerdown',event=>{const menu=$('#planAngleMenu');if(menu.open&&!menu.contains(event.target))menu.open=false;});
+  $('#planAngleMenu').addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();event.currentTarget.open=false;event.currentTarget.querySelector('summary').focus();}});
+  const style=document.createElement('style');style.textContent=`
+    .topbar{gap:12px}.topbar .project-title{min-width:100px;flex:1 1 140px;max-width:320px}.topbar .project-title input{width:100%}.project-command-bar{display:flex;align-items:center;gap:8px;flex:0 0 auto}.project-command-bar #workspaceTools{display:flex;gap:2px;padding:0;border:0;margin:0}.project-command-bar #workspaceTools button,.plan-angle-control>button{display:grid;place-items:center;width:30px;height:30px;min-width:30px;padding:4px;border:1px solid transparent;background:transparent;color:var(--ink);border-radius:4px}.project-command-bar button:hover{background:#d9edfc;border-color:#b5d5ed}.project-command-bar button:focus-visible,.project-command-bar summary:focus-visible{outline:2px solid #2378b1;outline-offset:2px}.project-measure-count{font-size:10px;white-space:nowrap}.project-measure-count #zoneCount{display:inline-block;background:#d1e8f9;color:#1b577c;border-radius:8px;padding:2px 5px;margin-left:2px}.plan-angle-control{display:flex;align-items:center;border-left:1px solid #bdd5e7;padding-left:6px}.plan-angle-control details{position:relative}.plan-angle-control summary{display:flex;align-items:center;gap:4px;min-height:30px;padding:4px;cursor:pointer;list-style:none;font-size:11px;white-space:nowrap}.plan-angle-control summary::-webkit-details-marker{display:none}.plan-angle-control svg{width:15px;height:15px}.plan-angle-control summary>svg:first-child{display:none}.plan-angle-options{position:absolute;z-index:50;right:0;top:calc(100% + 8px);display:grid;grid-template-columns:repeat(2,1fr);gap:4px;width:152px;padding:8px;background:#fff;border:1px solid #bdd5e7;border-radius:4px;box-shadow:0 4px 14px #18354d20}.plan-angle-options button{padding:8px;border:1px solid #c8dbe9;background:#fff;color:var(--ink);border-radius:3px}.plan-angle-options button[aria-pressed=true]{background:#dceffc;border-color:#2378b1}.advanced-measurement-layer{max-width:220px}.sidebar>.split-title[hidden]{display:none}
+    @media(max-width:1100px){.project-measure-count{font-size:0}.project-measure-count #zoneCount{font-size:10px}.topbar .brand{gap:0}.project-command-bar{gap:4px}.project-command-bar #workspaceTools button{width:28px;min-width:28px}.topbar{gap:8px}.topbar .project-title{max-width:220px}}
+    @media(max-width:900px){.topbar{height:auto;min-height:42px;flex:0 0 auto;flex-wrap:wrap;padding:4px 8px;gap:4px 8px}.topbar .project-title{max-width:none;flex:1}.project-command-bar{order:4;flex-basis:100%;justify-content:flex-start}.project-command-bar #workspaceTools{flex:1}.topbar .top-actions{margin-left:auto}.project-command-bar .project-measure-count{font-size:10px}}
+    @media(max-width:480px){.project-command-bar .project-measure-count{font-size:0}.project-command-bar .project-measure-count #zoneCount{font-size:10px}.project-command-bar #workspaceTools{gap:0}}
+  `;document.head.append(style);refreshPlanAngles();
+}
+installCompactProjectTools();
 
 function projectArchiveDialog() {
   openDialog('Sauvegarder et restaurer les données du projet',`<p>L’archive contient les plans originaux conservés dans ce navigateur, les relevés, les paramètres et les instantanés. Conservez aussi la version du logiciel selon la procédure de sauvegarde du code.</p><p>La restauration refuse d’écraser un relevé différent déjà présent. Essayez-la dans un profil navigateur vierge.</p><button type="button" id="createProjectArchive">Exporter les plans et relevés</button><form id="restoreProjectArchive"><label>Archive de projet<input id="projectArchiveFile" type="file" accept=".zip" required></label><button type="submit">Restaurer cette archive</button></form><p id="projectArchiveStatus" role="status"></p><p id="projectArchiveError" class="v4-error" role="alert"></p>`,'wide');
