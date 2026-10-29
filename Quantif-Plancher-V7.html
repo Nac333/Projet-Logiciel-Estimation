@@ -304,6 +304,10 @@ function normalizeName(text) {
 function isSharedSpaceName(name) {
   return /^(?:RANGEMENTS? (?:DES? )?LOCATAIRES|RANGEMENTS? COMMUNS?|LOCAL MECANIQUE|SALLE MECANIQUE|LOCAL ELECTRIQUE|SALLE ELECTRIQUE|LOCAL POUBELLES?|SALLE COMMUNAUTAIRE|COMMON STORAGE|MECHANICAL ROOM|ELECTRICAL ROOM)(?:\b|\s)/.test(normalizeName(name));
 }
+function isPrivateStorageName(name) {
+  const text=normalizeName(name);
+  return !isSharedSpaceName(text)&&/^(?:RANGEMENT(?: DE \d+(?:[.,]\d+)?(?:\s*M(?:2|²)?)?)?|GARDE[- ]?ROBES?|PLACARDS?|WALK[- ]?IN)$/.test(text);
+}
 function isLaundry(name) {
   return /^(?:SALLE (?:DE )?LAVAGE|BUANDERIE|LAVAGE|LAUNDRY|LAVEUSE(?:[ /-]+S[EÉ]CHEUSE)?|S[EÉ]CHEUSE|WASHER(?:[ /-]+DRYER)?|L[. /-]*L[.]?|W[ /-]*D)(?:\s*\d+)?$/.test(normalizeName(name));
 }
@@ -496,6 +500,9 @@ function sanitaryForPage(info,scale,roi=null) {
       let segments=symbolSegments((info.vectorFixtures||[]).filter(path=>path.stroke));
       if(roi)segments=segments.filter(segment=>[segment.a,segment.b].every(point=>point.x>=roi.x&&point.x<=roi.right&&point.y>=roi.y&&point.y<=roi.bottom));
       value=sanitarySymbols.detect(segments,{scale});
+      const showers=showerPans.detect(info.vectorFixtures||[],{scale});
+      value.baths.push(...showers.showers.filter(shower=>!roi||shower.basinRing.every(point=>point.x>=roi.x&&point.x<=roi.right&&point.y>=roi.y&&point.y<=roi.bottom)));
+      value.warnings=[...(value.warnings||[]),...(showers.warnings||[])];
       const outlines=segments.filter(segment=>segment.width*scale<=.1&&segment.brightness<=225);
       value.baths=value.baths.map(bath=>{const box=boundsOf(bath.basinRing),margin=2/scale,local=outlines.filter(segment=>Math.max(segment.a.x,segment.b.x)>=box.x-margin&&Math.min(segment.a.x,segment.b.x)<=box.right+margin&&Math.max(segment.a.y,segment.b.y)>=box.y-margin&&Math.min(segment.a.y,segment.b.y)<=box.bottom+margin),footprint=sanitaryFootprints.find(bath,local,{scale});return footprint?{...bath,footprintRing:footprint.points}:bath;});
     }
@@ -531,7 +538,7 @@ function applySanitaryProposals(candidates,info,scale,model,documentKey,page,roi
     const item=candidates[match.roomIndex],bath=baths.find(entry=>entry.id===match.symbolId);if(!item||!bath)continue;
     item.bathroom=true;item.spaceType='bathroom';if(item.laundry)item.laundryInBathroom=true;if(item.unnamed)item.name='Salle de bains proposée '+(match.roomIndex+1);
     if(item.materialSource!=='code du plan')Object.assign(item,detectionFinishes.propose({bathroom:true,spaceType:'bathroom',activeMaterial:item.material,name:item.name,page,...(item.laundry?{laundry:true,laundryInBathroom:true}:{})},MATERIALS.map(entry=>entry.code),S.settings.detectionFinishes));
-    item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true,...(bath.footprintRing?{footprintRing:structuredClone(bath.footprintRing),footprintSource:'vector-outer-outline'}:{})}];
+    item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:bath.kind==='shower'?'shower':'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true,...(bath.footprintRing?{footprintRing:structuredClone(bath.footprintRing),footprintSource:'vector-outer-outline'}:{})}];
     applyRecognizedFixtures(item,info,scale);
   }
   return {...result,baths,warnings:detection.warnings||[],rejectedCount:detection.baths.length-baths.length};
@@ -649,7 +656,7 @@ function roomCandidate(model,room,info,material,settings,scale,page=S.page) {
   const names=[...new Set(physicalLabels.map(l=>l.text))],baths=names.filter(isBathroom),spaceNames=names.filter(name=>!isLaundry(name)),mixed=!!baths.length&&spaceNames.some(n=>!isBathroom(n));
   const laundry=names.some(isLaundry)||(info?.texts||[]).some(text=>isLaundry(text.text)&&componentAt(model,{x:text.cx,y:text.cy},model.factor,0)?.id===room.id);
   const dwellingLabels=physicalLabels.filter(label=>isDwellingName(label.text)).length,types=[...new Set((spaceNames.length?spaceNames:names).map(spaceTypeFromName))];
-  const openLiving=spaceNames.every(name=>isOpenLivingName(name)||isDwellingName(name)),allCirculation=types.length===1&&types[0]==='circulation';
+  const openLiving=spaceNames.every(name=>isOpenLivingName(name)||isDwellingName(name)||dwellingLabels===1&&isPrivateStorageName(name)),allCirculation=types.length===1&&types[0]==='circulation';
   const bathroom=!!baths.length&&!mixed,needsSeparation=mixed||dwellingLabels>1||spaceNames.length>1&&!openLiving&&!allCirculation;
   let spaceType=baths.length&&!mixed?'bathroom':dwellingLabels===1&&openLiving?'dwelling':types.length===1?types[0]:'room';
   if(!names.length&&model.wallClassification?.roomKinds[room.id]?.kind==='circulation')spaceType='circulation';
@@ -1245,9 +1252,9 @@ function validateSanitaryData(item) {
   if(item.kind!=='area'||!Array.isArray(item.sanitaryEvidence)||item.sanitaryEvidence.length>50)throw new Error('Les indices sanitaires sont invalides.');
   const ids=new Set(),allowed=['symbolId','kind','source','status','basinRing','drainRing','roomAssociation','associationMode','requiresFootprintReview','footprintRing','footprintSource'],ring=value=>Array.isArray(value)&&value.length>=3&&value.length<=512&&value.every(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&Math.abs(point.x)<1e7&&Math.abs(point.y)<1e7);
   for(const entry of item.sanitaryEvidence) {
-    if(!entry||typeof entry!=='object'||Object.keys(entry).some(key=>!allowed.includes(key))||typeof entry.symbolId!=='string'||!/^bath:[\d:-]{1,150}$/.test(entry.symbolId)||ids.has(entry.symbolId)||entry.kind!=='bath'||entry.source!=='vector-shape'||entry.status!=='proposed'||entry.roomAssociation!=='geometry-adjacency'||!['contains','adjacent'].includes(entry.associationMode)||entry.requiresFootprintReview!==true||!ring(entry.basinRing)||!ring(entry.drainRing))throw new Error('Une preuve sanitaire est invalide.');
-    if(entry.footprintRing!==undefined&&(!Array.isArray(entry.footprintRing)||entry.footprintRing.length!==4||!validPolygon(entry.footprintRing)||entry.footprintSource!=='vector-outer-outline'||!containsRing({points:entry.footprintRing},entry.basinRing)))throw new Error('Le contour extérieur proposé du bain est invalide.');
-    if(entry.footprintSource!==undefined&&entry.footprintRing===undefined)throw new Error('Le contour extérieur du bain est absent.');
+    if(!entry||typeof entry!=='object'||Object.keys(entry).some(key=>!allowed.includes(key))||typeof entry.symbolId!=='string'||!/^(?:bath|shower):[\d:-]{1,150}$/.test(entry.symbolId)||ids.has(entry.symbolId)||!['bath','shower'].includes(entry.kind)||!entry.symbolId.startsWith(entry.kind+':')||entry.source!=='vector-shape'||entry.status!=='proposed'||entry.roomAssociation!=='geometry-adjacency'||!['contains','adjacent'].includes(entry.associationMode)||entry.requiresFootprintReview!==true||!ring(entry.basinRing)||!ring(entry.drainRing))throw new Error('Une preuve sanitaire est invalide.');
+    if(entry.footprintRing!==undefined&&(!Array.isArray(entry.footprintRing)||entry.footprintRing.length!==4||!validPolygon(entry.footprintRing)||entry.footprintSource!=='vector-outer-outline'||!containsRing({points:entry.footprintRing},entry.basinRing)))throw new Error('Le contour extérieur proposé de l’équipement est invalide.');
+    if(entry.footprintSource!==undefined&&entry.footprintRing===undefined)throw new Error('Le contour extérieur de l’équipement est absent.');
     ids.add(entry.symbolId);
   }
 }
@@ -1286,14 +1293,14 @@ function rememberDetectionBaseboard(candidate,code) {
 }
 function sanitaryReviewMarkup(pack) {
   const data=pack?.sanitary;if(!data)return '';
-  return `${(data.warnings||[]).map(warning=>`<p class="review-warning" role="status">${esc(warning)}</p>`).join('')}<details class="sanitary-report"><summary>${data.baths.length} bain(s) proposé(s) · ${data.assignments.length} rattachement(s) au sol · ${data.pending.length} à délimiter</summary><p>Hypothèses à vérifier. Le bassin intérieur ne définit ni le sol ni l’emprise extérieure.</p>${data.pending.map((entry,index)=>`<button type="button" data-preview-sanitary="${index}">Voir le bain ${index+1} · sol à délimiter</button>`).join('')}${data.rejectedCount?`<p>${data.rejectedCount} symbole(s) refusé(s) par l’estimateur.</p>`:''}</details>`;
+  return `${(data.warnings||[]).map(warning=>`<p class="review-warning" role="status">${esc(warning)}</p>`).join('')}<details class="sanitary-report"><summary>${data.baths.length} équipement(s) sanitaire(s) proposé(s) · ${data.assignments.length} rattachement(s) au sol · ${data.pending.length} à délimiter</summary><p>Hypothèses à vérifier. Le bassin intérieur ne définit ni le sol ni l’emprise extérieure.</p>${data.pending.map((entry,index)=>`<button type="button" data-preview-sanitary="${index}">Voir l’équipement ${index+1} · sol à délimiter</button>`).join('')}${data.rejectedCount?`<p>${data.rejectedCount} symbole(s) refusé(s) par l’estimateur.</p>`:''}</details>`;
 }
 function previewSanitary(index) {
   const pack=S.reviewByPage[S.page],entry=pack?.sanitary?.pending[index],bath=pack?.sanitary?.baths.find(item=>item.id===entry?.symbolId);if(!bath)return;
   const b=bath.bounds,w=canvas.clientWidth,h=canvas.clientHeight;
   S.zoom=Math.max(.02,Math.min(12,(w-80)/Math.max(b.right-b.x,80),(h-80)/Math.max(b.bottom-b.y,80)));
   S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};S.previewFocus=null;
-  S.fixturePreview={page:S.page,cuts:[{points:bath.basinRing,type:'bath'}]};$('#zoomText').textContent=fmt(S.zoom*100,0)+' %';refreshManualUI();
+  S.fixturePreview={page:S.page,cuts:[{points:bath.basinRing,type:bath.kind==='shower'?'shower':'bath'}]};$('#zoomText').textContent=fmt(S.zoom*100,0)+' %';refreshManualUI();
   toast('Bassin intérieur proposé : délimitez le vrai sol et l’emprise extérieure.');
 }
 function renderDetectionPanel() {
@@ -1381,12 +1388,19 @@ function groupBathroomFloors(candidates,model,scale) {
 }
 function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
   if(!model.wallMask)return candidates;
-  const seeds=new Map();
+  const seeds=new Map(),roomById=new Map(model.rooms.map(room=>[room.id,room])),parentSeeds=new Map();
   for(const label of distinctRoomLabels(info.labels||[]).filter(label=>isDwellingName(label.text))){
     const room=componentAt(model,{x:label.cx,y:label.cy},model.factor,3);if(!room)continue;
     if(!seeds.has(room.id))seeds.set(room.id,[]);
-    seeds.get(room.id).push({id:'unit:'+Math.round(label.cx*100)+':'+Math.round(label.cy*100),label:label.text});
+    const unit={id:'unit:'+Math.round(label.cx*100)+':'+Math.round(label.cy*100),label:label.text};seeds.get(room.id).push(unit);
+    const parent=roomById.get(room.id)?.parentRoomId;
+    if(Number.isInteger(parent)){if(!parentSeeds.has(parent))parentSeeds.set(parent,new Map());parentSeeds.get(parent).set(unit.id,unit);}
   }
+  candidates=candidates.map(item=>{
+    const native=seeds.get(item.sourceRoomId)||[];
+    return item.spaceType==='dwelling'&&!item.needsSeparation&&!item.detectedUnit&&native.length===1?
+      {...item,detectedUnit:{...native[0],source:'connected-walls',status:'proposed'}}:item;
+  });
   const descriptors=candidates.map(item=>({id:item.sourceRoomId,unitSeeds:seeds.get(item.sourceRoomId)||[],spaceType:item.spaceType,material:item.material||'sans-fini',selected:item.selected,
     eligible:!!item.material&&!isSharedSpaceName(item.name)&&!item.fixtureCuts?.length&&!item.fixturePending?.length,needsSeparation:item.needsSeparation,mixedBathroom:item.mixedBathroom,bathroom:item.bathroom,detectedUnit:item.detectedUnit}));
   const present=new Set(candidates.map(item=>item.sourceRoomId)),semantic=new Set();
@@ -1395,9 +1409,20 @@ function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
   }
   const floor=mainMaterial||candidates.find(item=>item.spaceType==='dwelling')?.material||candidates[0]?.material;
   for(const room of model.rooms){
-    const evidence=model.floorEvidence?.get(room.id),unit=model.unitEvidence?.get(room.id),quantity=room.pixels/(model.factor*model.factor)*scale*scale;
-    if(!present.has(room.id)&&!semantic.has(room.id)&&floor&&quantity>0&&quantity<(model.minimumCandidateArea||0)&&unit&&evidence?.inside>0&&evidence.outside===0)
-      descriptors.push({id:room.id,material:floor,selected:true,eligible:true,unitSeeds:[],detectedUnit:unit,passageOnly:true});
+    const evidence=model.floorEvidence?.get(room.id),quantity=room.pixels/(model.factor*model.factor)*scale*scale;
+    let unit=model.unitEvidence?.get(room.id),supported=!!unit&&evidence?.inside>0&&evidence.outside===0;
+    // Passage splitting can leave a subminimum free floor strip outside its
+    // approximate envelope. Its original physical parent supplies identity
+    // only when it contains one genuine dwelling seed; the grouping engine
+    // still requires an actual free route and compatible neighboring rooms.
+    const parents=room.splitRole==='rest'&&Number.isInteger(room.parentRoomId)?parentSeeds.get(room.parentRoomId):null;
+    if(!supported&&parents?.size===1&&!(evidence?.outside>0)){
+      const parentUnit=parents.values().next().value;
+      if(!unit||unit.id===parentUnit.id){unit=parentUnit;supported=true;}
+    }
+    const localPassage=!unit&&parents?.size>1&&!(evidence?.outside>0);
+    if(!present.has(room.id)&&!semantic.has(room.id)&&floor&&quantity>0&&quantity<(model.minimumCandidateArea||0)&&(supported||localPassage))
+      descriptors.push({id:room.id,material:floor,selected:true,eligible:true,unitSeeds:[],...(unit?{detectedUnit:unit}:{}),passageOnly:true,...(localPassage?{parentRoomId:room.parentRoomId,splitRole:room.splitRole}:{})});
   }
   const plan=unitFloorGroups.group({width:model.width,height:model.height,labels:model.labels,wallMask:model.wallMask,closedMask:model.mask,rooms:descriptors});
   model.groupUnresolved=plan.unresolved;
@@ -1529,7 +1554,7 @@ async function runDetectionPages(pages) {
       model.minimumCandidateArea=settings.minArea;
       candidates=groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material).map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
       candidates=candidates.map(candidate=>applyDetectionBaseboard(candidate,job.key,page));
-      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-10-closet-patterns',sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
+      S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:'local-rooms-12-shower-floor-links',sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
       if(model.rooms.length>3000)notes.push({page,message:'Limite de 3000 propositions atteinte : analyser les zones séparément.'});
       const grouped=candidates.filter(item=>item.unitGrouping).length,unresolved=(model.groupUnresolved||[]).filter(entry=>entry.reason!=='missing-dwelling').length;
       if(grouped||unresolved)notes.push({page,message:`${grouped} logement(s) regroupé(s)${unresolved?' · '+unresolved+' rattachement(s) ambigus à vérifier':''}`});
@@ -4034,6 +4059,315 @@ const sanitarySymbols = (function createSanitarySymbols() {
 
   return { detect };
 })();
+const showerPans = (function createShowerPans(geometry) {
+  const MAX_PATHS = 100000, MAX_VALUES = 1500000, MAX_SEGMENTS = 200000;
+  const MAX_WORK = 6000000, MAX_LOCAL = 4096, MAX_FACE_STEPS = 128;
+  const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+  const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const distanceToSegment = geometry?.distanceToSegment || ((p, a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y, n = dx * dx + dy * dy;
+    const t = n ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / n)) : 0;
+    return distance(p, { x: a.x + t * dx, y: a.y + t * dy });
+  });
+
+  // Reconnaisseur du symbole composite observé: cadre fermé, quatre branches
+  // radiales interrompues et petit drain circulaire polygonalisé. Aucun nom de
+  // pièce, contour de salle de bain ou rebord extérieur n'est inféré ici.
+  function detect(paths, options = {}) {
+    const showers = [], warnings = [], scale = options?.scale;
+    const warn = message => { if (!warnings.includes(message)) warnings.push(message); };
+    if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(1 / scale) || !Number.isFinite(.5 / scale)) {
+      return { showers, warnings: ['Échelle invalide : détection des douches non exécutée.'] };
+    }
+    if (!Array.isArray(paths)) return { showers, warnings: ['Chemins vectoriels invalides.'] };
+    let work = 0, invalid = 0, values = 0;
+    const exhausted = {};
+    const spend = (n = 1) => {
+      work += n;
+      if (work > MAX_WORK) {
+        warn('Budget de calcul atteint : analyse des douches partielle.');
+        throw exhausted;
+      }
+    };
+    const tolerance = .006 / scale, faceTolerance = .015 / scale, cellSize = .5 / scale;
+    const compatible = (a, b) => Math.abs(a.brightness - b.brightness) <= 8 &&
+      Math.abs(a.width - b.width) * scale <= .002 + Math.min(a.width, b.width) * scale * .2;
+
+    try {
+      if (paths.length > MAX_PATHS) warn('Limite de 100 000 chemins atteinte : analyse des douches partielle.');
+      const segments = [], endpointCells = new Map();
+      const keyAt = p => {
+        const x = Math.floor(p.x / cellSize), y = Math.floor(p.y / cellSize);
+        return Number.isSafeInteger(x) && Number.isSafeInteger(y) ? [x, y] : null;
+      };
+      const indexEndpoint = (p, id) => {
+        const [x, y] = keyAt(p), key = x + ',' + y;
+        if (!endpointCells.has(key)) endpointCells.set(key, []);
+        endpointCells.get(key).push(id);
+      };
+      for (let pathIndex = 0; pathIndex < Math.min(paths.length, MAX_PATHS); pathIndex++) {
+        spend();
+        const entry = paths[pathIndex], packed = entry?.path;
+        if (!entry || !Number.isFinite(entry.width) || entry.width < 0 ||
+          !Number.isFinite(entry.brightness) || entry.brightness < 0 || entry.brightness > 255 ||
+          !(Array.isArray(packed) || ArrayBuffer.isView(packed))) { invalid++; continue; }
+        values += packed.length;
+        if (values > MAX_VALUES) { warn('Limite de coordonnées atteinte : analyse des douches partielle.'); break; }
+        if (entry.stroke === false || entry.fill || entry.brightness > 225 || entry.width * scale > .1) continue;
+        const local = [];
+        let prior = null, start = null, valid = true, segmentLimit = false;
+        const add = (point, linear) => {
+          spend();
+          if (!finitePoint(point) || !keyAt(point)) { valid = false; return; }
+          if (prior) {
+            const length = distance(prior, point) * scale;
+            if (!Number.isFinite(length)) valid = false;
+            else if (length >= .003 && length <= 8) {
+              if (segments.length + local.length >= MAX_SEGMENTS) {
+                warn('Limite de 200 000 segments atteinte : analyse des douches partielle.');
+                segmentLimit = true; valid = false; return;
+              }
+              local.push({ a: prior, b: point, width: entry.width, brightness: entry.brightness, pathIndex, length, linear });
+            }
+          }
+          prior = point;
+        };
+        for (let i = 0; i < packed.length && valid;) {
+          spend();
+          const code = packed[i++], pairs = code === 0 || code === 1 ? 1 : code === 2 ? 3 : code === 3 ? 2 : code === 4 ? 0 : -1;
+          if (pairs < 0 || i + pairs * 2 > packed.length) { valid = false; break; }
+          const points = [];
+          for (let j = 0; j < pairs; j++) {
+            const p = { x: packed[i++], y: packed[i++] };
+            if (!finitePoint(p) || !keyAt(p)) { valid = false; break; }
+            points.push(p);
+          }
+          if (!valid) break;
+          if (code === 0) { prior = start = points[0]; }
+          else if (code === 1) { if (!prior) valid = false; else add(points[0], true); }
+          else if (code === 4) { if (!prior || !start) valid = false; else add(start, true); }
+          else {
+            if (!prior) { valid = false; break; }
+            const a = prior, b = points[0], q = code === 2 ? points[1] : null, d = points.at(-1);
+            for (let n = 1; n <= 12 && valid; n++) {
+              const t = n / 12, u = 1 - t;
+              add(q ? { x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * q.x + t * t * t * d.x,
+                y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * q.y + t * t * t * d.y } :
+                { x: u * u * a.x + 2 * u * t * b.x + t * t * d.x,
+                  y: u * u * a.y + 2 * u * t * b.y + t * t * d.y }, false);
+            }
+          }
+        }
+        if (segmentLimit) break;
+        if (!valid) { invalid++; continue; }
+        if (segments.length + local.length > MAX_SEGMENTS) {
+          warn('Limite de 200 000 segments atteinte : analyse des douches partielle.'); break;
+        }
+        for (const segment of local) {
+          const id = segments.length;
+          segments.push(segment);
+          if (segment.linear && segment.length >= .018) {
+            indexEndpoint(segment.a, id); indexEndpoint(segment.b, id);
+          }
+        }
+      }
+
+      // Seuls les petits traits peuvent former un drain. Les longs murs et les
+      // branches du X ne participent pas à ce graphe; aucun N³ global.
+      const nodes = [], cells = new Map(), edges = new Map();
+      const nodeAt = point => {
+        const gx = Math.floor(point.x / tolerance), gy = Math.floor(point.y / tolerance);
+        if (!Number.isSafeInteger(gx) || !Number.isSafeInteger(gy)) return -1;
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          spend();
+          for (const id of cells.get((gx + dx) + ',' + (gy + dy)) || []) {
+            spend();
+            if (distance(nodes[id].point, point) <= tolerance) return id;
+          }
+        }
+        const id = nodes.length, key = gx + ',' + gy;
+        nodes.push({ point, adjacent: new Set() });
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(id);
+        return id;
+      };
+      for (let i = 0; i < segments.length; i++) {
+        spend();
+        const s = segments[i];
+        if (s.length < .018 || s.length > .27) continue;
+        const a = nodeAt(s.a), b = nodeAt(s.b);
+        if (a < 0 || b < 0 || a === b) continue;
+        const key = Math.min(a, b) + ':' + Math.max(a, b);
+        if (!edges.has(key)) edges.set(key, []);
+        edges.get(key).push(i);
+        nodes[a].adjacent.add(b); nodes[b].adjacent.add(a);
+      }
+      const queue = [];
+      for (let i = 0; i < nodes.length; i++) if (nodes[i].adjacent.size < 2) queue.push(i);
+      for (let i = 0; i < queue.length; i++) {
+        const id = queue[i];
+        for (const next of nodes[id].adjacent) {
+          spend(); nodes[next].adjacent.delete(id);
+          if (nodes[next].adjacent.size === 1) queue.push(next);
+        }
+        nodes[id].adjacent.clear();
+      }
+      const visited = new Set(), drains = [];
+      for (let start = 0; start < nodes.length; start++) {
+        spend();
+        if (visited.has(start) || !nodes[start].adjacent.size) continue;
+        const component = [start]; let simple = true;
+        visited.add(start);
+        for (let i = 0; i < component.length; i++) {
+          const id = component[i];
+          if (nodes[id].adjacent.size !== 2) simple = false;
+          for (const next of nodes[id].adjacent) {
+            spend();
+            if (!visited.has(next)) { visited.add(next); component.push(next); }
+          }
+        }
+        if (!simple || component.length < 8 || component.length > 64) continue;
+        let current = start, previous = -1;
+        const ring = [], ids = [];
+        do {
+          spend(); ring.push(nodes[current].point);
+          const next = [...nodes[current].adjacent].find(id => id !== previous);
+          for (const id of edges.get(Math.min(current, next) + ':' + Math.max(current, next))) {
+            spend(); ids.push(id);
+          }
+          previous = current; current = next;
+        } while (current !== start && ring.length <= component.length);
+        if (current !== start || ids.some(id => !compatible(segments[ids[0]], segments[id]))) continue;
+        const shape = describeDrain(ring, scale);
+        if (shape) drains.push({ ...shape, ring, ids, style: segments[ids[0]] });
+      }
+
+      const nearby = point => {
+        const [gx, gy] = keyAt(point), result = new Set();
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          spend();
+          for (const id of endpointCells.get((gx + dx) + ',' + (gy + dy)) || []) {
+            spend(); result.add(id);
+            if (result.size > MAX_LOCAL) { warn('Limite locale atteinte : analyse des douches partielle.'); return null; }
+          }
+        }
+        return result;
+      };
+      for (const drain of drains) {
+        spend();
+        const local = nearby(drain.center);
+        if (!local) continue;
+        const rays = [];
+        for (const id of local) {
+          spend();
+          const s = segments[id];
+          if (s.length < .65 || !compatible(drain.style, s)) continue;
+          const da = distance(s.a, drain.center), db = distance(s.b, drain.center);
+          const near = da < db ? s.a : s.b, far = da < db ? s.b : s.a;
+          const rn = Math.min(da, db), rf = Math.max(da, db);
+          if (rn < drain.radius * .75 || rn > drain.radius + .035 / scale || rf * scale > 5 ||
+            Math.abs((near.x - drain.center.x) * (far.y - drain.center.y) -
+              (near.y - drain.center.y) * (far.x - drain.center.x)) > rn * rf * .04 ||
+            !drain.ring.some((p, i) => distanceToSegment(near, p, drain.ring[(i + 1) % drain.ring.length]) * scale <= .035)) continue;
+          const prior = rays.find(ray => distance(ray.corner, far) <= tolerance);
+          if (prior) prior.ids.push(id); else rays.push({ corner: far, ids: [id] });
+        }
+        // Plusieurs jeux de rayons sont ambigus: on ne choisit pas un rectangle
+        // parmi une grille ou des symboles superposés.
+        if (rays.length !== 4) continue;
+        rays.sort((a, b) => Math.atan2(a.corner.y - drain.center.y, a.corner.x - drain.center.x) -
+          Math.atan2(b.corner.y - drain.center.y, b.corner.x - drain.center.x));
+        const ring = rays.map(ray => ray.corner), rectangle = describeRectangle(ring, drain.center, scale);
+        if (!rectangle) continue;
+        const faceIds = []; let closed = true;
+        for (let side = 0; side < 4 && closed; side++) {
+          const a = ring[side], b = ring[(side + 1) % 4], length = distance(a, b);
+          const dx = (b.x - a.x) / length, dy = (b.y - a.y) / length;
+          const pending = [a], seen = new Set(); let reached = false;
+          for (let step = 0; step < pending.length && step < MAX_FACE_STEPS; step++) {
+            const point = pending[step];
+            if (distance(point, b) <= faceTolerance) { reached = true; break; }
+            const neighbors = nearby(point);
+            if (!neighbors) break;
+            for (const id of neighbors) {
+              spend(); if (seen.has(id)) continue;
+              const s = segments[id];
+              if (!compatible(drain.style, s) ||
+                Math.abs((s.a.x - a.x) * dy - (s.a.y - a.y) * dx) > faceTolerance ||
+                Math.abs((s.b.x - a.x) * dy - (s.b.y - a.y) * dx) > faceTolerance) continue;
+              const u = (s.a.x - a.x) * dx + (s.a.y - a.y) * dy;
+              const v = (s.b.x - a.x) * dx + (s.b.y - a.y) * dy;
+              if (Math.min(u, v) < -faceTolerance || Math.max(u, v) > length + faceTolerance) continue;
+              if (distance(s.a, point) <= faceTolerance) pending.push(s.b);
+              else if (distance(s.b, point) <= faceTolerance) pending.push(s.a);
+              else continue;
+              seen.add(id); faceIds.push(id);
+            }
+          }
+          if (pending.length > MAX_FACE_STEPS) warn('Limite de faces atteinte : analyse des douches partielle.');
+          if (!reached) closed = false;
+        }
+        if (!closed) continue;
+        const { center, axes, bounds } = rectangle;
+        const copy = p => ({ x: p.x, y: p.y });
+        const pathIndices = [...new Set([...drain.ids, ...rays.flatMap(ray => ray.ids), ...faceIds]
+          .map(id => segments[id].pathIndex))].sort((a, b) => a - b);
+        showers.push({ id: 'shower:' + [center.x, center.y, axes.length, axes.width].map(Math.round).join(':'),
+          kind: 'shower', center, basinRing: ring.map(copy), drainRing: drain.ring.map(copy), axes, bounds,
+          source: 'vector-shape', status: 'proposed', evidence: {
+            pathIndices, pattern: 'closed-pan-four-rays-central-drain', toleranceFeet: .015 } });
+      }
+      showers.sort((a, b) => a.center.y - b.center.y || a.center.x - b.center.x);
+    } catch (error) { if (error !== exhausted) throw error; }
+    if (invalid) warn(invalid + ' chemin(s) invalide(s) ignoré(s).');
+    return { showers, warnings };
+  }
+
+  function describeDrain(ring, scale) {
+    const origin = ring[0]; let twiceArea = 0, cx = 0, cy = 0, corners = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const ax = a.x - origin.x, ay = a.y - origin.y, bx = b.x - origin.x, by = b.y - origin.y;
+      const cross = ax * by - bx * ay;
+      twiceArea += cross; cx += (ax + bx) * cross; cy += (ay + by) * cross;
+    }
+    if (!Number.isFinite(twiceArea + cx + cy) || !twiceArea) return null;
+    const center = { x: origin.x + cx / (3 * twiceArea), y: origin.y + cy / (3 * twiceArea) };
+    let lo = Infinity, hi = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[(i + ring.length - 1) % ring.length], b = ring[i], c = ring[(i + 1) % ring.length];
+      const turn = Math.sign(twiceArea) * Math.atan2((b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x),
+        (b.x - a.x) * (c.x - b.x) + (b.y - a.y) * (c.y - b.y));
+      if (turn < -.03 || turn > 1.22) return null;
+      if (turn > .04) corners++;
+      const radius = distance(b, center); lo = Math.min(lo, radius); hi = Math.max(hi, radius);
+    }
+    const fill = Math.abs(twiceArea) / (2 * Math.PI * hi * hi);
+    if (corners < 8 || hi / lo > 1.18 || hi * scale * 2 < .1 || hi * scale * 2 > .45 || fill < .82) return null;
+    return { center, radius: hi };
+  }
+
+  function describeRectangle(ring, drainCenter, scale) {
+    const center = { x: ring.reduce((s, p) => s + p.x, 0) / 4, y: ring.reduce((s, p) => s + p.y, 0) / 4 };
+    if (distance(center, drainCenter) * scale > .025) return null;
+    const sides = ring.map((a, i) => {
+      const b = ring[(i + 1) % 4], length = distance(a, b);
+      return { x: (b.x - a.x) / length, y: (b.y - a.y) / length, length };
+    });
+    for (let i = 0; i < 4; i++) if (!Number.isFinite(sides[i].length) || !sides[i].length ||
+      Math.abs(sides[i].x * sides[(i + 1) % 4].x + sides[i].y * sides[(i + 1) % 4].y) > .006 ||
+      Math.abs(sides[i].length - sides[(i + 2) % 4].length) * scale > .015) return null;
+    const first = sides[0].length >= sides[1].length ? sides[0] : sides[1];
+    let major = { x: first.x, y: first.y };
+    if (major.x < -1e-10 || Math.abs(major.x) <= 1e-10 && major.y < 0) major = { x: -major.x, y: -major.y };
+    const length = Math.max(sides[0].length, sides[1].length), width = Math.min(sides[0].length, sides[1].length);
+    if (length * scale < 2.4 || length * scale > 7.5 || width * scale < 1.8 || width * scale > 5.5 || length / width > 3.5) return null;
+    return { center, axes: { major, minor: { x: -major.y, y: major.x }, length, width }, bounds: {
+      x: Math.min(...ring.map(p => p.x)), y: Math.min(...ring.map(p => p.y)),
+      right: Math.max(...ring.map(p => p.x)), bottom: Math.max(...ring.map(p => p.y)) } };
+  }
+  return { detect };
+})(geometry);
 const sanitaryFootprints = (function createSanitaryFootprints() {
   const MAX_SEGMENTS = 100000, MAX_LOCAL = 4096, MAX_GROUPS = 64, MAX_COMBINATIONS = 100000;
   // Pieds physiques, indépendants du zoom. Ces bornes prudentes limitent ce
@@ -4610,7 +4944,11 @@ const unitFloorGroups = (function createUnitFloorGroups() {
       }
       if (room.detectedUnit !== undefined && !validUnit(room.detectedUnit)) throw new Error('Le rattachement proposé au logement est invalide.');
       if (room.passageOnly !== undefined && typeof room.passageOnly !== 'boolean') throw new Error('Le rôle du résidu de passage est invalide.');
-      if (room.passageOnly && (!validUnit(room.detectedUnit) || room.unitSeeds?.length)) throw new Error('Un résidu de passage exige un rattachement unique, sans libellé de logement.');
+      const unanchoredPassage = room.detectedUnit === undefined && Number.isInteger(room.parentRoomId) &&
+        room.parentRoomId > 0 && room.splitRole === 'rest';
+      if (room.passageOnly && ((!validUnit(room.detectedUnit) && !unanchoredPassage) || room.unitSeeds?.length)) {
+        throw new Error('Un résidu de passage exige un rattachement unique ou une provenance de découpage, sans libellé de logement.');
+      }
       byId.set(room.id, room);
       if (room.eligible !== false && room.selected !== false && !room.needsSeparation && !room.mixedBathroom &&
           !room.bathroom && !room.circulation && !['bathroom', 'circulation'].includes(room.spaceType)) {
@@ -4729,7 +5067,8 @@ const unitFloorGroups = (function createUnitFloorGroups() {
       const id = seeds.size ? [...seeds][0] : room.detectedUnit?.id;
       if (id) identity.set(room.id, id);
     }
-    // Unanchored rooms may join only when their entire unanchored component
+    // Unanchored rooms, including supported split-rest passage residues, may
+    // join only when their entire unanchored component
     // touches one consistent dwelling. A bridge between two units stays out;
     // processing order and proximity never decide which unit acquires it.
     const seenUnknown = new Set();
@@ -5187,6 +5526,38 @@ const closetHatching = (function createClosetHatching() {
       if (shapes.length > MAX_SHAPES) return paths;
     }
     if (shapes.length < 6) return paths;
+    // Sliding leaves may share a corner. Find four-edge rectangles without
+    // requiring that the whole connected component is one rectangle.
+    const panels = [], panelKeys = new Set(), straightParts = new Map();
+    for (const [pathIndex, list] of parsed) for (const part of list) {
+      if (part.curved || part.edges.length !== 1) continue;
+      const entry = paths[pathIndex], style = Math.round(entry.brightness) + ':' + Math.round(entry.width * scale * 10000);
+      if (!straightParts.has(style)) straightParts.set(style, []);
+      straightParts.get(style).push(part);
+    }
+    const otherEnd = (edge, node) => edge.a === node ? edge.b : edge.a;
+    for (let firstId = 0; firstId < edges.length; firstId++) {
+      const first = edges[firstId], a = nodes[first.a].point, b = nodes[first.b].point, long = length(a, b);
+      if (long * scale < 1 || long * scale > 2.6 || paths[first.pathIndex].width * scale > .06 || nodes[first.a].edges.length > 6 || nodes[first.b].edges.length > 6) continue;
+      const u = { x: (b.x - a.x) / long, y: (b.y - a.y) / long };
+      for (const secondId of nodes[first.b].edges) {
+        if (secondId === firstId) continue;
+        const second = edges[secondId], cId = otherEnd(second, first.b), c = nodes[cId].point, short = length(b, c);
+        if (short * scale < .1 || short * scale > .2 || Math.abs((c.x - b.x) * u.x + (c.y - b.y) * u.y) / short > .015 || nodes[cId].edges.length > 6) continue;
+        for (const thirdId of nodes[cId].edges) {
+          if (thirdId === secondId) continue;
+          const third = edges[thirdId], dId = otherEnd(third, cId), d = nodes[dId].point;
+          if (dId === first.a || Math.abs(length(c, d) - long) * scale > .015 || Math.abs(length(a, d) - short) * scale > .015) continue;
+          if (Math.abs(((d.x - c.x) * u.x + (d.y - c.y) * u.y) / length(c, d)) < .9995) continue;
+          const fourthId = nodes[first.a].edges.find(id => id !== firstId && otherEnd(edges[id], first.a) === dId);
+          if (fourthId === undefined || Math.abs((d.x - a.x) * u.x + (d.y - a.y) * u.y) / short > .015) continue;
+          const ids = [firstId, secondId, thirdId, fourthId], key = ids.slice().sort((x, y) => x - y).join(':');
+          if (panelKeys.has(key)) continue; panelKeys.add(key);
+          panels.push({ edges: ids, points: [a, b, c, d], center: { x: (a.x + b.x + c.x + d.x) / 4, y: (a.y + b.y + c.y + d.y) / 4 }, u, brightness: Math.round(paths[first.pathIndex].brightness) });
+          if (panels.length > MAX_SHAPES) return paths;
+        }
+      }
+    }
     const spatial = new Map(), cell = 3 / scale;
     for (let i = 0; i < shapes.length; i++) { const p = shapes[i].center, key = Math.floor(p.x / cell) + ':' + Math.floor(p.y / cell); if (!spatial.has(key)) spatial.set(key, []); spatial.get(key).push(i); }
     const neighbors = shapes.map(() => []), cosine = Math.cos(24 * Math.PI / 180);
@@ -5202,7 +5573,7 @@ const closetHatching = (function createClosetHatching() {
         if (along <= .2 && pitch >= .08 && pitch <= .75) { neighbors[i].push(j); neighbors[j].push(i); }
       }
     }
-    const seen = new Set(), removed = new Set();
+    const seen = new Set(), removed = new Set(), removedParts = new Set();
     for (let start = 0; start < shapes.length; start++) {
       if (seen.has(start)) continue; const group = [start]; seen.add(start);
       for (let read = 0; read < group.length; read++) for (const next of neighbors[group[read]]) if (!seen.has(next)) { seen.add(next); group.push(next); }
@@ -5225,11 +5596,40 @@ const closetHatching = (function createClosetHatching() {
       }
       if (left && right) continue; // Studs inside two continuous wall faces.
       for (const row of rows) for (const edge of row.edges) removed.add(edge);
+      // A central clothes rail is paired with a real wall by the wall detector.
+      // Its strict central position and matching garment style prove the rail.
+      // Sliding leaves require separate proof; back walls and jambs stay intact.
+      const sides = [[], []], brightness = Number(rows[0].style.split(':')[0]);
+      for (const panel of panels) {
+        if (panel.brightness !== brightness || Math.abs(dot(panel.u, v)) < .9995) continue;
+        const along = project(panel.center, u), across = panel.points.map(point => project(point, v)), first = Math.min(...across), last = Math.max(...across);
+        if (first < bottom - .75 / scale || last > top + .75 / scale) continue;
+        if (along >= lo - .7 / scale && along <= lo + .1 / scale) sides[0].push({ panel, along, first, last });
+        if (along <= hi + .7 / scale && along >= hi - .1 / scale) sides[1].push({ panel, along, first, last });
+      }
+      const fronts = sides.filter(side => {
+        if (side.length < 2) return false;
+        side.sort((a, b) => a.first - b.first);
+        return (Math.max(...side.map(row => row.along)) - Math.min(...side.map(row => row.along))) * scale <= .3 &&
+          side.slice(1).every((row, i) => Math.abs(row.first - side[i].last) * scale <= .25) &&
+          side.at(-1).last - side[0].first >= span * .45;
+      });
+      const middle = across.reduce((sum, value) => sum + value, 0) / across.length, rods = [];
+      for (const part of straightParts.get(rows[0].style) || []) {
+        const edge = part.edges[0], size = length(edge.a, edge.b);
+        if (size < span * .7 || size > span + 1.5 / scale || Math.abs(((edge.b.x - edge.a.x) * v.x + (edge.b.y - edge.a.y) * v.y) / size) < .9995) continue;
+        const a = project(edge.a, v), b = project(edge.b, v), position = (project(edge.a, u) + project(edge.b, u)) / 2;
+        if (Math.abs(position - middle) * scale <= .15 && Math.min(a, b) >= bottom - .75 / scale && Math.max(a, b) <= top + .75 / scale) rods.push(part);
+      }
+      if (!rods.length) continue;
+      for (const part of rods) removedParts.add(part);
+      if (fronts.length !== 1) continue;
+      for (const { panel } of fronts[0]) for (const edge of panel.edges) removed.add(edge);
     }
     if (!removed.size) return paths;
     return paths.flatMap((entry, index) => {
       const list = parsed.get(index); if (!list) return [entry];
-      const discarded = list.filter(part => !part.curved && part.edges.length && part.edges.every(edge => edge.id !== undefined && removed.has(edge.id)));
+      const discarded = list.filter(part => removedParts.has(part) || !part.curved && part.edges.length && part.edges.every(edge => edge.id !== undefined && removed.has(edge.id)));
       if (!discarded.length) return [entry]; const values = []; let from = 0;
       for (const part of discarded) { values.push(...entry.path.slice(from, part.start)); from = part.end; }
       values.push(...entry.path.slice(from)); return values.length ? [{ ...entry, path: values }] : [];
@@ -9125,7 +9525,7 @@ function recognizeFixtures(item,info,scale) {
   const hints=fixtureTextHints(info?.texts||[]).filter(h=>inside({x:h.cx,y:h.cy},item.points)||onRing({x:h.cx,y:h.cy},item.points));
   for(const proof of item.sanitaryEvidence||[]) {
     const b=boundsOf(proof.basinRing),cx=(b.x+b.right)/2,cy=(b.y+b.bottom)/2;
-    if(!hints.some(hint=>dist({x:hint.cx,y:hint.cy},{x:cx,y:cy})<1/scale))hints.push({key:proof.symbolId,type:'bath',label:'Bain proposé · symbole vectoriel',cx,cy,source:'vector-shape'});
+    if(!hints.some(hint=>dist({x:hint.cx,y:hint.cy},{x:cx,y:cy})<1/scale))hints.push({key:proof.symbolId,type:proof.kind==='shower'?'shower':'bath',label:fixtureTypeLabel(proof.kind==='shower'?'shower':'bath')+' · symbole vectoriel proposé',cx,cy,source:'vector-shape'});
   }
   const cuts=[],pending=[];
   for(const hint of hints) {
@@ -9133,7 +9533,7 @@ function recognizeFixtures(item,info,scale) {
     if(hint.source==='vector-shape'){
       const proof=(item.sanitaryEvidence||[]).find(entry=>entry.symbolId===hint.key);
       if(proof?.footprintRing){
-        const cut={id:uid(),type:'bath',label:'Bain · contour extérieur vectoriel proposé',source:'plan',hintKey:hint.key,clipToFloor:true,points:structuredClone(proof.footprintRing)},check=checkFixtureCut(item,cut);
+        const cut={id:uid(),type:proof.kind==='shower'?'shower':'bath',label:fixtureTypeLabel(proof.kind==='shower'?'shower':'bath')+' · contour extérieur vectoriel proposé',source:'plan',hintKey:hint.key,clipToFloor:true,points:structuredClone(proof.footprintRing)},check=checkFixtureCut(item,cut);
         if(check.already)continue;
         if(check.ok){cuts.push(cut);continue;}
         pending.push({...hint,reason:check.reason});
