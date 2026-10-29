@@ -1,0 +1,18 @@
+# Outils gratuits uniquement. Configuration active pour les projets reconnus fiables par Codex.
+[mcp_servers.opentakeoff]
+command = "npx"
+args = ["-y", "opentakeoff-mcp@0.9.100"]
+enabled = true
+required = false
+startup_timeout_sec = 60
+tool_timeout_sec = 120
+default_tools_approval_mode = "prompt"
+
+# Service externe sans compte ni frais; ne jamais lui transmettre de plans confidentiels.
+[mcp_servers.craft_quantities]
+url = "https://api.craftquantities.com/mcp"
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+default_tools_approval_mode = "prompt"
