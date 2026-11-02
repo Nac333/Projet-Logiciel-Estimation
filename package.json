@@ -1,0 +1,16 @@
+{
+  "name": "quantif-plancher-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Startup tests for the existing Quantif Plancher HTML application",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "serve:test": "node scripts/serve-test.mjs",
+    "test:server": "node --test tests/server/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test": "npm run test:server && npm run test:e2e"
+  },
+  "devDependencies": { "@playwright/test": "1.64.1" }
+}
