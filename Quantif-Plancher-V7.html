@@ -9225,6 +9225,22 @@ function renderPages() {
   $$('[data-sheet]',host).forEach(button=>button.onclick=()=>{if(S.pdf&&!S.loading)showPage(+button.dataset.sheet);});
   const status=$('#sheetIndexStatus');if(status)status.textContent=S.indexing?`Lecture des feuilles ${S.indexedPages||0} / ${S.pages}`:`${S.pages} feuille${S.pages>1?'s':''}`;
 }
+function renameSelectedMeasure() {
+  const items=S.items.filter(item=>item.page===S.page&&S.selection.has(item.id));
+  if(!items.length)return renameSheet();
+  if(items.length!==1)return toast('Sélectionnez une seule mesure à renommer.');
+  const item=items[0];
+  openDialog('Renommer la mesure',`<form id="renameMeasureForm"><label for="measureRename">Nom de la mesure</label><input id="measureRename" maxlength="300" value="${esc(item.name)}" required><p>Le contour, la quantité et le fini sont conservés.</p><div class="modal-actions"><button type="button" id="cancelRenameMeasure">Annuler</button><button type="submit" class="primary">Enregistrer</button></div></form>`);
+  $('#cancelRenameMeasure').onclick=closeDialog;
+  $('#renameMeasureForm').onsubmit=event=>{
+    event.preventDefault();const name=$('#measureRename').value.trim();
+    if(!name||name.length>300){$('#measureRename').focus();return;}
+    const current=S.items.find(entry=>entry.id===item.id&&entry.page===S.page);if(!current)return closeDialog();
+    if(current.name!==name){remember();current.name=name;save();}
+    closeDialog();refresh();canvas.focus();
+  };
+  $('#measureRename').focus();$('#measureRename').select();
+}
 function renameSheet() {
   if(!S.plan)return toast('Ouvrez une feuille.');
   openDialog('Nom de la feuille',`<form id="renameSheetForm"><label for="customSheetName">Nom affiché</label><input id="customSheetName" maxlength="140" value="${esc(pageName(S.page))}"><p>Le nom automatique peut être rétabli à tout moment.</p><div class="modal-actions"><button type="button" id="autoSheetName">Rétablir le nom automatique</button><button type="submit" class="primary">Enregistrer</button></div></form>`);
@@ -9495,7 +9511,7 @@ function helpDialog() {
     ['O / Maj + O','Tourner la céramique de +90° / −90°'],['G','Afficher / masquer la trame'],
     ['+ / −','Zoomer / dézoomer'],['0 / Début','Afficher la feuille entière'],['1','Afficher à 100 %'],['Z','Cadrer la sélection'],
     ['Flèches','Déplacer la vue; Maj : déplacement plus grand'],['Page précédente / suivante','Changer de feuille (Page Up / Page Down)'],
-    ['F2','Renommer la feuille'],['Glisser en mode Sélection','Sélectionner les mesures entièrement encadrées sur la feuille active'],['Ctrl/Cmd/Maj + glisser','Ajouter les mesures encadrées à la sélection'],['Ctrl/Cmd + clic','Ajouter / retirer de la sélection'],['Ctrl/Cmd + A','Tout sélectionner sur la feuille'],
+    ['F2','Renommer la mesure sélectionnée; sinon la feuille'],['Tab / Maj+Tab','Objet suivant / précédent lorsque le plan a le focus'],['Glisser en mode Sélection','Sélectionner les mesures entièrement encadrées sur la feuille active'],['Ctrl/Cmd/Maj + glisser','Ajouter les mesures encadrées à la sélection'],['Ctrl/Cmd + clic','Ajouter / retirer de la sélection'],['Ctrl/Cmd + A','Tout sélectionner sur la feuille'],
     ['Suppr','Supprimer la sélection'],['Retour arrière / clic droit','Retirer le dernier point du tracé'],['Entrée / double-clic','Terminer le tracé'],
     ['Maj pendant un tracé','Aligner horizontalement ou verticalement'],['Échap','Annuler l’outil ou fermer la fenêtre'],
     ['Double-clic / F6 / Entrée','Modifier une surface ou une ligne sélectionnée'],['F4 / F5','Estimation et commandes / fiche de pose sélectionnée'],['Ctrl/Cmd + Z / Y','Annuler / rétablir'],['Ctrl/Cmd + O','Ouvrir un plan'],['Ctrl/Cmd + S','Sauvegarder le relevé dans un fichier'],
@@ -9530,10 +9546,19 @@ function keyboard(event) {
   if(key==='f6'){event.preventDefault();if(S.selected)openItemEditor(S.selected);return;}
   if(key==='f5'){event.preventDefault();if(S.selected)workDialog(S.selected);else toast('Sélectionnez une mesure pour ouvrir sa fiche.');return;}
   if(key==='?'||key==='f1'){event.preventDefault();helpDialog();return;}
+  if(key==='tab'&&document.activeElement===canvas&&!S.draft.length&&['select','edit'].includes(S.tool)) {
+    const items=S.items.filter(item=>item.page===S.page);
+    if(items.length){
+      event.preventDefault();const index=items.findIndex(item=>item.id===S.selected),
+        next=index<0?(event.shiftKey?items.length-1:0):(index+(event.shiftKey?-1:1)+items.length)%items.length;
+      S.previewFocus=null;S.previewSelection=new Set();setSelection([items[next].id]);refresh();
+    }
+    return;
+  }
   if(key==='delete'||key==='backspace') {
     event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else deleteSelection();return;
   }
-  if(key==='escape'){event.preventDefault();if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();return;}
+  if(key==='escape'){event.preventDefault();if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
   if(key==='enter') {
     if(finishManualTool()){event.preventDefault();return;}
     const row=event.target.closest?.('[data-item]');
@@ -9551,7 +9576,7 @@ function keyboard(event) {
     else if(key==='1')zoomAt(1);else if(key==='z')zoomSelection();else fitPlan();refresh();return;
   }
   if(key==='pageup'||key==='pagedown'){event.preventDefault();if(S.pdf)showPage(S.page+(key==='pageup'?-1:1));return;}
-  if(key==='f2'){event.preventDefault();renameSheet();return;}
+  if(key==='f2'){event.preventDefault();renameSelectedMeasure();return;}
   if(key==='g'){event.preventDefault();S.tileGrid=!S.tileGrid;refresh();return;}
   if(key==='o'){event.preventDefault();rotateTile(event.shiftKey?-90:90);return;}
   if(key.startsWith('arrow')) {
