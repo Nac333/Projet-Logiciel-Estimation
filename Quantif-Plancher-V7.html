@@ -9040,11 +9040,11 @@ function calibrationModal(initialMode) {
       <div class="imperial-fields"><label for="knownFeet">Pieds<input id="knownFeet" type="number" min="0" step="1" inputmode="numeric" value="0"></label><label for="knownInches">Pouces<input id="knownInches" type="number" min="0" max="11" step="1" inputmode="numeric" value="0"></label><div><span class="field-label" id="fractionLabel">Fraction de pouce</span><div class="fraction-fields" role="group" aria-labelledby="fractionLabel"><input id="fractionNumerator" aria-label="Numérateur de la fraction" type="number" min="0" step="1" value="0"><span>/</span><input id="fractionDenominator" aria-label="Dénominateur de la fraction" type="number" min="1" step="1" value="16"></div></div></div><p class="scale-help">Exemple : 20 pieds, 6 pouces et 3/16.</p>
     </fieldset>
     <fieldset id="scale-metric" class="scale-fields" role="tabpanel" aria-labelledby="tab-metric"><legend>Longueur réelle de la cote</legend><label for="knownMetric">Longueur connue</label><div class="metric-fields"><input id="knownMetric" type="number" min="0" step="any" inputmode="decimal"><select id="metricUnit" aria-label="Unité métrique"><option value="m">mètres</option><option value="cm">centimètres</option><option value="mm">millimètres</option></select></div></fieldset>
-    <fieldset id="scale-verify" class="scale-fields" role="tabpanel" aria-labelledby="tab-verify"><legend>Contrôle indépendant de l’échelle</legend><p>Tracez une autre cote, idéalement dans une autre direction. Le seuil du projet est de 1 %; il ne constitue pas une garantie de précision.</p><label>Longueur de référence<input id="verificationLength" type="number" min="0" step="any"></label><label>Unité<select id="verificationUnit"><option value="ft">pieds</option><option value="m">mètres</option><option value="mm">millimètres</option></select></label><label>Motif d’une dérogation explicite (facultatif)<input id="verificationReason" maxlength="300"></label>${meta?.verification?'<p>Dernier écart : '+fmt(meta.verification.deviationPercent,2)+' %'+(meta.verification.overridden?' · dérogation : '+esc(meta.verification.overrideReason):'')+'</p>':''}</fieldset>
+    <fieldset id="scale-verify" class="scale-fields" role="tabpanel" aria-labelledby="tab-verify"><legend>Contrôle indépendant de l’échelle</legend><p>Tracez une autre cote, idéalement dans une autre direction. Le seuil du projet est de 1 %; il ne constitue pas une garantie de précision.</p><label>Longueur de référence<input id="verificationLength" type="number" min="0" step="any"></label><label>Unité<select id="verificationUnit"><option value="ft">pieds</option><option value="m">mètres</option><option value="mm">millimètres</option></select></label><label>Motif d’une dérogation explicite (facultatif)<input id="verificationReason" maxlength="300"></label>${meta?.verification?'<p>Contrôle précédent : '+fmt(meta.verification.deviationPercent,2)+' %'+(meta.verification.overridden?' · dérogation : '+esc(meta.verification.overrideReason):'')+'</p>':''}<p id="verificationResult" class="scale-help" role="status" hidden></p><button type="button" id="recalibrateVerification" class="selection-action" hidden>Recalibrer cette feuille sur cette cote</button><p class="scale-help">Après recalibrage, une autre cote devra vérifier le nouveau rapport.</p></fieldset>
     <fieldset id="scale-paper" class="scale-fields" role="tabpanel" aria-labelledby="tab-paper"><legend>Rapport sur le papier</legend><label for="paperRatio">Échelle 1 : dénominateur</label><input id="paperRatio" type="number" min="1" step="any" value="${meta?.denominator || 48}"><p class="scale-help">1/4 po = 1 pi correspond à 1:48. Le rapport papier s’applique aux PDF et reste à vérifier sur une cote.</p></fieldset>
     <div id="referenceHelp" class="scale-reference"><span>${hasLine ? 'Deux points sélectionnés.' + (S.scale ? ' Selon l’échelle actuelle : '+formatFeet(pixels*S.scale)+'.' : '') : 'Sélectionnez les deux extrémités d’une cote sur le plan.'}</span><button type="button" id="traceScale">${hasLine ? 'Retracer la cote' : 'Tracer une cote'}</button></div>
     <label class="scale-check" id="referenceOption"><input type="checkbox" id="showReference" checked> Afficher la cote de vérification sur le plan</label>
-    <label class="scale-check" ${S.pdf && S.pages > 1 ? '' : 'hidden'}><input type="checkbox" id="applyAllScales"> Appliquer ce rapport aux ${S.pages} feuilles du PDF</label><p class="scale-help" id="allScaleHelp" hidden>Les autres feuilles resteront à vérifier, notamment les détails à une échelle différente.</p>
+    <label class="scale-check" id="allScalesOption" ${S.pdf && S.pages > 1 ? '' : 'hidden'}><input type="checkbox" id="applyAllScales"> Appliquer ce rapport aux ${S.pages} feuilles du PDF</label><p class="scale-help" id="allScaleHelp" hidden>Les autres feuilles resteront à vérifier, notamment les détails à une échelle différente.</p>
     <p id="scaleError" class="scale-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="cancelCal">Annuler</button><button type="submit" class="primary" id="applyCalibration">Appliquer l’échelle</button></div></form></div>`;
   let currentMode = mode;
   const setMode = value => {
@@ -9055,6 +9055,9 @@ function calibrationModal(initialMode) {
     }
     const manual = ['imperial','metric','verify'].includes(value);
     $('#referenceHelp').hidden = !manual; $('#referenceOption').hidden = !manual;
+    $('#allScalesOption').hidden = value === 'verify' || !S.pdf || S.pages < 2;
+    $('#allScaleHelp').hidden = value === 'verify' || !$('#applyAllScales').checked;
+    $('#verificationResult').hidden = true; $('#recalibrateVerification').hidden = true;
     $('#applyCalibration').disabled = value === 'verify' ? !hasLine || !S.scale : manual ? !hasLine : value === 'automatic' ? !S.pdf || !info.candidates.length : !S.pdf;
     $('#applyCalibration').textContent = value === 'verify' ? 'Contrôler la deuxième cote' : manual ? 'Appliquer la première cote' : 'Appliquer l’échelle';
     $('#scaleError').hidden = true;
@@ -9072,6 +9075,16 @@ function calibrationModal(initialMode) {
     };
   });
   $('#applyAllScales').onchange = event => $('#allScaleHelp').hidden = !event.target.checked;
+  $('#recalibrateVerification').onclick = () => {
+    try {
+      if (!hasLine || !S.scale) throw new Error('Tracez une cote indépendante après avoir calibré la feuille.');
+      const feet = calibration.convertLength(Number($('#verificationLength').value), $('#verificationUnit').value), scale = feet/pixels;
+      applyScale(scale, {label:'Cote '+formatFeet(feet),source:'manual',verified:false,calibrationLine:structuredClone(S.draft),
+        denominator:S.pdf ? scale*PDF_DPI*12 : null, deviation:Math.abs(pixels*S.scale-feet)/feet*100,
+        referenceLine:$('#showReference').checked ? {points:structuredClone(S.draft),feet} : null}, false);
+      closeCalibration(); toast('Échelle corrigée pour cette feuille. Vérifiez une autre cote avant confirmation.');
+    } catch(error) { $('#scaleError').textContent = error.message; $('#scaleError').hidden = false; }
+  };
   $('#cancelCal').onclick = closeCalibration; $('#closeCal').onclick = closeCalibration;
   $('#traceScale').onclick = () => { o.innerHTML = ''; S.draft = []; S.tool = 'calibrate'; S.calibrationMode = ['metric','verify'].includes(currentMode) ? currentMode : 'imperial'; refresh(); canvas.focus(); };
   $('form',o).onsubmit = event => {
@@ -9088,7 +9101,15 @@ function calibrationModal(initialMode) {
         remember();
         S.scaleMeta[S.page]={...meta,verified:result.verified,verification:{...result,referenceFeet,measuredFeet,points:structuredClone(S.draft),date:new Date().toISOString()}};
         if(!result.verified)S.items=S.items.map(item=>item.page===S.page&&item.kind!=='count'?{...item,status:'à valider'}:item);
-        closeCalibration();save();refresh();toast('Écart '+fmt(result.deviationPercent,2)+' % · '+(result.verified?'échelle vérifiée'+(result.overridden?' avec dérogation tracée':''):'échelle à corriger, validation bloquée'));return;
+        if (result.verified) {
+          closeCalibration();save();refresh();toast('Écart '+fmt(result.deviationPercent,2)+' % · échelle vérifiée'+(result.overridden?' avec dérogation tracée':''));
+        } else {
+          save();refresh();
+          $('.scale-current',o).textContent=(meta?.label||'Échelle')+' · contrôle non conforme';
+          $('#verificationResult').textContent='Écart '+fmt(result.deviationPercent,2)+' % · échelle à corriger, validation bloquée.';
+          $('#verificationResult').hidden=false;$('#recalibrateVerification').hidden=false;$('#recalibrateVerification').focus();
+        }
+        return;
       } else if (currentMode === 'automatic') {
         const candidate = info.candidates[Number($('#detectedScale')?.value || 0)];
         if (!S.pdf || !candidate) throw new Error('Aucune échelle automatique disponible. Tracez une cote connue.');
