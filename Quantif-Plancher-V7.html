@@ -225,6 +225,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 /* Thème bleu clair demandé; les couleurs de revêtements restent liées à leur légende. */
 .topbar{background:#d9efff;color:#18354d;border-bottom:1px solid #91bddb}.topbar .brand,.topbar .brand b,.topbar .project-title input,.topbar .project-title span,.topbar .menu button{color:#18354d}.topbar .menu button:hover{background:#c5e5fa}.topbar .brandmark{background:#347fae;color:#fff}.topbar .version-mark{color:#254d6c;border-color:#74a5c8}.topbar .project-title{border-color:#a1c9e3}.sheet-row.active,.sheet-row:hover{background:#e1f1fc}.grid-head,.pane-title,.tree-title,.panel-section-title{background:#eaf5fd}.ribbon{background:#f5faff}.sidebar,.inspector{background:#f5faff}
 .topbar .outline{color:#18354d;border-color:#7faaca;background:#eff8ff}.measure-row.selected,.measure-row[aria-selected=true],.tree-project,.tree-doc{background:#e4f2fd}
+.review-kitchen-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#eaf5fd;font-size:12px}
 </style>
 </head>
 <body><div id="root"></div>
@@ -1325,6 +1326,8 @@ function validateFloorEvidence(item) {
 }
 function validateDetectionOptions(settings,pages=S.pages) {
   if(settings?.wallSamples!==undefined)validateWallSamples(settings,pages);
+  if(settings?.kitchenBacksplash!==undefined)kitchenBacksplashes.validateConfig(settings.kitchenBacksplash);
+  if(settings?.kitchenBacksplashRejects!==undefined&&(!Array.isArray(settings.kitchenBacksplashRejects)||settings.kitchenBacksplashRejects.length>20000||new Set(settings.kitchenBacksplashRejects).size!==settings.kitchenBacksplashRejects.length||settings.kitchenBacksplashRejects.some(key=>typeof key!=='string'||!key.startsWith('kitchen:')||key.length>4000)))throw new Error('Refus de dosserets invalides.');
   if(settings?.detectionFinishes!==undefined)detectionFinishes.validate(settings.detectionFinishes,MATERIALS.map(entry=>entry.code),pages);
   if(settings?.detectionChoices!==undefined)detectionDecisions.validate(settings.detectionChoices,MATERIALS.map(entry=>entry.code));
   if(settings?.detectionBaseboardChoices!==undefined)detectionDecisions.validate(settings.detectionBaseboardChoices,Object.keys(catalogDefaults()).filter(code=>code.startsWith('PL-')));
@@ -1410,9 +1413,10 @@ function renderDetectionPanel() {
   S.reviewOffset=offset;const visible=filtered.slice(offset*100,(offset+1)*100);
   const mode=['area','baseboard','count'].includes(S.reviewMode)?S.reviewMode:'area',baseboardChoices={},baseboardLengths={};
   for(const {item,index}of visible){const work=workOf(item);baseboardChoices[index]=work.baseboard.enabled?work.baseboard.code:'';baseboardLengths[index]=perimeter(item.points)*(S.scales[S.page]||0);}
-  panel.innerHTML=detectionReviewUI.render({candidates,visible,pages:pages.map(page=>({page,title:pageName(page)})),page:S.page,pageTitle:pageName(S.page),engineSource:pack?.engineSource,filter,offset,totalPages,filteredCount:filtered.length,focus:S.previewFocus,sanitaryMarkup:sanitaryReviewMarkup(pack),pendingSanitaryCount:pack?.sanitary?.pending?.length||0,warningCount:pack?.sanitary?.warnings?.length||0,notes,mode,materials:MATERIALS,
+  panel.innerHTML=detectionReviewUI.render({candidates,visible,pages:pages.map(page=>({page,title:pageName(page)})),page:S.page,pageTitle:pageName(S.page),engineSource:pack?.engineSource,filter,offset,totalPages,filteredCount:filtered.length,focus:S.previewFocus,sanitaryMarkup:sanitaryReviewMarkup(pack),pendingSanitaryCount:pack?.sanitary?.pending?.length||0,warningCount:pack?.sanitary?.warnings?.length||0,notes,mode,kitchenStatus:S.settings.kitchenBacksplash?.enabled?{count:S.items.filter(isKitchenElevation).length}:null,materials:MATERIALS,
     baseboardProducts:Object.entries(catalogDefaults()).filter(([code])=>code.startsWith('PL-')).map(([code])=>({code,name:profile(code).name})),baseboardChoices,baseboardLengths,autoSave:true,sanitaryCounts:S.items.filter(item=>item.page===S.page&&item.sanitarySource)});
   updateDetectionChoiceButton();
+  if($('#reviewKitchenSummary'))$('#reviewKitchenSummary').onclick=()=>{if(S.items.some(isKitchenElevation))return openKitchenBacksplashReview();const notes=$('.review-notes',panel);if(notes){for(let node=notes;node&&panel.contains(node);node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;notes.scrollIntoView({block:'nearest'});}};
   const selectMode=next=>{S.reviewMode=next;renderDetectionPanel();$(`[data-review-mode="${next}"]`)?.focus({preventScroll:true});};
   $$('[data-review-mode]',panel).forEach(button=>{
     button.tabIndex=button.dataset.reviewMode===mode?0:-1;button.onclick=()=>selectMode(button.dataset.reviewMode);
@@ -1569,8 +1573,11 @@ function openDetectionSettings(pending=null) {
   if(!S.scale&&(!S.pdf||S.pages===1))return calibrationModal();
   if(!pending&&S.detectionDraft){pending=S.detectionDraft;delete S.detectionDraft;}
   const draft=pending?.detectionDraft===true?pending:{detectionDraft:true,scope:!S.scale&&S.pdf&&S.pages>1?'levels':'active',finishes:detectionFinishDefaults(),doorInches:36,minArea:1,selectedPages:[S.page]};
-  openDialog('Relevé automatique des planchers',`<form id="detectionForm"><p>Le logiciel repère les murs, sépare les espaces et propose leurs surfaces et leurs finis. Vérifiez ensuite les contours et les quantités.</p><div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active" ${draft.scope==='active'?'selected':''}>Feuille active · ${S.page}</option>${S.pdf&&S.pages>1?`<option value="levels" ${draft.scope==='levels'?'selected':''}>Niveaux du projet · détection groupée</option>`:''}<option value="selected" ${draft.scope==='selected'?'selected':''} ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Revêtement de plancher principal<select id="detectionFloorMaterial">${finishMaterialOptions(draft.finishes.floor)}</select></label><label>Salles de bain<select id="detectionBathroomMaterial">${finishMaterialOptions(draft.finishes.bathroom)}</select></label><label>Salle de lavage séparée<select id="detectionLaundryMaterial"><option value="inherit" ${(draft.finishes.laundry||'inherit')==='inherit'?'selected':''}>Automatique selon la localisation</option>${finishMaterialOptions(draft.finishes.laundry==='inherit'?null:draft.finishes.laundry)}</select></label></div><p>Le lavage dans une salle de bain prend son fini; le lavage séparé prend celui de l’unité. Un autre fini de lavage est une exception pour le lavage séparé, à valider. Le lavage intégré conserve le fini de la salle de bain.</p><button type="button" id="detectionOtherFinishes">Autres finis, localisations et formats de tuiles</button><p>Les codes de finis reconnus sur le plan et vos corrections restent prioritaires. Une salle de bain reçoit le fini choisi; l’emprise du bain ou de la douche reste à vérifier.</p><fieldset id="detectionScaleChoices" hidden></fieldset><details id="detectionPassages"><summary>Passages et petites surfaces</summary><div class="v4-fields"><label>Fermer les passages jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===draft.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${draft.minArea}"></label></div><p>Ce réglage n’est pas une mesure de porte. Les murs extérieurs, séparateurs et corridors sont analysés automatiquement.</p></details><fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${(draft.selectedPages||[S.page]).includes(page)?'checked':''}> ${esc(pageName(page))}</label>`).join('')}</fieldset><p>Le mode Niveaux exclut les détails et la toiture. Une feuille type est comptée une fois.</p><p id="detectionError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter les surfaces</button></div></form>`);
-  const read=()=>({...draft,scope:$('#detectionScope').value,selectedPages:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage),doorInches:+$('#doorGap').value,minArea:+$('#minRoomArea').value,scaleChoices:{...(draft.scaleChoices||{}),...Object.fromEntries($$('[data-detection-scale]').map(input=>[input.dataset.detectionScale,input.value]))},finishes:{...draft.finishes,floor:$('#detectionFloorMaterial').value,bathroom:$('#detectionBathroomMaterial').value,laundry:$('#detectionLaundryMaterial').value}});
+  draft.kitchen=structuredClone(draft.kitchen||S.settings.kitchenBacksplash||kitchenBacksplashes.defaults());
+  openDialog('Relevé automatique des planchers',`<form id="detectionForm"><p>Le logiciel repère les murs, sépare les espaces et propose leurs surfaces et leurs finis. Vérifiez ensuite les contours et les quantités.</p><div class="v4-fields"><label>Feuilles à analyser<select id="detectionScope"><option value="active" ${draft.scope==='active'?'selected':''}>Feuille active · ${S.page}</option>${S.pdf&&S.pages>1?`<option value="levels" ${draft.scope==='levels'?'selected':''}>Niveaux du projet · détection groupée</option>`:''}<option value="selected" ${draft.scope==='selected'?'selected':''} ${S.pages===1?'disabled':''}>Choisir plusieurs feuilles</option></select></label><label>Revêtement de plancher principal<select id="detectionFloorMaterial">${finishMaterialOptions(draft.finishes.floor)}</select></label><label>Salles de bain<select id="detectionBathroomMaterial">${finishMaterialOptions(draft.finishes.bathroom)}</select></label><label>Salle de lavage séparée<select id="detectionLaundryMaterial"><option value="inherit" ${(draft.finishes.laundry||'inherit')==='inherit'?'selected':''}>Automatique selon la localisation</option>${finishMaterialOptions(draft.finishes.laundry==='inherit'?null:draft.finishes.laundry)}</select></label></div><p>Le lavage dans une salle de bain prend son fini; le lavage séparé prend celui de l’unité. Un autre fini de lavage est une exception pour le lavage séparé, à valider. Le lavage intégré conserve le fini de la salle de bain.</p><button type="button" id="detectionOtherFinishes">Autres finis, localisations et formats de tuiles</button><p>Les codes de finis reconnus sur le plan et vos corrections restent prioritaires. Une salle de bain reçoit le fini choisi; l’emprise du bain ou de la douche reste à vérifier.</p><fieldset id="detectionScaleChoices" hidden></fieldset>${kitchenSettingsHTML(draft.kitchen)}<details id="detectionPassages"><summary>Passages et petites surfaces</summary><div class="v4-fields"><label>Fermer les passages jusqu’à<select id="doorGap">${[0,24,30,36,42,48].map(n=>`<option value="${n}" ${n===draft.doorInches?'selected':''}>${n?n+' po':'Ne pas fermer'}</option>`).join('')}</select></label><label>Surface minimale (pi²)<input id="minRoomArea" type="number" min="1" max="500" step="any" value="${draft.minArea}"></label></div><p>Ce réglage n’est pas une mesure de porte. Les murs extérieurs, séparateurs et corridors sont analysés automatiquement.</p></details><fieldset id="detectionPages" class="detection-pages" hidden><legend>Feuilles du projet</legend>${Array.from({length:S.pages},(_,index)=>index+1).map(page=>`<label><input type="checkbox" data-detect-page="${page}" ${(draft.selectedPages||[S.page]).includes(page)?'checked':''}> ${esc(pageName(page))}</label>`).join('')}</fieldset><p>Le mode Niveaux exclut les détails et la toiture. Une feuille type est comptée une fois.</p><p id="detectionError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="removeDetectionFrame">Retirer le cadre</button><button type="submit" class="primary" id="runDetection">Détecter les surfaces</button></div></form>`);
+  const read=()=>({...draft,kitchen:readKitchenSettings(draft.kitchen),scope:$('#detectionScope').value,selectedPages:$$('[data-detect-page]:checked').map(input=>+input.dataset.detectPage),doorInches:+$('#doorGap').value,minArea:+$('#minRoomArea').value,scaleChoices:{...(draft.scaleChoices||{}),...Object.fromEntries($$('[data-detection-scale]').map(input=>[input.dataset.detectionScale,input.value]))},finishes:{...draft.finishes,floor:$('#detectionFloorMaterial').value,bathroom:$('#detectionBathroomMaterial').value,laundry:$('#detectionLaundryMaterial').value}});
+  $('#kitchenBacksplashEnabled').onchange=()=>{const off=!$('#kitchenBacksplashEnabled').checked;$('#kitchenBacksplashFields').disabled=off;$('#kitchenBacksplashFields').hidden=off;};
+  $('#kitchenBacksplashEnabled').onchange();
   const refreshScales=()=>{
     const options=read();draft.scaleChoices=options.scaleChoices;
     const pages=options.scope==='levels'?floorPlanPages():options.scope==='active'?[S.page]:options.selectedPages,missing=pages.filter(page=>!S.scales[page]);
@@ -1596,9 +1603,10 @@ function openDetectionSettings(pending=null) {
         if(!candidate||!Number.isInteger(Number(choice))||!(candidate.feetPerInch>0))throw new Error('Choisissez ou calibrez l’échelle de la feuille '+page+' avant de lancer le relevé.');
         scales.push({page,candidate});
       }
+      kitchenBacksplashes.validateConfig(options.kitchen);
       detectionFinishes.validate(options.finishes,MATERIALS.map(entry=>entry.code),S.pages);
       for(const {page,candidate}of scales){S.scales[page]=candidate.feetPerInch/PDF_DPI;S.scaleMeta[page]={...candidate,source:'automatic',verified:false};}S.scale=S.scales[S.page]||null;
-      S.settings={...S.settings,minArea:options.minArea,roomPrecision:'fine',doorInches:options.doorInches,threshold:180,wallMode:'structure',splitSingleDwelling:false,detectionFinishes:options.finishes};S.detectorCache=null;save();runDetectionPages(pages);
+      S.settings={...S.settings,minArea:options.minArea,roomPrecision:'fine',doorInches:options.doorInches,threshold:180,wallMode:'structure',splitSingleDwelling:false,detectionFinishes:options.finishes,...(options.kitchen.enabled||S.settings.kitchenBacksplash?{kitchenBacksplash:options.kitchen}:{})};S.detectorCache=null;save();runDetectionPages(pages);
     }catch(error){$('#detectionError').hidden=false;$('#detectionError').textContent=error.message;}
   };
 }
@@ -1629,6 +1637,7 @@ async function runDetectionPages(pages) {
       const {image,info}=await detectionSource(page);if(job.cancelled||job.key!==S.documentKey)break;
       S.pageInfo[page]=info;rememberSheet(page,info);
       if(!S.scales[page]&&info.candidates?.length===1&&!info.ambiguous){const candidate=info.candidates[0];S.scales[page]=candidate.feetPerInch/PDF_DPI;S.scaleMeta[page]={...candidate,source:'automatic',verified:false};}
+      if(settings.kitchenBacksplash?.enabled&&kitchenBacksplashes.isView(info)){notes.push({page,message:'Élévation cuisine réservée au relevé des dosserets, hors plancher.'});continue;}
       const scale=S.scales[page];
       if(!scale){notes.push({page,message:'Non analysée : calibre ou choisissez l’échelle de cette feuille.'});continue;}
       const model=makeWallModel(image,info,{...settings,detectionPage:page},scale,S.dividers[page]||[],S.detectBounds[page]);
@@ -1649,12 +1658,18 @@ async function runDetectionPages(pages) {
     } catch(error){notes.push({page,message:'Analyse impossible : '+error.message});}
     finally{if($('#detectionProgressBar'))$('#detectionProgressBar').value=index+1;}
   }
+  let kitchen={items:[],notes:[],scales:[]};
+  if(settings.kitchenBacksplash?.enabled&&!job.cancelled)try{kitchen=await detectKitchenElevations(job,pages,settings.kitchenBacksplash);}catch(error){notes.push({page:S.page,message:'Dosserets non analysés : '+error.message});}
   if(S.detectJob!==job)return;
   S.detectJob=null;if(job.key!==S.documentKey)return;
+  notes.push(...kitchen.notes);
   S.detectionNotes=notes;closeDialog();
   const first=Object.keys(S.reviewByPage).map(Number).find(page=>pages.includes(page));
   if(first&&(!pages.includes(S.page)||!S.reviewByPage[S.page]))await showPage(first);
-  remember();synchronizeDetected(reviewBatchCandidates());S.reviewOpen=true;renderDetectionPanel();refresh();save();
+  remember();
+  for(const entry of kitchen.scales)if(!S.scales[entry.page]){S.scales[entry.page]=entry.scale;S.scaleMeta[entry.page]=entry.meta;}
+  synchronizeDetected(reviewBatchCandidates());if(kitchen.items.length)addKitchenItems(kitchen.items);S.reviewOpen=true;renderDetectionPanel();refresh();save();
+  if(kitchen.items.length)openKitchenBacksplashReview();
   if(job.cancelled)toast('Analyse arrêtée. Les propositions obtenues sont conservées.');
 }
 function initV7() {
@@ -2160,7 +2175,7 @@ function renderFolderInspector(item) {
 }
 
 /* Wall takeoff keeps plan lengths separate from vertical, height-dependent areas. */
-const WALL_TAKEOFF_TYPES={shower:{label:'Douche',color:'#247c97'},'bath-shower':{label:'Bain-douche',color:'#a03d87'},backsplash:{label:'Dosseret de cuisine',color:'#946015'}};
+const WALL_TAKEOFF_TYPES={shower:{label:'Douche',color:'#247c97'},'bath-shower':{label:'Bain-douche',color:'#a03d87'},backsplash:{label:'Dosseret de cuisine',color:'#e97819'}};
 function isWallTakeoff(item) {return item?.kind==='linear'&&!item.measureOnly&&item.work?.lineRole==='wall';}
 function defaultWallHeight(type) {
   if(type==='shower')return 96;
@@ -2176,6 +2191,7 @@ function wallSurfaceNet(points,scale,heightInches,openings=0) {
 function wallTakeoffQuantity(item,state=S) {
   if(!isWallTakeoff(item))return null;
   const wall=item.work.wall||{};
+  if(isKitchenElevation(item)){const gross=kitchenElevationGross(item,state);return gross===null||!Number.isFinite(wall.openings)||wall.openings<0||wall.openings>gross+1e-7?null:Math.max(0,gross-wall.openings);}
   return wallSurfaceNet(item.points,state.scales[item.page],wall.height,wall.openings??0);
 }
 function wallTakeoffLabel(item) {return WALL_TAKEOFF_TYPES[item.wallTakeoff?.type]?.label||'Céramique murale / dosseret';}
@@ -2183,7 +2199,14 @@ function wallTakeoffColor(item) {return WALL_TAKEOFF_TYPES[item.wallTakeoff?.typ
 function wallTakeoffIssues(item,state=S) {
   if(!isWallTakeoff(item))return [];
   const issues=[],wall=item.work.wall||{},height=wall.height;
-  if(!Number.isFinite(height)||height<=0)issues.push('hauteur murale à renseigner');
+  if(isKitchenElevation(item)){
+    const e=item.wallTakeoff.elevation;
+    if(!validPolygon(item.points))issues.push('contour de dosseret invalide');
+    if(e.hoodUnresolved)issues.push('remontée de hotte à délimiter');
+    if(!e.occurrence&&!e.occurrenceConfirmed)issues.push('occurrence cuisine à affecter');
+    if(!kitchenProductMatches(item,state))issues.push('produit de céramique au format du dosseret à affecter');
+    const net=wallTakeoffQuantity(item,state);if(net===null)issues.push('surface du dosseret à compléter');else if(net<=0)issues.push('surface murale non positive');
+  } else if(!Number.isFinite(height)||height<=0)issues.push('hauteur murale à renseigner');
   else if(wallTakeoffQuantity(item,state)===null)issues.push('ouvertures murales à corriger');
   else if(wallTakeoffQuantity(item,state)<=0)issues.push('surface murale non positive');
   if(item.wallTakeoff?.reviewed===false)issues.push('pans de murs et ouvertures à vérifier');
@@ -2197,6 +2220,7 @@ function validateWallTakeoffData(item) {
   if(!item.work?.wall||!(item.work.wall.height===null||Number.isFinite(item.work.wall.height)&&item.work.wall.height>0&&item.work.wall.height<=1200))throw new Error('La hauteur du relevé mural est invalide.');
   if(meta.heightBasis?.mode==='floor-minus-bath'&&meta.type!=='bath-shower')throw new Error('Le calcul étage moins rebord est réservé au bain-douche.');
   wallHeights.validateBasis(meta.heightBasis,item.work.wall.height);
+  if(meta.elevation!==undefined){if(meta.type!=='backsplash'||item.work.wall.height!==null||meta.elevation.sourcePage!==item.page||getHoles(item).length||Object.keys(item.subzones||{}).length)throw new Error('Source d’élévation cuisine invalide.');kitchenBacksplashes.validateElevation(meta.elevation,item.points,S.pages);}
 }
 function wallPointKey(point) {return point.x.toFixed(2)+','+point.y.toFixed(2);}
 function wallRunKey(points) {
@@ -2352,6 +2376,7 @@ function readWallHeight(input) {
   const feet=Number(raw.replace(',','.'));if(!Number.isFinite(feet)||feet<=0||feet>100)throw new Error('Saisissez une hauteur de plus de 0 et au maximum 100 pi.');return feet*12;
 }
 function openWallTakeoffEditor(points,existing=null,context={}) {
+  if(existing&&isKitchenElevation(existing))return openKitchenBacksplashEditor(existing);
   const type=existing?.wallTakeoff?.type||context.type||'backsplash',height=existing?existing.work.wall.height:context.height??defaultWallHeight(type),
     openings=existing?.work?.wall?.openings||0,reviewed=existing?.wallTakeoff?.reviewed||false,waste=existing?.work?.wall?.waste??10,
     scope=wallTakeoffWork(height,openings,waste,existing?.work);
@@ -2421,6 +2446,7 @@ function openWallTakeoffDialog(id=null) {
     const measured=wallProposalRunsAlreadyMeasured(proposal);proposal.measured=measured;
     return `<section class="wall-proposal" data-wall-proposal="${index}"><header><strong>${esc(proposal.name)}</strong><small>${esc(proposal.sourceLabel)}</small></header><p>${esc(proposal.reason)}</p>${proposal.runs.length?`<div class="wall-pan-list">${proposal.runs.map((run,n)=>`<label><input type="checkbox" data-wall-pan="${index}:${n}" ${measured[n]?'disabled':proposal.runs.length<=3?'checked':''}> Pan ${n+1} · ${fmt(dist(run.a,run.b)*S.scale)} pi ${measured[n]?'· déjà au relevé':''}</label>`).join('')}</div><div class="v4-fields"><label>Hauteur (pi)<input type="number" min="0.001" max="100" step="any" data-wall-proposal-height="${index}" value="${wallHeightInputValue(proposal.height)}" placeholder="À saisir"></label><label>Ouvertures totales (pi²)<input type="number" min="0" step="any" data-wall-proposal-openings="${index}" value="0"></label></div><label class="wall-review-check"><input type="checkbox" data-wall-proposal-reviewed="${index}"> Pans et ouvertures vérifiés</label><p class="wall-quantity-preview" data-wall-proposal-total="${index}"></p>`:proposal.duplicateProposal?'<p class="wall-proposal-pending">Pans déjà proposés, sans quantité ajoutée en double.</p>':'<p class="wall-proposal-pending">Aucune quantité inventée : un tracé est nécessaire.</p>'}<button type="button" class="wall-trace-source" data-wall-trace-source="${index}">Tracer cette zone</button></section>`;
   }).join(''):'<p class="wall-proposal-pending">Aucun libellé de douche, bain-douche ou dosseret n’est localisé sur cette feuille. Tracez les pans à relever.</p>'}<p id="wallProposalError" class="v4-error" role="alert"></p><div class="wall-manual-row"><label>Tracé manuel<select id="wallTraceType">${Object.entries(WALL_TAKEOFF_TYPES).map(([type,entry])=>`<option value="${type}" ${type==='backsplash'?'selected':''}>${entry.label}</option>`).join('')}</select></label><button type="button" id="traceWallFromDialog">Tracer les murs</button></div><div class="modal-actions"><button type="button" id="cancelWallProposals">Fermer</button><button type="button" class="primary" id="addWallTakeoffs">Ajouter les pans choisis · à valider</button></div></div>`,'wide');
+  if(S.items.some(isKitchenElevation)){$('#wallProposalList').insertAdjacentHTML('afterbegin','<button type="button" id="reviewKitchenFromWall" class="selection-action">Réviser les dosserets de cuisine</button>');$('#reviewKitchenFromWall').onclick=openKitchenBacksplashReview;}
   const chosenRuns=index=>proposals[index].runs.filter((run,n)=>$(`[data-wall-pan="${index}:${n}"]`)?.checked),update=()=>{
     S.wallTakeoffPreview=[];let any=false;
     proposals.forEach((proposal,index)=>{const runs=chosenRuns(index),target=$(`[data-wall-proposal-total="${index}"]`);if(!target)return;const length=runs.reduce((sum,run)=>sum+dist(run.a,run.b)*S.scale,0);try{const height=readWallHeight($(`[data-wall-proposal-height="${index}"]`)),openings=Number($(`[data-wall-proposal-openings="${index}"]`).value),gross=height===null?null:length*height/12,net=gross===null||!Number.isFinite(openings)||openings<0||openings>gross?null:gross-openings;target.textContent=length?net===null?fmt(length)+' pi · hauteur ou ouvertures à compléter':fmt(net)+' pi² nets · '+fmt(length)+' pi × '+fmt(height/12)+' pi − '+fmt(openings)+' pi²':'Aucun pan choisi.';}catch(error){target.textContent=error.message;}if(runs.length)any=true;for(const points of joinWallRuns(runs))S.wallTakeoffPreview.push({points,type:proposal.type});});
@@ -2445,6 +2471,7 @@ function openWallTakeoffDialog(id=null) {
 }
 function appendWallTakeoffInspector(host,item) {
   if(S.selection.size!==1||!isWallTakeoff(item))return;
+  if(isKitchenElevation(item)){host.insertAdjacentHTML('beforeend',`<section class="wall-inspector"><h3>Dosseret cuisine</h3><p>${esc(pageName(item.page))} · ${item.wallTakeoff.elevation.tileWidthInches} × ${item.wallTakeoff.elevation.tileHeightInches} po${item.wallTakeoff.elevation.occurrence?.mirrored?' · miroir proposé':''}</p><p>Contour vertical proposé, distinct du plancher. Produit, perte et unité à vérifier.</p><button type="button" id="editWallTakeoff">Modifier le dosseret</button></section>`);$('#editWallTakeoff').onclick=()=>openKitchenBacksplashEditor(item);return;}
   const wall=item.work.wall||{},height=wall.height,quantity=wallTakeoffQuantity(item);
   host.insertAdjacentHTML('beforeend',`<section class="wall-inspector"><h3>${esc(wallTakeoffLabel(item))}</h3><p>${esc(formatFeet(lineLength(item.points)*S.scales[item.page]))} de murs · ${height===null||!Number.isFinite(height)?'hauteur à saisir':fmt(height/12)+' pi de hauteur'} · ${fmt(wall.openings||0)} pi² d’ouvertures</p><strong>${quantity===null?'Surface à compléter':fmt(quantity)+' pi² nets'}</strong><p>${item.wallTakeoff?.reviewed===false?'Pans et ouvertures à vérifier avant confirmation.':'Les quantités murales restent séparées du plancher.'}</p><button type="button" id="editWallTakeoff">Hauteur, pans et ouvertures</button></section>`);
   $('#editWallTakeoff').onclick=()=>openWallTakeoffEditor(item.points,item);
@@ -2452,6 +2479,12 @@ function appendWallTakeoffInspector(host,item) {
 function drawWallTakeoffGuides(context) {
   const committed=S.items.filter(item=>item.page===S.page&&isWallTakeoff(item)).map(item=>({points:item.points,type:item.wallTakeoff?.type,item})),preview=$('#wallTakeoffForm')||$('#wallProposalList')?S.wallTakeoffPreview||[]:[];
   for(const entry of [...committed,...preview]) {
+    if(entry.item&&isKitchenElevation(entry.item)){
+      const selected=S.selection.has(entry.item.id),focused=committed.some(other=>isKitchenElevation(other.item)&&S.selection.has(other.item.id));if(focused&&!selected)continue;
+      context.save();context.beginPath();entry.points.forEach((point,index)=>index?context.lineTo(point.x,point.y):context.moveTo(point.x,point.y));context.closePath();context.fillStyle='#e9781928';context.fill();context.strokeStyle='#e97819';context.lineWidth=(selected?3:2)/S.zoom;context.stroke();
+      if(selected){for(const point of entry.points){context.beginPath();context.arc(point.x,point.y,4/S.zoom,0,Math.PI*2);context.fillStyle='#fff';context.fill();context.stroke();}const b=kitchenBacksplashes.bounds(entry.points),net=wallTakeoffQuantity(entry.item);context.font=`600 ${12/S.zoom}px Arial`;context.textAlign='center';context.fillStyle='#8d430b';context.fillText(net===null?'À compléter':fmt(net)+' pi²',(b.left+b.right)/2,b.bottom-5/S.zoom);}
+      context.restore();continue;
+    }
     const color=WALL_TAKEOFF_TYPES[entry.type]?.color||'#247c97',selected=entry.item&&S.selection.has(entry.item.id);
     context.save();context.beginPath();entry.points.forEach((point,index)=>index?context.lineTo(point.x,point.y):context.moveTo(point.x,point.y));context.lineJoin='round';context.lineCap='butt';context.strokeStyle=color+'50';context.lineWidth=(selected?12:9)/S.zoom;context.stroke();context.strokeStyle=color;context.lineWidth=(selected?3:2)/S.zoom;context.setLineDash(entry.item?[]:[5/S.zoom,3/S.zoom]);context.stroke();context.setLineDash([]);
     for(const point of entry.points){context.beginPath();context.arc(point.x,point.y,3/S.zoom,0,Math.PI*2);context.fillStyle='#ffffff';context.fill();context.strokeStyle=color;context.lineWidth=1/S.zoom;context.stroke();}
@@ -2460,11 +2493,107 @@ function drawWallTakeoffGuides(context) {
   }
 }
 function wallTakeoffExportSheets() {
-  const header=['Page','Feuille','Relevé','Type','Longueur (pi)','Hauteur (pi)','Ouvertures (pi²)','Net mural (pi²)','Perte (%)','Total avec perte (pi²)','Pans vérifiés','Statut','Source'],
-    rows=S.items.filter(isWallTakeoff).map(item=>{const wall=item.work.wall||{},net=wallTakeoffQuantity(item);return[item.page,pageName(item.page),item.name,wallTakeoffLabel(item),+lineLength(item.points).toFixed(5)*S.scales[item.page],wall.height===null?'À saisir':wall.height/12,wall.openings,net===null?'À compléter':+net.toFixed(2),wall.waste,net===null?'À compléter':+(net*(1+wall.waste/100)).toFixed(2),item.wallTakeoff?.reviewed===false?'À vérifier':'Vérifiés',item.status,item.wallTakeoff?.sourceLabel||item.method];});
+  const header=['Page','Feuille','Relevé','Type','Longueur (pi)','Hauteur (pi)','Ouvertures (pi²)','Net mural (pi²)','Perte (%)','Total avec perte (pi²)','Pans vérifiés','Statut','Source','Format nominal (po)','Feuille d’occurrence','Unité d’occurrence','Miroir','Hauteur / contour source'],
+    rows=S.items.filter(isWallTakeoff).map(item=>{const wall=item.work.wall||{},net=wallTakeoffQuantity(item);return[item.page,pageName(item.page),item.name,wallTakeoffLabel(item),isKitchenElevation(item)?(kitchenBacksplashes.bounds(item.points).right-kitchenBacksplashes.bounds(item.points).left)*S.scales[item.page]:+lineLength(item.points).toFixed(5)*S.scales[item.page],isKitchenElevation(item)?(kitchenBacksplashes.bounds(item.points).bottom-kitchenBacksplashes.bounds(item.points).top)*S.scales[item.page]:wall.height===null?'À saisir':wall.height/12,wall.openings,net===null?'À compléter':+net.toFixed(2),wall.waste,net===null?'À compléter':+(net*(1+wall.waste/100)).toFixed(2),item.wallTakeoff?.reviewed===false?'À vérifier':'Vérifiés',item.status,item.wallTakeoff?.sourceLabel||item.method,isKitchenElevation(item)?item.wallTakeoff.elevation.tileWidthInches+' × '+item.wallTakeoff.elevation.tileHeightInches:'',isKitchenElevation(item)?item.wallTakeoff.elevation.occurrence?.page||'Référence':'',isKitchenElevation(item)?item.work.unit:'',isKitchenElevation(item)?item.wallTakeoff.elevation.occurrence?.mirrored?'Oui':'Non':'',isKitchenElevation(item)?item.wallTakeoff.elevation.heightSource:''];});
   return [['Murs et dosserets',[header,...rows]]];
 }
 
+
+/* Kitchen elevation contours remain wall takeoffs, never floor polygons. */
+function isKitchenElevation(item) {return isWallTakeoff(item)&&item.wallTakeoff?.elevation?.version===1;}
+function kitchenElevationGross(item,state=S) {
+  const scale=state.scales[item.page];
+  if(isKitchenElevation(item)&&item.wallTakeoff.elevation.heightSource==='configured-on-vector-run'&&!item.wallTakeoff.elevation.geometryEdited&&Number.isFinite(scale)&&scale>0){const expected=kitchenBacksplashes.templatePoints(item.wallTakeoff.elevation,scale);if(expected.length!==item.points.length||expected.some((p,i)=>dist(p,item.points[i])>1e-5))return null;}
+  return isKitchenElevation(item)&&validPolygon(item.points)&&Number.isFinite(scale)&&scale>0&&!item.wallTakeoff.elevation.hoodUnresolved?area(item.points)*scale*scale:null;
+}
+function kitchenProductMatches(item,state=S) {
+  const product=state.estimation?.workspace?.products.find(p=>p.id===item.work?.productId),e=item.wallTakeoff.elevation;
+  if(!product||!['area','box'].includes(product.saleUnit))return false;
+  const size=String(product.format||'').replace(/,/g,'.').match(/^\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:po|in|\")?\s*$/i);
+  return !!size&&[+size[1],+size[2]].sort((a,b)=>a-b).every((n,i)=>Math.abs(n-[e.tileWidthInches,e.tileHeightInches].sort((a,b)=>a-b)[i])<1e-8);
+}
+function kitchenSettingsHTML(config) {
+  return `<fieldset id="kitchenBacksplashOptions"><legend>Dosseret cuisine</legend><label><input type="checkbox" id="kitchenBacksplashEnabled" style="width:auto" ${config.enabled?'checked':''}> Rechercher les dosserets dans les élévations du PDF</label><fieldset id="kitchenBacksplashFields"><div class="v4-fields"><label>Largeur de tuile (po)<input id="kitchenTileWidth" type="number" min="0.1" max="240" step="any" value="${config.tileWidthInches}"></label><label>Longueur de tuile (po)<input id="kitchenTileHeight" type="number" min="0.1" max="240" step="any" value="${config.tileHeightInches}"></label><label>Hauteur de repli (po)<input id="kitchenHeightInches" inputmode="decimal" value="${config.heightInches===null?'':config.heightInches}" placeholder="À lire dans le dessin, ou à saisir"></label><label>Hotte<select id="kitchenIncludeHood"><option value="false" ${!config.includeHood?'selected':''}>Non incluse</option><option value="true" ${config.includeHood?'selected':''}>Incluse : suivre la remontée dessinée</option></select></label></div><p>Le contour de l’architecte est prioritaire. La hauteur de repli sert seulement sur un pan repéré sans contour complet. Aucune largeur ou remontée de hotte n’est inventée.</p></fieldset></fieldset>`;
+}
+function readKitchenSettings(previous) {
+  if(!$('#kitchenBacksplashEnabled').checked)return {...previous,enabled:false};
+  const height=$('#kitchenHeightInches').value.trim();
+  return {enabled:true,heightInches:height?fractionNumber(height):null,includeHood:$('#kitchenIncludeHood').value==='true',tileWidthInches:Number($('#kitchenTileWidth').value),tileHeightInches:Number($('#kitchenTileHeight').value)};
+}
+async function detectKitchenElevations(job,floorPages,config) {
+  const items=[],notes=[],scales=[],profiles=[],pageInfos=[];
+  if(!S.pdf)return {items,scales,notes:[{page:S.page,message:'Dosserets : ouvrez le PDF comprenant les élévations de cuisine.'}]};
+  const count=Math.min(S.pages,256);let partial=S.pages>count;
+  if(S.pages>count)notes.push({page:S.page,message:'Dosserets : seules les 256 premières feuilles ont été examinées.'});
+  for(let number=1;number<=count;number++) {
+    if(job.cancelled||job.key!==S.documentKey||S.detectJob!==job)break;
+    if($('#detectionProgress'))$('#detectionProgress').textContent=`Recherche des élévations de cuisine · ${number} / ${count}`;
+    if($('#detectionProgressBar')){$('#detectionProgressBar').max=floorPages.length+count;$('#detectionProgressBar').value=floorPages.length+number-1;}
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+    let info=S.pageInfo[number],page;
+    try {
+      if(!info||info.readError){page=await S.pdf.getPage(number);info=await inspectPdfScale(page);}
+      if(job.cancelled||job.key!==S.documentKey||S.detectJob!==job)break;
+      if(floorPages.includes(number)&&!kitchenBacksplashes.isView(info))pageInfos.push({page:number,title:info.title,texts:info.texts});
+      if(!kitchenBacksplashes.isView(info))continue;
+      if(!info.vectorRead){page=page||await S.pdf.getPage(number);info=await inspectPdfScale(page,true);}
+      if(job.cancelled||job.key!==S.documentKey||S.detectJob!==job)break;
+      S.pageInfo[number]=info;rememberSheet(number,info);
+      let scale=S.scales[number];
+      if(!scale&&info.candidates.length===1&&!info.ambiguous){const candidate=info.candidates[0];scale=candidate.feetPerInch/PDF_DPI;scales.push({page:number,scale,meta:{...candidate,source:'automatic',verified:false}});}
+      const result=kitchenBacksplashes.analyzePage({page:number,title:info.title,texts:info.texts,paths:info.vectorWalls||[],scale},config);
+      const remaining=500-profiles.length;profiles.push(...result.profiles.slice(0,remaining));for(const message of result.warnings.slice(0,4))notes.push({page:number,message:'Dosserets : '+message});
+      if(result.profiles.length>remaining||profiles.length>=500&&number<count){partial=true;notes.push({page:number,message:'Analyse cuisine partielle : limite de 500 contours sources, références non affectées.'});break;}
+    }catch(error){notes.push({page:number,message:'Dosserets non analysés : '+error.message});}
+  }
+  if(job.key!==S.documentKey||S.detectJob!==job)return {items:[],notes:[],scales:[]};
+  const linked=kitchenBacksplashes.link(profiles,job.cancelled||partial?[]:pageInfos),existing=new Set(S.items.filter(isKitchenElevation).map(item=>item.wallTakeoff.elevation.identity)),rejects=new Set(S.settings.kitchenBacksplashRejects||[]);
+  let kept=0,declined=0;
+  for(const proposal of linked.proposals){
+    if(existing.has(proposal.identity)){kept++;continue;}
+    if(rejects.has(proposal.identity)||rejects.has(kitchenBacksplashes.referenceIdentity(proposal))){declined++;continue;}
+    const b=kitchenBacksplashes.bounds(proposal.points),height=(b.bottom-b.top)*proposal.sourceScale*12;
+    const item={id:uid(),kind:'linear',page:proposal.sourcePage,name:'Dosseret cuisine'+(proposal.occurrence?' · '+proposal.occurrence.unit:' · référence '+(proposal.typeCode||'')),material:'PL-01',subzones:{},points:structuredClone(proposal.points),qty:lineLength(proposal.points)*proposal.sourceScale,waste:0,wasteConfirmed:false,status:'à valider',method:'Contour proposé depuis une élévation de cuisine',work:{...wallTakeoffWork(null,0,0),included:proposal.included,unit:proposal.occurrence?.unit||'',block:proposal.occurrence?.block||'',type:proposal.typeCode||'',level:proposal.occurrence?pageName(proposal.occurrence.page):''},wallTakeoff:{type:'backsplash',source:'auto',reviewed:false,sourceLabel:(pageName(proposal.sourcePage)+' · '+proposal.sourceLabel).slice(0,240),elevation:kitchenBacksplashes.elevation(proposal,config)}};
+    items.push(item);existing.add(proposal.identity);
+  }
+  for(const message of [...new Set(linked.warnings)].slice(0,12))notes.push({page:floorPages[0]||S.page,message:'Dosserets : '+message});
+  notes.push({page:floorPages[0]||S.page,message:profiles.length?`${items.length} dosseret(s) proposé(s), ${kept} conservé(s), ${declined} refus conservé(s). Contours, unités, formats et pertes à vérifier.`:'Aucune élévation de cuisine avec dosseret exploitable trouvée; aucun contour inventé.'});
+  return {items,notes,scales};
+}
+function addKitchenItems(items) {
+  if(!items.length)return;
+  S.folders=S.folders||[];
+  let folder=S.folders.find(folder=>folder.name.trim().toLocaleLowerCase('fr-CA')==='dosserets cuisine');
+  if(!folder){folder={id:uid(),name:'Dosserets cuisine',collapsed:false};S.folders.push(folder);}
+  for(const item of items){item.folderId=folder.id;S.items.push(item);}
+}
+function openKitchenBacksplashReview() {
+  const items=S.items.filter(isKitchenElevation),key=S.documentKey;
+  openDialog('Réviser les dosserets de cuisine',`<div id="kitchenReview"><p>${items.length} proposition(s). Les références non affectées restent hors commandes. Vérifiez le contour, son logement, le produit et la perte avant confirmation.</p><div class="table-wrap"><table><thead><tr><th>Dosseret / unité</th><th>Net</th><th>Source</th><th></th></tr></thead><tbody>${items.map(item=>`<tr><td>${esc(item.name)}<small>${item.wallTakeoff.elevation.tileWidthInches} × ${item.wallTakeoff.elevation.tileHeightInches} po${item.wallTakeoff.elevation.occurrence?.mirrored?' · miroir':''}</small></td><td>${wallTakeoffQuantity(item)===null?'À compléter':fmt(wallTakeoffQuantity(item))+' pi²'}</td><td>${esc(pageName(item.page))}</td><td><button type="button" data-kitchen-show="${esc(item.id)}">Voir</button><button type="button" data-kitchen-edit="${esc(item.id)}">Modifier</button></td></tr>`).join('')}</tbody></table></div></div>`);
+  const select=async(id,edit)=>{const item=S.items.find(item=>item.id===id);if(!item||S.documentKey!==key)return;closeDialog();if(item.page!==S.page)await showPage(item.page);if(S.documentKey!==key||!S.items.some(i=>i.id===id))return;if(S.reviewOpen)closeReview();setSelection([id]);refresh();if(edit)openKitchenBacksplashEditor(item);};
+  $$('[data-kitchen-show]').forEach(button=>button.onclick=()=>select(button.dataset.kitchenShow,false));
+  $$('[data-kitchen-edit]').forEach(button=>button.onclick=()=>select(button.dataset.kitchenEdit,true));
+}
+function openKitchenBacksplashEditor(item) {
+  const e=item.wallTakeoff.elevation,scale=S.scales[item.page],w=workOf(item);let points=structuredClone(item.points),geometryEdited=e.geometryEdited;
+  const products=(S.estimation.workspace?.products||[]).filter(p=>['area','box'].includes(p.saleUnit));
+  openDialog('Modifier le dosseret de cuisine',`<form id="kitchenEditForm"><p>${esc(pageName(e.sourcePage))} · ${esc(e.sourceLabel)}${e.occurrence?.mirrored?' · version en miroir proposée':''}. Le contour vertical reste séparé du plancher.</p><div class="v4-fields"><label>Largeur de tuile (po)<input id="kitchenEditWidth" type="number" min="0.1" max="240" step="any" value="${e.tileWidthInches}" required></label><label>Longueur de tuile (po)<input id="kitchenEditHeight" type="number" min="0.1" max="240" step="any" value="${e.tileHeightInches}" required></label><label>Produit<select id="kitchenProduct"><option value="">À affecter dans Projet avant commande</option>${products.map(p=>`<option value="${esc(p.id)}" ${p.id===w.productId?'selected':''}>${esc(p.name)} · ${esc(p.format||'format à renseigner')}</option>`).join('')}</select></label><label>Ouvertures (pi²)<input id="kitchenOpenings" type="number" min="0" step="any" value="${w.wall.openings}" required></label><label>Perte explicitement choisie (%)<input id="kitchenWaste" type="number" min="0" max="1000" step="any" value="${item.wasteConfirmed===false?'':w.wall.waste}" placeholder="À renseigner" required></label><label>Unité<input id="kitchenUnit" maxlength="120" value="${esc(w.unit)}"></label></div><label><input type="checkbox" id="kitchenHood" style="width:auto" ${e.includeHood?'checked':''}> Hotte incluse : reprendre le contour détecté selon ce choix</label><p>Une remontée absente du dessin n’est pas ajoutée automatiquement. Changer ce choix remplace les corrections du contour par le contour détecté.</p><button type="button" id="editKitchenContour" class="selection-action">Modifier les sommets du contour</button><p id="kitchenEditQuantity" role="status"></p><label><input type="checkbox" id="kitchenIncluded" style="width:auto" ${w.included?'checked':''}> Compter cette occurrence${e.occurrence?'':' (référence non affectée initialement)'}</label><label><input type="checkbox" id="kitchenReviewed" style="width:auto" ${item.wallTakeoff.reviewed?'checked':''}> Contour, unité, hotte et ouvertures vérifiés</label><p id="kitchenEditError" role="alert"></p><div class="modal-actions"><button type="button" id="cancelKitchenEdit">Annuler</button><button type="submit" class="primary">Enregistrer à valider</button></div></form>`);
+  const quantity=()=>{const e2={...e,includeHood:$('#kitchenHood').checked,hoodUnresolved:e.heightSource==='configured-on-vector-run'&&$('#kitchenHood').checked},net=wallTakeoffQuantity({...item,points,wallTakeoff:{...item.wallTakeoff,elevation:e2},work:{...w,wall:{...w.wall,openings:Number($('#kitchenOpenings').value)}}});$('#kitchenEditQuantity').textContent=net===null?'Surface à compléter : contour, hotte ou ouvertures à délimiter.':fmt(net)+' pi² nets · hauteur lue sur le contour.';};
+  $('#kitchenHood').onchange=()=>{points=kitchenBacksplashes.templatePoints({...e,includeHood:$('#kitchenHood').checked},scale);geometryEdited=false;quantity();};
+  $('#kitchenOpenings').oninput=quantity;
+  $('#cancelKitchenEdit').onclick=closeDialog;
+  $('#editKitchenContour').onclick=()=>{closeDialog();setSelection([item.id]);activateTool('edit');toast('Déplacez les sommets orange; Ctrl+Z annule la correction.');};
+  $('#kitchenEditForm').onsubmit=event=>{event.preventDefault();try{
+    const meta={...e,geometryEdited,tileWidthInches:Number($('#kitchenEditWidth').value),tileHeightInches:Number($('#kitchenEditHeight').value),includeHood:$('#kitchenHood').checked,hoodUnresolved:e.heightSource==='configured-on-vector-run'&&$('#kitchenHood').checked,occurrenceConfirmed:e.occurrenceConfirmed||$('#kitchenIncluded').checked};
+    kitchenBacksplashes.validateElevation(meta,points,S.pages);
+    const openings=Number($('#kitchenOpenings').value),waste=Number($('#kitchenWaste').value),b=kitchenBacksplashes.bounds(points),product=products.find(p=>p.id===$('#kitchenProduct').value);
+    if(!Number.isFinite(openings)||openings<0||openings>area(points)*scale*scale+1e-7)throw new Error('Les ouvertures dépassent la surface du dosseret.');
+    if(!$('#kitchenWaste').value.trim()||!Number.isFinite(waste)||waste<0||waste>1000)throw new Error('Choisissez explicitement la perte; zéro est permis.');
+    const work={...w,included:$('#kitchenIncluded').checked,unit:$('#kitchenUnit').value.trim(),wall:{height:null,openings,waste},productId:product?.id||'',productSignature:product?JSON.stringify([product.id,product.saleUnit,product.coverage,product.rollWidth,product.format,product.color,product.packaging,product.wastePercent]):''};
+    validateWork(work,item.kind);remember();item.points=points;item.qty=lineLength(points)*scale;item.work=work;item.wallTakeoff={...item.wallTakeoff,elevation:meta,reviewed:$('#kitchenReviewed').checked};item.wasteConfirmed=true;item.status='à valider';closeDialog();save();refresh();toast('Dosseret enregistré, à valider avant commande.');
+  }catch(error){$('#kitchenEditError').textContent=error.message;}};
+  quantity();
+}
 
 /* BEGIN GENERATED MODULES */
 // Généré depuis src/*.cjs par npm run build.
@@ -3507,6 +3636,193 @@ const wallHeights = (function createWallHeights() {
 
   return { bathShower, validateBasis };
 })();
+const kitchenBacksplashes = (function createKitchenBacksplashes(geometry) {
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+  const finite=(value,min,max)=>Number.isFinite(value)&&value>=min&&value<=max;
+  const bounds=points=>({left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y))});
+  const valid=points=>Array.isArray(points)&&points.length>=3&&points.length<=128&&points.every(p=>p&&finite(p.x,-1e7,1e7)&&finite(p.y,-1e7,1e7))&&geometry.validPolygon(points);
+  const signature=points=>points.map(p=>p.x.toFixed(3)+','+p.y.toFixed(3)).sort().join(';');
+  function defaults(){return {enabled:false,heightInches:null,includeHood:false,tileWidthInches:12,tileHeightInches:24};}
+  function validateConfig(value) {
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!Object.hasOwn(defaults(),k))||typeof value.enabled!=='boolean'||typeof value.includeHood!=='boolean'||!(value.heightInches===null||finite(value.heightInches,.1,1200))||!finite(value.tileWidthInches,.1,240)||!finite(value.tileHeightInches,.1,240))throw new Error('Réglages du dosseret cuisine invalides.');
+  }
+  function clean(points) {
+    let ring=points.filter((p,i)=>!i||Math.hypot(p.x-points[i-1].x,p.y-points[i-1].y)>1e-6).map(p=>({...p}));
+    if(ring.length>1&&Math.hypot(ring[0].x-ring.at(-1).x,ring[0].y-ring.at(-1).y)<1e-6)ring.pop();
+    let changed=true;
+    while(changed&&ring.length>3){changed=false;ring=ring.filter((p,i)=>{const a=ring[(i+ring.length-1)%ring.length],b=ring[(i+1)%ring.length];if(Math.abs((p.x-a.x)*(b.y-p.y)-(p.y-a.y)*(b.x-p.x))<1e-6){changed=true;return false;}return true;});}
+    return ring;
+  }
+  function baseHeight(points) {
+    const b=bounds(points),left=points.filter(p=>Math.abs(p.x-b.left)<.5&&p.y<b.bottom-.5),right=points.filter(p=>Math.abs(p.x-b.right)<.5&&p.y<b.bottom-.5);
+    const baseline=points.some((p,i)=>{const q=points[(i+1)%points.length];return Math.abs(p.y-b.bottom)<.5&&Math.abs(q.y-b.bottom)<.5&&Math.abs(Math.abs(p.x-q.x)-(b.right-b.left))<.5;});
+    if(!baseline||!left.length||!right.length)return null;
+    const l=b.bottom-Math.max(...left.map(p=>p.y)),r=b.bottom-Math.max(...right.map(p=>p.y));
+    return Math.abs(l-r)<.5?(l+r)/2:null;
+  }
+  function withoutHood(points) {
+    const b=bounds(points),top=b.bottom-baseHeight(points),out=[];
+    for(let i=0;i<points.length;i++){
+      const a=points[i],c=points[(i+1)%points.length],insideA=a.y>=top-1e-6,insideC=c.y>=top-1e-6;
+      if(insideA)out.push({...a});
+      if(insideA!==insideC){const t=(top-a.y)/(c.y-a.y);out.push({x:a.x+(c.x-a.x)*t,y:top});}
+    }
+    return clean(out);
+  }
+  function raisedSections(points) {
+    const body=baseHeight(points);if(body===null)return Infinity;
+    const top=bounds(points).bottom-body,above=points.map(p=>p.y<top-.5);
+    return above.filter((value,i)=>value&&!above[(i+above.length-1)%above.length]).length;
+  }
+  function mirror(points){const b=bounds(points);return points.map(p=>({x:b.left+b.right-p.x,y:p.y}));}
+  function decode(paths) {
+    const rings=[],segments=[],seen=new Set();let truncated=paths.length>5000,total=0;
+    for(const entry of paths.slice(0,5000)) {
+      if(!entry||!Array.isArray(entry.path))continue;
+      let points=[],straight=true;
+      const close=()=>{
+        const ring=clean(points);
+        if(straight&&valid(ring)&&ring.every((p,i)=>{const q=ring[(i+1)%ring.length];return Math.abs(p.x-q.x)<.5||Math.abs(p.y-q.y)<.5;})){
+          const key=signature(ring);if(!seen.has(key)){seen.add(key);rings.push(ring);}
+        }
+        points=[];straight=true;
+      };
+      const data=entry.path;
+      for(let i=0;i<data.length;){
+        if(++total>100000){truncated=true;break;}
+        const op=data[i++];
+        if(op===0){points=[{x:data[i++],y:data[i++]}];straight=true;}
+        else if(op===1){const p={x:data[i++],y:data[i++]},a=points.at(-1);if(a&&finite(a.x,-1e7,1e7)&&finite(a.y,-1e7,1e7)&&finite(p.x,-1e7,1e7)&&finite(p.y,-1e7,1e7)&&Math.abs(a.y-p.y)<.5)segments.push({a:{...a},b:{...p}});points.push(p);}
+        else if(op===4)close();
+        else if(op===2||op===3){straight=false;i+=op===2?6:4;}
+        else break;
+        if(points.length>128){points=[];straight=false;break;}
+      }
+      if(total>100000)break;
+    }
+    return {rings,segments,truncated};
+  }
+  function rows(texts) {
+    const good=texts.filter(t=>t&&typeof t.text==='string'&&finite(t.cx,-1e7,1e7)&&finite(t.cy,-1e7,1e7)).slice(0,30000);
+    // Les fragments sur une même ligne sont regroupés seulement s'ils sont voisins.
+    const lines=[];
+    for(const t of good.sort((a,b)=>a.cy-b.cy||a.cx-b.cx)) {
+      const last=lines.at(-1),gap=last?t.cx-(t.width||0)/2-last.right:Infinity;
+      if(last&&Math.abs(last.cy-t.cy)<=Math.max(1,Math.min(last.height,t.height||4)*.3)&&gap>=-1&&gap<=Math.max(12,(t.height||4)*3)){
+        last.text+=' '+t.text;last.right=t.cx+(t.width||0)/2;
+      }else lines.push({...t,height:t.height||4,right:t.cx+(t.width||0)/2});
+    }
+    return lines;
+  }
+  const viewName=text=>/\b(?:ELEVATIONS?|DETAILS?)\b.*\bCUISINES?\b|\bCUISINES?\b.*\bELEVATIONS?\b/.test(norm(text));
+  const isView=input=>viewName(input.title)||rows(input.texts||[]).some(t=>viewName(t.text));
+  const typeCode=text=>{const value=norm(text);return value.match(/\bTYPE\b\s*[:#-]?\s*([A-Z][A-Z0-9_.-]{0,15})\b/)?.[1]||value.match(/\bCUISINE\s+([A-Z][A-Z0-9_.-]{0,15})(?=\s*(?:\/|$))/)?.[1]||null;};
+  function units(page) {
+    const result=[];
+    for(const row of rows(page.texts||[])){
+      const text=norm(row.text),kitchen=text.match(/\bCUISINES?\b/),unit=text.match(/\b(?:UNITE|LOGEMENT|APPARTEMENT)\s*[:#-]?\s*([A-Z]?\d{2,4})\b/)?.[1],type=kitchen?typeCode(text.slice(kitchen.index)):null;
+      if(unit&&type)result.push({page:page.page,unit,type,block:text.match(/\bBLOC\s+([A-Z0-9-]{1,12})\b/)?.[1]||'',mirrored:/\bMIROIR|\bMIRRORED\b/.test(text),x:row.cx,y:row.cy});
+    }
+    return result;
+  }
+  function analyzePage(input,config) {
+    validateConfig(config);
+    if(!input||!Number.isSafeInteger(input.page)||input.page<1)throw new Error('Feuille de cuisine invalide.');
+    const result={page:input.page,profiles:[],warnings:[],truncated:false,viewRecognized:false};
+    if(!config.enabled)return result;
+    const texts=rows(input.texts||[]),titles=texts.filter(t=>viewName(t.text)),viewTitles=texts.filter(t=>/\bELEVATIONS?\b|\bDETAILS?\b|\bPLAN(?:S)?\b/.test(norm(t.text)));
+    result.viewRecognized=viewName(input.title)||titles.length>0;
+    if(!result.viewRecognized)return result;
+    if(!finite(input.scale,1e-9,1000)){result.warnings.push('Élévation cuisine à calibrer avant de calculer sa surface.');return result;}
+    const decoded=decode(input.paths||[]);result.truncated=decoded.truncated;
+    if(result.truncated)result.warnings.push('Analyse cuisine partielle : limite de tracés atteinte.');
+    const scale=input.scale,seen=new Set(),tags=texts.filter(t=>/\bDOSSERET\b|\bBACKSPLASH\b/.test(norm(t.text)));
+    for(const tag of tags.slice(0,200)) {
+      const closestTitle=viewTitles.map(t=>({t,d:Math.hypot(t.cx-tag.cx,t.cy-tag.cy)})).sort((a,b)=>a.d-b.d)[0];
+      if(closestTitle&&!viewName(closestTitle.t.text)){result.warnings.push('Dosseret voisin d’une autre vue : rattachement cuisine non établi.');continue;}
+      const candidates=decoded.rings.filter(points=>{
+        const b=bounds(points),width=(b.right-b.left)*scale,height=(b.bottom-b.top)*scale;
+        const point={x:tag.cx,y:tag.cy},inside=geometry.inside(point,points)&&points.every((p,i)=>geometry.distanceToSegment(point,p,points[(i+1)%points.length])>.25);
+        return width>=2&&width<=40&&height>=.25&&height<=5&&width>height*1.2&&inside;
+      });
+      if(candidates.length>1){result.warnings.push('Plusieurs contours près du dosseret : sélectionner la limite réelle.');continue;}
+      let sourcePoints=candidates[0],heightSource='drawn-contour',hoodUnresolved=false,sourceRun=null;
+      if(!sourcePoints){
+        if(decoded.rings.some(points=>{const b=bounds(points);return (b.right-b.left)*scale>=2&&geometry.inside({x:tag.cx,y:tag.cy},points);})){result.warnings.push('Un contour dessiné entoure le libellé sans limite de dosseret certaine : aucune hauteur de repli imposée.');continue;}
+        if(config.heightInches===null){result.warnings.push('Contour de dosseret absent; hauteur et pans à renseigner.');continue;}
+        const runs=new Map();
+        for(const run of decoded.segments){const left=Math.min(run.a.x,run.b.x),right=Math.max(run.a.x,run.b.x),y=(run.a.y+run.b.y)/2,length=(right-left)*scale;
+          if(length>=2&&length<=40&&tag.cx>=left&&tag.cx<=right&&y>=tag.cy&&((y-tag.cy)*scale)<=1.5)runs.set([left.toFixed(3),right.toFixed(3),y.toFixed(3)].join(':'),{left,right,y});
+        }
+        if(runs.size!==1){result.warnings.push('Aucun pan de comptoir unique : dosseret à tracer.');continue;}
+        const run=[...runs.values()][0],h=config.heightInches/12/scale;
+        sourceRun={a:{x:run.left,y:run.y},b:{x:run.right,y:run.y}};
+        sourcePoints=[{x:run.left,y:run.y},{x:run.right,y:run.y},{x:run.right,y:run.y-h},{x:run.left,y:run.y-h}];
+        heightSource='configured-on-vector-run';hoodUnresolved=config.includeHood;
+      }
+      const key=signature(sourcePoints);if(seen.has(key))continue;seen.add(key);
+      const b=bounds(sourcePoints),bodyHeight=baseHeight(sourcePoints);
+      if(bodyHeight===null){result.warnings.push('Base ou retours du dosseret ambigus : délimitation manuelle requise.');continue;}
+      if(raisedSections(sourcePoints)>1){result.warnings.push('Plusieurs remontées : distinguer la hotte des autres parties avant de calculer le dosseret.');continue;}
+      const isStepped=(b.bottom-b.top)>bodyHeight+.5;
+      const high=sourcePoints.filter(p=>Math.abs(p.y-b.top)<.5),hoodLeft=Math.min(...high.map(p=>p.x)),hoodRight=Math.max(...high.map(p=>p.x));
+      const hoodRecognized=isStepped&&texts.some(t=>/\bHOTTE\b|\bHOOD\b/.test(norm(t.text))&&t.cx>=hoodLeft&&t.cx<=hoodRight&&t.cy<=b.bottom&&t.cy>=b.top-2/scale);
+      const points=config.includeHood?sourcePoints.map(p=>({...p})):withoutHood(sourcePoints);
+      if(!valid(points)){result.warnings.push('Contour de dosseret invalide : correction manuelle requise.');continue;}
+      const ranked=titles.map(t=>({t,d:Math.hypot(t.cx-tag.cx,t.cy-tag.cy)})).sort((a,b)=>a.d-b.d);
+      const title=ranked[0]?.t.text||input.title||'Élévation cuisine',type=typeCode(title);
+      result.profiles.push({points,sourceOutline:sourcePoints.map(p=>({...p})),sourceRun,configuredHeightInches:sourceRun?config.heightInches:null,sourcePage:input.page,sourceTitle:String(input.title||title).replace(/[\u0000-\u001f]/g,' ').slice(0,160),sourceLabel:tag.text.replace(/[\u0000-\u001f]/g,' ').slice(0,240),typeCode:type,sourceScale:scale,heightSource,hoodRecognized,hoodUnresolved,includeHood:config.includeHood,netSquareFeet:geometry.area(points)*scale*scale});
+    }
+    if(!tags.length)result.warnings.push('Élévation cuisine sans contour annoté de dosseret : aucun contour inventé.');
+    return result;
+  }
+  function identity(profile,occurrence){return 'kitchen:'+profile.sourcePage+':'+signature(profile.sourceRun?[profile.sourceRun.a,profile.sourceRun.b]:profile.sourceOutline)+':'+(occurrence?[occurrence.page,occurrence.block,occurrence.unit].join(':'):'reference');}
+  function link(profiles,floorPages) {
+    const warnings=[],references=[],byUnit=new Map();let partial=profiles.length>500||floorPages.length>256;
+    profiles=profiles.slice(0,500);
+    for(const page of floorPages.slice(0,256)) {const found=units(page);if(references.length+found.length>5000){partial=true;break;}references.push(...found);}
+    if(partial)return {proposals:profiles.map(p=>({...p,identity:identity(p,null),occurrence:null,included:false})),warnings:['Limite de vues ou d’unités atteinte : références non affectées, analyser un lot plus petit.']};
+    for(const u of references){const key=u.block+':'+u.unit,values=byUnit.get(key)||[];if(!values.some(v=>v.page===u.page&&v.type===u.type&&v.mirrored===u.mirrored&&Math.hypot(v.x-u.x,v.y-u.y)<1))values.push(u);byUnit.set(key,values);}
+    const unambiguous=[];
+    for(const values of byUnit.values())if(values.length===1)unambiguous.push(values[0]);else warnings.push('Unité '+values[0].unit+' répétée ou ambiguë : rattachement cuisine à confirmer.');
+    const proposals=[];
+    for(const p of profiles){
+      const matches=p.typeCode&&profiles.filter(v=>v.typeCode===p.typeCode).length===1?unambiguous.filter(u=>u.type===p.typeCode):[];
+      if(!matches.length){proposals.push({...p,identity:identity(p,null),occurrence:null,included:false});warnings.push('Élévation '+(p.typeCode||'sans type')+' non affectée : référence hors commandes.');}
+      else for(const u of matches){const {x,y,...occurrence}=u;proposals.push({...p,points:u.mirrored?mirror(p.points):p.points.map(q=>({...q})),identity:identity(p,occurrence),occurrence,included:true});}
+    }
+    return {proposals,warnings};
+  }
+  function elevation(proposal,config) {
+    const value={version:1,identity:proposal.identity,sourcePage:proposal.sourcePage,sourceTitle:proposal.sourceTitle,sourceLabel:proposal.sourceLabel,typeCode:proposal.typeCode,sourceOutline:proposal.sourceOutline.map(p=>({...p})),sourceRun:proposal.sourceRun?{a:{...proposal.sourceRun.a},b:{...proposal.sourceRun.b}}:null,configuredHeightInches:proposal.configuredHeightInches,geometryEdited:false,sourceScale:proposal.sourceScale,heightSource:proposal.heightSource,includeHood:proposal.includeHood,hoodRecognized:proposal.hoodRecognized,hoodUnresolved:proposal.hoodUnresolved,occurrence:proposal.occurrence?{...proposal.occurrence}:null,occurrenceConfirmed:false,tileWidthInches:config.tileWidthInches,tileHeightInches:config.tileHeightInches};
+    validateElevation(value,proposal.points);return value;
+  }
+  function validateElevation(value,points,pages=1000000) {
+    const keys=['version','identity','sourcePage','sourceTitle','sourceLabel','typeCode','sourceOutline','sourceRun','configuredHeightInches','geometryEdited','sourceScale','heightSource','includeHood','hoodRecognized','hoodUnresolved','occurrence','occurrenceConfirmed','tileWidthInches','tileHeightInches'];
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||value.version!==1||typeof value.identity!=='string'||!value.identity.startsWith('kitchen:')||value.identity.length>4000||!Number.isSafeInteger(value.sourcePage)||value.sourcePage<1||value.sourcePage>pages||!valid(value.sourceOutline)||!valid(points)||!finite(value.sourceScale,1e-9,1000)||!['drawn-contour','configured-on-vector-run'].includes(value.heightSource))throw new Error('Contour ou provenance de dosseret invalide.');
+    if(baseHeight(value.sourceOutline)===null||raisedSections(value.sourceOutline)>1)throw new Error('Base ou remontées du contour de dosseret invalides.');
+    for(const [key,max] of [['sourceTitle',160],['sourceLabel',240]])if(typeof value[key]!=='string'||value[key].length>max||/[\u0000-\u001f]/.test(value[key]))throw new Error('Référence de dosseret invalide.');
+    if(!(value.typeCode===null||typeof value.typeCode==='string'&&/^[A-Z][A-Z0-9_.-]{0,15}$/.test(value.typeCode)))throw new Error('Type de cuisine invalide.');
+    for(const key of ['includeHood','hoodRecognized','hoodUnresolved','occurrenceConfirmed','geometryEdited'])if(typeof value[key]!=='boolean')throw new Error('Validation de dosseret invalide.');
+    const r=value.sourceRun;
+    if(value.heightSource==='configured-on-vector-run'){
+      if(!r||Object.keys(r).some(k=>!['a','b'].includes(k))||!r.a||!r.b||![r.a,r.b].every(p=>finite(p.x,-1e7,1e7)&&finite(p.y,-1e7,1e7))||r.b.x<=r.a.x||Math.abs(r.b.y-r.a.y)>1e-6||!finite(value.configuredHeightInches,.1,1200))throw new Error('Pan ou hauteur configurée de dosseret invalide.');
+    }else if(r!==null||value.configuredHeightInches!==null)throw new Error('Un contour dessiné ne reçoit pas de hauteur de repli.');
+    if(!finite(value.tileWidthInches,.1,240)||!finite(value.tileHeightInches,.1,240))throw new Error('Format de dosseret invalide.');
+    const o=value.occurrence;
+    if(o!==null&&(!o||typeof o!=='object'||Array.isArray(o)||Object.keys(o).some(k=>!['page','unit','type','block','mirrored'].includes(k))||!Number.isSafeInteger(o.page)||o.page<1||o.page>pages||typeof o.unit!=='string'||!/^[A-Z]?\d{2,4}$/.test(o.unit)||typeof o.type!=='string'||!/^[A-Z][A-Z0-9_.-]{0,15}$/.test(o.type)||typeof o.block!=='string'||o.block.length>12||typeof o.mirrored!=='boolean'))throw new Error('Occurrence de cuisine invalide.');
+  }
+  function templatePoints(e,scale) {
+    if(!finite(scale,1e-9,1000))throw new Error('Échelle de dosseret invalide.');
+    let points=e.sourceOutline.map(p=>({...p}));
+    if(e.heightSource==='configured-on-vector-run'){
+      const r=e.sourceRun,h=e.configuredHeightInches/12/scale;
+      points=[{...r.a},{...r.b},{x:r.b.x,y:r.b.y-h},{x:r.a.x,y:r.a.y-h}];
+    }else if(!e.includeHood)points=withoutHood(points);
+    return e.occurrence?.mirrored?mirror(points):points;
+  }
+  return {defaults,validateConfig,isView,analyzePage,link,mirror,withoutHood,bounds,elevation,validateElevation,templatePoints,referenceIdentity:profile=>identity(profile,null)};
+})(geometry);
 const finishProposals = (function createFinishProposals() {
   const dangerous = new Set(['__proto__', 'prototype', 'constructor']);
   const spaceTypes = new Set(['room', 'dwelling', 'bathroom', 'circulation']);
@@ -5599,6 +5915,7 @@ const detectionReviewUI = (function createDetectionReviewUI() {
     const chosen = candidates.some(item => item.selected && !item.duplicate && !item.needsSeparation);
     return `<header class="review-head"><div><span>RELEVÉ AUTOMATIQUE</span><h2>Quantités</h2></div><button type="button" id="closeReview" aria-label="Fermer la révision">×</button></header>
       <div class="review-intro"><p>${candidates.length} proposition(s) · ${esc(input.pageTitle || '')}</p>${pages.length > 1 ? `<label class="sr-only" for="reviewPage">Feuille analysée</label><select id="reviewPage" aria-label="Feuille analysée">${pages.map(entry => `<option value="${esc(entry.page)}" ${entry.page === input.page ? 'selected' : ''}>${esc(entry.title)}</option>`).join('')}</select>` : ''}</div>
+      ${input.kitchenStatus ? `<div class="review-kitchen-status" role="status">Dosserets cuisine : ${esc(input.kitchenStatus.count)} au relevé · à vérifier <button type="button" class="selection-action" id="reviewKitchenSummary">${input.kitchenStatus.count ? 'Réviser' : 'Voir le bilan'}</button></div>` : ''}
       <div class="review-mode-tabs" role="tablist" aria-label="Type de relevé">${[['area', 'Surface'], ['baseboard', 'Plinthes'], ['count', 'Comptage']].map(([key, label]) => `<button type="button" role="tab" id="reviewTab${key}" data-review-mode="${key}" aria-controls="reviewModePanel" aria-selected="${key === mode}">${icon(key)}<span>${label}</span>${key === 'count' ? `<b>${summary.unitCount}</b>` : ''}</button>`).join('')}</div>
       <details class="review-audit"><summary>${candidates.filter(item => item.unnamed).length} zones sans nom · ${candidates.filter(item => item.materialNeedsReview).length} finis à confirmer${input.pendingSanitaryCount ? ` · ${esc(input.pendingSanitaryCount)} équipement(s) à délimiter` : ''}${input.warningCount ? ` · ${esc(input.warningCount)} alerte(s)` : ''}</summary><p id="detectionEngine" data-detection-engine="${esc(engine)}">Lecture : ${engine === 'vector' ? 'tracés PDF' : engine === 'raster' ? 'image du plan' : 'source à vérifier'} · propositions à valider.</p><p>${input.autoSave ? 'Les choix sont enregistrés automatiquement dans les dossiers de quantités. ' : ''}Vérifiez contours, finis et équipements. La confirmation des quantités reste distincte.</p>${input.sanitaryMarkup || ''}${input.notes?.length ? `<details class="review-notes"><summary>Bilan des feuilles</summary><ul>${input.notes.map(note => `<li>Page ${esc(note.page)} : ${esc(note.message)}</li>`).join('')}</ul></details>` : ''}</details>
       <label class="review-filter">Afficher <select id="reviewFilter"><option value="all" ${filter === 'all' ? 'selected' : ''}>Toutes les propositions</option><option value="sanitary" ${filter === 'sanitary' ? 'selected' : ''}>Salles de bains proposées</option><option value="unnamed" ${filter === 'unnamed' ? 'selected' : ''}>Zones sans nom</option></select></label>
@@ -8720,6 +9037,7 @@ function draw() {
   if(S.plan){const rotation=viewRotation();if(rotation===90)ctx.transform(0,1,-1,0,S.plan.height,0);else if(rotation===180)ctx.transform(-1,0,0,-1,S.plan.width,S.plan.height);else if(rotation===270)ctx.transform(0,-1,1,0,0,S.plan.width);}
   if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';}
   for(const item of S.items.filter(item=>item.page===S.page)) {
+    if(isKitchenElevation(item))continue;
     const active=S.selection.has(item.id),color=colorForItem(item);ctx.save();
     if(item.kind==='count'){if(!item.sanitarySource)drawCountItem(ctx,item,active);ctx.restore();continue;}
     if(item.kind==='area') {
@@ -9150,7 +9468,7 @@ function drawReference(context) {
   context.fillText(formatFeet(reference.feet),(a.x+b.x)/2,(a.y+b.y)/2-9/S.zoom); context.restore();
 }
 function hitItem(point) {
-  return [...S.items].reverse().find(item=>item.page===S.page&&(item.kind==='area'?insideItem(point,item):item.kind==='count'?
+  return [...S.items].reverse().find(item=>item.page===S.page&&((item.kind==='area'||isKitchenElevation(item))?insideItem(point,item):item.kind==='count'?
     item.points.some(marker=>dist(marker,point)<=10/S.zoom):item.points.slice(1).some((p,index)=>distanceToSegment(point,item.points[index],p)<=8/S.zoom)));
 }
 function renderMultipleInspector(element) {
@@ -9424,6 +9742,7 @@ function finishArea(points,method='Tracé polygonal') {
   remember();S.items=[...items,item];setSelection([item.id]);S.draft=[];S.tool='select';save();refresh();
 }
 function forgetAutomaticMeasures(ids) {
+  const kitchenRejects=new Set(S.settings.kitchenBacksplashRejects||[]);for(const item of S.items)if(ids.has(item.id)&&item.wallTakeoff?.elevation&&isKitchenElevation(item))kitchenRejects.add(item.wallTakeoff.elevation.identity);if(kitchenRejects.size)S.settings.kitchenBacksplashRejects=[...kitchenRejects];
   for(const pack of Object.values(S.reviewByPage||{}))for(const candidate of pack.items||[])if(ids.has(candidate.autoSavedId)){
     candidate.selected=false;delete candidate.autoSavedId;
     S.settings.detectionChoices=detectionDecisions.set(S.settings.detectionChoices||[],detectionChoiceKey(S.documentKey,candidate.page,candidate),{material:candidate.material,selected:false,materialNeedsReview:!!candidate.materialNeedsReview},MATERIALS.map(entry=>entry.code));
@@ -9478,6 +9797,7 @@ function recalculatePage(page) {
   S.items=S.items.map(item=>{
     if(item.page!==page)return item;
     if(item.kind!=='count'&&(!Number.isFinite(scale)||scale<=0))return item;
+    if(isKitchenElevation(item)&&item.wallTakeoff.elevation.heightSource==='configured-on-vector-run'&&!item.wallTakeoff.elevation.geometryEdited)item={...item,points:kitchenBacksplashes.templatePoints(item.wallTakeoff.elevation,scale)};
     const qty=item.kind==='count'?item.points.length:item.kind==='area'?netArea(item)*scale*scale:lineLength(item.points)*scale;
     const changed=!Number.isFinite(item.qty)||Math.abs(qty-item.qty)>Math.max(1e-7,Math.abs(qty)*1e-9);
     return {...item,qty,status:changed?'à valider':item.status};
@@ -9648,6 +9968,7 @@ function finishTwoPointTool(point) {
   S.draft=[];S.detectorCache=null;delete S.reviewByPage[S.page];save();refresh();
 }
 function validEditedItem(item) {
+  if(isKitchenElevation(item))return validPolygon(item.points);
   if(!validPolygon(item.points))return false;
   if(!strictInteriorHoles(item).every(hole=>hole.every(p=>inside(p,item.points)||onRing(p,item.points))&&!ringsCross(hole,item.points)))return false;
   const parent=S.items.find(i=>i.id===item.parentId);
@@ -9668,13 +9989,15 @@ function commitDrag(drag) {
   const item=S.items.find(i=>i.id===drag.id);if(!item)return;
   if(drag.type==='vertex') {
     if(!validEditedItem(item)){restoreSnapshot(drag.before);toast('Ce déplacement croise un contour ou une exclusion. Modification annulée.');return;}
-    item.qty=netArea(item)*S.scales[item.page]**2;item.status='à valider';
+    item.qty=isKitchenElevation(item)?lineLength(item.points)*S.scales[item.page]:netArea(item)*S.scales[item.page]**2;item.status='à valider';
+    if(isKitchenElevation(item)){item.wallTakeoff={...item.wallTakeoff,source:'manual',reviewed:false,elevation:{...item.wallTakeoff.elevation,geometryEdited:true}};item.method='Contour de dosseret corrigé manuellement';}
     const parent=S.items.find(i=>i.id===item.parentId);if(parent){parent.subzones[item.id]=structuredClone(item.points);parent.qty=netArea(parent)*S.scales[parent.page]**2;parent.status='à valider';}
   }
   S.history.push(drag.before);S.history=S.history.slice(-40);S.redo=[];save();refresh();
 }
 function focusedSurfaceEdit() {
   if(!['select','edit'].includes(S.tool)||S.draft.length)return null;
+  const kitchen=S.items.find(item=>S.selection.size===1&&S.selection.has(item.id)&&item.page===S.page&&isKitchenElevation(item));if(kitchen)return {item:kitchen,preview:false};
   return actionableSurface();
 }
 function actionableSurface() {
@@ -9839,7 +10162,7 @@ async function importProject(file) {
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
-    for(const key of ['detectionChoices','detectionBaseboardChoices','splitSingleDwelling','sanitaryRejects','sanitaryCountChoices','sanitaryCountRejects','detectionFinishes','wallSamples']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
+    for(const key of ['detectionChoices','detectionBaseboardChoices','splitSingleDwelling','sanitaryRejects','sanitaryCountChoices','sanitaryCountRejects','detectionFinishes','wallSamples','kitchenBacksplash','kitchenBacksplashRejects']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
@@ -10311,8 +10634,8 @@ function estimateLines(state=S) {
       }
     } else if(item.kind==='count')emit('Comptage','QT-01',measured,0);
     else if(w.lineRole==='wall') {
-      const gross=measured===null||!finiteRange(w.wall.height,.01,1200)?null:measured*w.wall.height/12;
-      emit('Mur / dosseret','MUR-01',gross===null||w.wall.openings>gross+1e-7?null:Math.max(0,gross-w.wall.openings),w.wall.waste,
+      const gross=isKitchenElevation(item)?kitchenElevationGross(item,state):measured===null||!finiteRange(w.wall.height,.01,1200)?null:measured*w.wall.height/12;
+      emit('Mur / dosseret',isKitchenElevation(item)&&w.productId?w.productId:'MUR-01',gross===null||w.wall.openings>gross+1e-7?null:Math.max(0,gross-w.wall.openings),w.wall.waste,
         gross!==null&&w.wall.openings>gross+1e-7?['Ouvertures supérieures à la surface brute']:[]);
     } else emit('Plinthe manuelle','PL-01',measured,item.waste);
   }
