@@ -3315,6 +3315,7 @@ const projects = (function createProjects() {
         }
         if (kind === 'document') {
           text(entity.fileName, 'nom du fichier source');
+          if (entity.discipline !== undefined && !['architecture', 'design', 'other'].includes(entity.discipline)) fail('discipline du document invalide.');
           if (!['application/pdf', 'image/png', 'image/jpeg'].includes(entity.mediaType)) fail('format de document non pris en charge.');
           if (!Number.isSafeInteger(entity.pageCount) || entity.pageCount < 1) fail('nombre de pages invalide.');
           if (entity.mediaType !== 'application/pdf' && entity.pageCount !== 1) fail('une image doit avoir une seule page.');
@@ -3415,6 +3416,149 @@ const projects = (function createProjects() {
   function exportJSON(workspace) { return JSON.stringify(validate(workspace)); }
 
   return { create, add, update, remove, validate, importJSON, exportJSON };
+})();
+const workspaceLayout = (function createWorkspaceLayout() {
+  const key = 'estimation-panel-layout-v1';
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const number = (value, fallback) => typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  function defaults() { return { version: 1, width: 204, ratio: .44, order: ['plans', 'measures'], floating: { plans: null, measures: null }, wide: false }; }
+  function normalize(value, viewport = { width: 1920, height: 1080 }) {
+    const base = defaults(), input = value?.version === 1 ? value : base;
+    const width = Math.max(200, number(viewport.width, 1920)), height = Math.max(160, number(viewport.height, 1080));
+    const top = clamp(number(viewport.top, 8), 8, Math.max(8, height - 108));
+    const floating = {};
+    for (const id of ['plans', 'measures']) {
+      const box = input.floating?.[id];
+      if (!box || typeof box !== 'object' || Array.isArray(box)) { floating[id] = null; continue; }
+      const w = clamp(number(box.width, 250), 180, Math.min(680, width - 16));
+      const h = clamp(number(box.height, 300), 100, height - top - 8);
+      floating[id] = { x: clamp(number(box.x, 16), 8, width - w - 8), y: clamp(number(box.y, 16), top, height - h - 8), width: w, height: h };
+    }
+    return { version: 1, width: clamp(number(input.width, base.width), 176, Math.max(176, Math.min(460, width - 240))), ratio: clamp(number(input.ratio, base.ratio), .18, .82),
+      order: Array.isArray(input.order) && input.order.length === 2 && new Set(input.order).size === 2 && input.order.every(id => ['plans', 'measures'].includes(id)) ? [...input.order] : base.order,
+      floating, wide: input.wide === true };
+  }
+  function install(options = {}) {
+    if (document.querySelector('#layoutPanel-plans')) return;
+    const sidebar = document.querySelector('.sidebar'), app = document.querySelector('.app');
+    if (!sidebar || !app) return;
+    const children = [...sidebar.children], split = children.findIndex((node, i) => i > 0 && node.classList.contains('split-title'));
+    if (split < 1) return;
+    const viewport = () => ({ width: window.innerWidth, height: window.innerHeight, top: document.querySelector('.canvas-wrap')?.getBoundingClientRect().top || 8 });
+    const storage = options.getStorage || (() => localStorage);
+    let saved; try { saved = JSON.parse(storage().getItem(key) || 'null'); } catch {}
+    let preferences = normalize(saved, viewport()), drag = null;
+    const panels = {}, names = { plans: 'Plans et pages', measures: 'Dossiers et mesures' };
+    const save = () => { try { storage().setItem(key, JSON.stringify(preferences)); return true; } catch { return false; } };
+    const divider = document.createElement('div'); divider.id = 'panelHeightDivider'; divider.className = 'layout-height-divider'; divider.tabIndex = 0;
+    divider.setAttribute('role', 'separator'); divider.setAttribute('aria-orientation', 'horizontal'); divider.setAttribute('aria-label', 'Régler la hauteur des panneaux');
+    const widthHandle = document.createElement('div'); widthHandle.id = 'sidebarWidthDivider'; widthHandle.className = 'layout-width-divider'; widthHandle.tabIndex = 0;
+    widthHandle.setAttribute('role', 'separator'); widthHandle.setAttribute('aria-orientation', 'vertical'); widthHandle.setAttribute('aria-label', 'Régler la largeur des panneaux');
+    sidebar.insertAdjacentElement('afterend', widthHandle); sidebar.classList.add('layout-sidebar');
+    for (const id of ['plans', 'measures']) {
+      const panel = document.createElement('section'); panel.id = 'layoutPanel-' + id; panel.className = 'layout-panel'; panel.dataset.layoutPanel = id;
+      panel.setAttribute('aria-label', names[id]); panel.append(...(id === 'plans' ? children.slice(0, split) : children.slice(split))); panels[id] = panel;
+      const header = panel.querySelector('.pane-title'); header.hidden = false; header.classList.add('layout-panel-header'); header.tabIndex = 0;
+      header.setAttribute('aria-label', names[id] + ' : glisser pour déplacer; Alt et flèches pour ancrer en haut ou en bas');
+      const actions = document.createElement('span'); actions.className = 'layout-panel-actions';
+      actions.innerHTML = `<button type="button" data-layout-detach="${id}" aria-label="Détacher ${names[id]}">↗</button><button type="button" data-layout-reset aria-label="Réinitialiser les panneaux" title="Réinitialiser les panneaux">↺</button>`; header.append(actions);
+      header.querySelector('[data-layout-detach]').onclick = () => {
+        if (preferences.floating[id]) preferences.floating[id] = null;
+        else { const r = panel.getBoundingClientRect(); preferences.floating[id] = { x: r.right + 8, y: r.top, width: Math.max(220, r.width), height: Math.max(180, r.height) }; }
+        apply(); save();
+      };
+      header.querySelector('[data-layout-reset]').onclick = reset;
+      header.onkeydown = event => {
+        if (!event.altKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault(); event.stopPropagation();
+        if (event.shiftKey && preferences.floating[id]) {
+          const box = preferences.floating[id]; box.width += event.key === 'ArrowRight' ? 16 : event.key === 'ArrowLeft' ? -16 : 0; box.height += event.key === 'ArrowDown' ? 16 : event.key === 'ArrowUp' ? -16 : 0;
+        } else { preferences.floating[id] = null; preferences.order = event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? [id, id === 'plans' ? 'measures' : 'plans'] : [id === 'plans' ? 'measures' : 'plans', id]; }
+        apply(); save(); header.focus();
+      };
+      header.onpointerdown = event => {
+        if (event.button !== 0 || event.target.closest('button,input,select')) return;
+        const r = panel.getBoundingClientRect(); drag = { kind: 'panel', id, x: event.clientX, y: event.clientY, box: { x: r.x, y: r.y, width: r.width, height: r.height }, before: structuredClone(preferences), moved: false, pointer: event.pointerId, target: header };
+        header.setPointerCapture(event.pointerId); event.preventDefault();
+      };
+      panel.addEventListener('pointerup', () => { if (preferences.floating[id] && !drag) { const r = panel.getBoundingClientRect(); preferences.floating[id] = { x: r.x, y: r.y, width: r.width, height: r.height }; apply(); save(); } });
+    }
+    function apply() {
+      preferences = normalize(preferences, viewport());
+      app.classList.add('layout-compact'); app.classList.toggle('layout-wide-plan', preferences.wide);
+      sidebar.style.setProperty('--panel-sidebar-width', preferences.width + 'px');
+      const docked = preferences.order.filter(id => !preferences.floating[id]);
+      for (const id of preferences.order) {
+        const panel = panels[id], box = preferences.floating[id], header = panel.querySelector('.layout-panel-header');
+        panel.classList.toggle('layout-floating', !!box);
+        if (box) { if (panel.parentElement !== app) app.append(panel); Object.assign(panel.style, { left: box.x + 'px', top: box.y + 'px', width: box.width + 'px', height: box.height + 'px', flex: 'none' }); }
+        else { sidebar.append(panel); Object.assign(panel.style, { left: '', top: '', width: '', height: '', flex: docked.length === 2 && id === docked[0] ? `0 0 calc((100% - 6px) * ${preferences.ratio})` : '1 1 0' }); }
+        const button = header.querySelector('[data-layout-detach]'); button.textContent = box ? '↙' : '↗'; button.setAttribute('aria-label', (box ? 'Ancrer ' : 'Détacher ') + names[id]); button.title = button.getAttribute('aria-label');
+      }
+      if (docked.length === 2) panels[docked[0]].insertAdjacentElement('afterend', divider); else sidebar.append(divider);
+      divider.hidden = docked.length !== 2; widthHandle.hidden = !docked.length; sidebar.classList.toggle('layout-sidebar-empty', !docked.length);
+      divider.setAttribute('aria-valuemin', '18'); divider.setAttribute('aria-valuemax', '82'); divider.setAttribute('aria-valuenow', String(Math.round(preferences.ratio * 100)));
+      widthHandle.setAttribute('aria-valuemin', '176'); widthHandle.setAttribute('aria-valuemax', String(Math.max(176, Math.min(460, window.innerWidth - 240)))); widthHandle.setAttribute('aria-valuenow', String(Math.round(preferences.width)));
+      const wide = document.querySelector('#expandPlanView'); if (wide) { wide.setAttribute('aria-pressed', String(preferences.wide)); wide.title = preferences.wide ? 'Revenir à la disposition des outils' : 'Agrandir la zone du plan'; wide.setAttribute('aria-label', wide.title); }
+    }
+    function reset() { preferences = defaults(); app.classList.remove('pages-folded'); apply(); save(); requestAnimationFrame(() => options.fit?.()); }
+    const beginResize = kind => event => { if (event.button !== 0) return; drag = { kind, x: event.clientX, y: event.clientY, before: structuredClone(preferences), pointer: event.pointerId, target: event.currentTarget }; event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault(); };
+    divider.onpointerdown = beginResize('height'); widthHandle.onpointerdown = beginResize('width');
+    for (const [handle, kind] of [[divider, 'height'], [widthHandle, 'width']]) handle.onkeydown = event => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault(); event.stopPropagation(); const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+      if (kind === 'height') preferences.ratio = event.key === 'Home' ? .18 : event.key === 'End' ? .82 : preferences.ratio + (forward ? .04 : -.04);
+      else preferences.width = event.key === 'Home' ? 176 : event.key === 'End' ? 460 : preferences.width + (forward ? 12 : -12);
+      apply(); save(); handle.focus();
+    };
+    window.addEventListener('pointermove', event => {
+      if (!drag || event.pointerId !== drag.pointer) return;
+      if (drag.kind === 'width') preferences.width = drag.before.width + event.clientX - drag.x;
+      else if (drag.kind === 'height') { const r = sidebar.getBoundingClientRect(); preferences.ratio = (event.clientY - r.top) / r.height; }
+      else {
+        if (!drag.moved && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 5) return;
+        if (!drag.moved) { drag.moved = true; preferences.floating[drag.id] = { ...drag.box }; apply(); drag.target.setPointerCapture(event.pointerId); }
+        preferences.floating[drag.id] = { ...drag.box, x: drag.box.x + event.clientX - drag.x, y: drag.box.y + event.clientY - drag.y };
+      }
+      apply(); event.preventDefault();
+    });
+    const finishDrag = event => {
+      if (!drag || event.pointerId !== drag.pointer) return;
+      if (event.type === 'pointercancel') preferences = drag.before;
+      else if (drag.kind === 'panel' && drag.moved) {
+        const r = sidebar.getBoundingClientRect();
+        if (event.clientX <= Math.max(r.right, 180) + 24 && event.clientY >= r.top && event.clientY <= r.bottom) {
+          preferences.floating[drag.id] = null; const other = drag.id === 'plans' ? 'measures' : 'plans'; preferences.order = event.clientY < (r.top + r.bottom) / 2 ? [drag.id, other] : [other, drag.id];
+        }
+      }
+      if (drag.target.hasPointerCapture?.(drag.pointer)) drag.target.releasePointerCapture(drag.pointer);
+      drag = null; apply(); save();
+    };
+    window.addEventListener('pointerup', finishDrag); window.addEventListener('pointercancel', finishDrag);
+    window.addEventListener('resize', () => { apply(); });
+    const wide = document.createElement('button'); wide.id = 'expandPlanView'; wide.type = 'button'; wide.className = 'v4-small-button layout-wide-toggle'; wide.textContent = '⤢';
+    document.querySelector('.stagebar')?.append(wide); wide.onclick = () => { preferences.wide = !preferences.wide; apply(); save(); requestAnimationFrame(() => options.fit?.()); };
+    const style = document.createElement('style'); style.id = 'workspaceLayoutStyle'; style.textContent = `
+      .layout-compact{font-size:12px}.layout-compact .topbar{height:42px;flex-basis:42px;padding-inline:10px}.layout-compact .project-title input{font-size:12px}
+      .layout-compact #manualRibbon{min-height:60px;padding-block:3px}.layout-compact #manualRibbon .manual-ribbon-main .manual-button{min-height:54px;height:54px;padding:3px 5px;gap:3px}.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px}.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:10px;line-height:1.2;white-space:nowrap}.layout-compact #manualRibbon .manual-ribbon-main #wallSamplesBtn{width:64px;min-width:64px}
+      .layout-compact .stagebar{min-height:34px;height:34px;flex-basis:34px;padding-inline:8px}.layout-compact .stagebar .document strong{font-size:11px}.layout-wide-toggle{font-size:19px;min-width:28px;flex-shrink:0}
+      .layout-compact .sidebar.layout-sidebar{width:var(--panel-sidebar-width);flex-basis:var(--panel-sidebar-width);padding:0;display:flex;flex-direction:column;min-height:0;flex-shrink:0}.layout-compact.pages-folded .layout-sidebar,.layout-compact.pages-folded>.layout-floating{display:none}
+      .layout-compact .layout-sidebar.layout-sidebar-empty{display:none}.layout-panel{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:#f3faff;color:#17354d}
+      .layout-panel>.tree{flex:1 1 auto;max-height:none;min-height:0;overflow:auto}.layout-panel>.measure-tree{flex:1 1 auto;min-height:0;overflow:auto}.layout-panel .pane-title{flex-shrink:0;font-size:10px;padding:5px 7px;letter-spacing:.03em}
+      .layout-panel .side-search{flex-shrink:0;padding:5px}.layout-panel .side-search input{font-size:11px;min-width:0}.layout-panel .tree-root{font-size:11px;padding:5px}.layout-panel .sheet-row{padding:5px 3px}.layout-panel .sheet-row b{font-size:11px;line-height:1.25}.layout-panel .sheet-row small{font-size:10px;line-height:1.25}
+      .layout-panel .measure-folder-heading{min-height:26px;padding:4px}.layout-panel .measure-row b,.layout-panel .measure-folder-heading button{font-size:11px}.layout-panel .measure-row small,.layout-panel .selection-help{font-size:10px}.layout-panel .measure-folder-empty{font-size:10px;padding:3px 6px;margin:3px 0}.layout-panel .measure-folder-tools{padding:4px;gap:4px}.layout-panel .measure-folder-tools button{font-size:10px;min-height:25px}
+      .layout-panel-header{cursor:grab;touch-action:none;user-select:none;display:flex;align-items:center;gap:3px;min-height:28px}.layout-panel-header:active{cursor:grabbing}.layout-panel-actions{display:inline-flex;gap:2px;margin-left:auto;letter-spacing:0}.layout-panel-actions button{font:14px Arial;width:21px;height:21px;padding:0;border:1px solid #527f9f;background:#fff;color:#174b72;border-radius:3px;cursor:pointer}
+      .layout-height-divider{flex:0 0 6px;min-height:6px;cursor:row-resize;background:#527f9f;touch-action:none}.layout-width-divider{flex:0 0 5px;width:5px;cursor:col-resize;background:#527f9f;touch-action:none}.pages-folded .layout-width-divider{display:none}
+      .layout-height-divider:hover,.layout-width-divider:hover,.layout-height-divider:focus-visible,.layout-width-divider:focus-visible{background:#236b99;outline:2px solid #174b72;outline-offset:-2px}
+      .layout-floating{position:fixed;z-index:25;resize:both;overflow:auto;min-width:180px;min-height:100px;border:1px solid #236b99;box-shadow:0 4px 16px #17354d30;border-radius:3px}.layout-floating>.layout-panel-header{position:sticky;top:0;z-index:1;background:#d9efff}
+      .source-folder{border-bottom:1px solid #bfd6e5}.source-folder summary{padding:4px 3px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}.source-folder summary small{font-weight:400;font-size:10px;margin-left:5px}.source-folder summary button{float:right;width:21px;height:20px;padding:0;font-size:15px;border:1px solid #527f9f;border-radius:3px;background:#fff;color:#174b72;cursor:pointer}
+      .source-document{display:flex;align-items:center;gap:3px;width:100%;padding:5px 3px 5px 13px;border:0;background:transparent;color:#17354d;text-align:left;font-size:11px;cursor:pointer;min-width:0}.source-document>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.source-document small{margin-left:auto;white-space:nowrap;font-size:10px}.source-document.active{background:#d9efff;border-left:3px solid #236b99}.source-folder-empty{display:block;padding:3px 12px;color:#526b7f;font-size:10px}
+      .layout-wide-plan .inspector,.layout-wide-plan .quantity-grid,.layout-wide-plan #reopen{display:none!important}.layout-compact .quantity-grid td{font-size:11px;padding:6px 8px}
+      @media(max-width:950px){.layout-compact.review-open .layout-sidebar,.layout-compact.review-open .layout-width-divider{display:none}}
+      @media(max-width:779px){.layout-compact .topbar{overflow-x:auto;max-width:100%;scrollbar-width:thin}.layout-compact .topbar .project-title{flex:0 0 130px}.layout-compact .project-command-bar,.layout-compact .top-actions{flex:0 0 auto}.layout-compact .layout-width-divider{display:none}.layout-compact .stagebar{height:auto;min-height:34px;flex-basis:auto}.layout-panel .sheet-row b,.layout-panel .sheet-row small{font-size:11px}.layout-floating{max-width:calc(100% - 16px)}}
+    `; document.head.append(style); apply();
+  }
+  return { defaults, normalize, install };
 })();
 const rolls = (function createRolls(geometry) {
   if (typeof geometry?.netArea !== 'function') throw new Error('Le moteur de géométrie est requis.');
@@ -3715,8 +3859,17 @@ const kitchenBacksplashes = (function createKitchenBacksplashes(geometry) {
     return lines;
   }
   const viewName=text=>/\b(?:ELEVATIONS?|DETAILS?)\b.*\bCUISINES?\b|\bCUISINES?\b.*\bELEVATIONS?\b/.test(norm(text));
-  const isView=input=>viewName(input.title)||rows(input.texts||[]).some(t=>viewName(t.text));
   const typeCode=text=>{const value=norm(text);return value.match(/\bTYPE\b\s*[:#-]?\s*([A-Z][A-Z0-9_.-]{0,15})\b/)?.[1]||value.match(/\bCUISINE\s+([A-Z][A-Z0-9_.-]{0,15})(?=\s*(?:\/|$))/)?.[1]||null;};
+  const kitchenSheetName=text=>/^(?:D[- ]?\d{3}\s*(?:[·:–—-]\s*)?)?EBENISTERIE\s*[-–—:]?\s*CUISINES?$/.test(norm(text));
+  function viewClassifier(input,texts) {
+    const kitchenSheet=kitchenSheetName(input.title)||texts.some(t=>kitchenSheetName(t.text));
+    return text=>{
+      if(viewName(text))return true;
+      const value=norm(text);
+      return kitchenSheet&&/^(?:E\d+\s+)?ELEVATIONS?\b/.test(value)&&typeCode(value)!==null&&!/\b(?:PLANS?|COUPES?|ISOMETRIES?|PERSPECTIVES?|BAINS?|DOUCHES?|VANITES?|SDB)\b/.test(value);
+    };
+  }
+  const isView=input=>{const texts=rows(input.texts||[]),recognize=viewClassifier(input,texts);return recognize(input.title)||texts.some(t=>recognize(t.text));};
   function units(page) {
     const result=[];
     for(const row of rows(page.texts||[])){
@@ -3730,8 +3883,8 @@ const kitchenBacksplashes = (function createKitchenBacksplashes(geometry) {
     if(!input||!Number.isSafeInteger(input.page)||input.page<1)throw new Error('Feuille de cuisine invalide.');
     const result={page:input.page,profiles:[],warnings:[],truncated:false,viewRecognized:false};
     if(!config.enabled)return result;
-    const texts=rows(input.texts||[]),titles=texts.filter(t=>viewName(t.text)),viewTitles=texts.filter(t=>/\bELEVATIONS?\b|\bDETAILS?\b|\bPLAN(?:S)?\b/.test(norm(t.text)));
-    result.viewRecognized=viewName(input.title)||titles.length>0;
+    const texts=rows(input.texts||[]),recognize=viewClassifier(input,texts),titles=texts.filter(t=>recognize(t.text)),viewTitles=texts.filter(t=>/\b(?:ELEVATIONS?|DETAILS?|PLANS?|COUPES?|ISOMETRIES?|PERSPECTIVES?)\b/.test(norm(t.text)));
+    result.viewRecognized=recognize(input.title)||titles.length>0;
     if(!result.viewRecognized)return result;
     if(!finite(input.scale,1e-9,1000)){result.warnings.push('Élévation cuisine à calibrer avant de calculer sa surface.');return result;}
     const decoded=decode(input.paths||[]);result.truncated=decoded.truncated;
@@ -3739,7 +3892,7 @@ const kitchenBacksplashes = (function createKitchenBacksplashes(geometry) {
     const scale=input.scale,seen=new Set(),tags=texts.filter(t=>/\bDOSSERET\b|\bBACKSPLASH\b/.test(norm(t.text)));
     for(const tag of tags.slice(0,200)) {
       const closestTitle=viewTitles.map(t=>({t,d:Math.hypot(t.cx-tag.cx,t.cy-tag.cy)})).sort((a,b)=>a.d-b.d)[0];
-      if(closestTitle&&!viewName(closestTitle.t.text)){result.warnings.push('Dosseret voisin d’une autre vue : rattachement cuisine non établi.');continue;}
+      if(closestTitle&&!recognize(closestTitle.t.text)){result.warnings.push('Dosseret voisin d’une autre vue : rattachement cuisine non établi.');continue;}
       const candidates=decoded.rings.filter(points=>{
         const b=bounds(points),width=(b.right-b.left)*scale,height=(b.bottom-b.top)*scale;
         const point={x:tag.cx,y:tag.cy},inside=geometry.inside(point,points)&&points.every((p,i)=>geometry.distanceToSegment(point,p,points[(i+1)%points.length])>.25);
@@ -6759,6 +6912,66 @@ const workspaceUIFactory = (function createWorkspaceUI(options) {
   const displayName = entity => entity.name || entity.code || entity.label || entity.id;
   const entries = entities => entities.map(entity => [entity.id, displayName(entity)]);
   const model = () => getState().estimation.workspace;
+  let sourceFolderSignature = '';
+  const sourceFolderNames = { architecture: 'Architecture', design: 'Design', other: 'Autres plans' };
+
+  function captureSourceDocument(discipline) {
+    if (!Object.hasOwn(sourceFolderNames, discipline)) throw new Error('Choisissez un dossier de plans.');
+    const state = getState();
+    if (!state.plan || state.documentKey === 'legacy') throw new Error('Ouvrez un plan avant de le classer.');
+    let next = model() || projects.create({ id: 'project-' + uid(), name: state.project || 'Projet sans titre' });
+    const existing = next.documents.find(item => item.fingerprint === state.documentKey);
+    next = existing ? projects.update(next, 'document', existing.id, { discipline }) : projects.add(next, 'document', {
+      id: 'doc-' + uid(), name: state.fileName, fileName: state.fileName, mediaType: state.pdf ? 'application/pdf' : /\.png$/i.test(state.fileName) ? 'image/png' : 'image/jpeg',
+      pageCount: state.pages, fingerprint: state.documentKey, discipline,
+    });
+    change(() => { state.estimation.workspace = next; state.project = next.project.name; });
+    return next;
+  }
+
+  async function importSourceDocument(file, discipline) {
+    if (!file) return;
+    const target = model()?.project.id, estimation = structuredClone(getState().estimation);
+    try {
+      if (await openFile(file) === false) return;
+      if (target && model()?.project.id && model().project.id !== target) throw new Error('Ce plan appartient déjà à un autre projet. Son classement a été conservé.');
+      if (target && !model()) getState().estimation = estimation;
+      captureSourceDocument(discipline);
+      toast('Plan classé dans ' + sourceFolderNames[discipline] + '.');
+    } catch (failure) { toast(failure.message || String(failure)); }
+  }
+
+  async function openSourceDocument(id) {
+    try {
+      const reference = model()?.documents.find(item => item.id === id);
+      if (!reference?.fingerprint) throw new Error('Rouvrez le fichier original pour associer ce plan.');
+      const record = await documents.get(reference.fingerprint);
+      if (!record) throw new Error('La copie locale de ce plan est absente. Importez son fichier original.');
+      if (await openFile(new File([record.bytes], record.name, { type: record.type, lastModified: record.lastModified })) === false) return;
+    } catch (failure) { toast(failure.message || String(failure)); }
+  }
+
+  function renderSourceFolders() {
+    const tree = $('#treeProject')?.closest('.tree');
+    if (!tree) return;
+    let host = $('#planSourceFolders');
+    if (!host) { tree.querySelector('.tree-root').insertAdjacentHTML('afterend', '<div id="planSourceFolders" aria-label="Dossiers des plans"></div>'); host = $('#planSourceFolders'); }
+    const workspace = model(), state = getState(), sources = workspace?.documents || [];
+    const signature = JSON.stringify([workspace?.project.id, state.documentKey, sources]);
+    if (signature === sourceFolderSignature && host.childElementCount) return;
+    sourceFolderSignature = signature;
+    const open = new Map([...host.querySelectorAll('details')].map(item => [item.dataset.sourceFolder, item.open]));
+    const groups = ['architecture', 'design', ...(sources.some(item => !item.discipline || item.discipline === 'other') ? ['other'] : [])];
+    host.innerHTML = groups.map(group => {
+      const entries = sources.filter(item => (item.discipline || 'other') === group), name = sourceFolderNames[group];
+      return `<details class="source-folder" data-source-folder="${group}" ${open.get(group) !== false ? 'open' : ''}><summary><span>${name}</span><small data-source-count="${group}">${entries.length}</small>${group !== 'other' ? `<button type="button" data-source-import="${group}" aria-label="Importer un plan ${name}" title="Importer un plan ${name}">+</button>` : ''}</summary><div class="source-folder-files">${entries.map(item => `<button type="button" data-source-document="${esc(item.id)}" class="source-document ${item.fingerprint === state.documentKey ? 'active' : ''}" aria-current="${item.fingerprint === state.documentKey ? 'page' : 'false'}" title="${esc(item.fileName)}" ${item.fingerprint ? '' : 'disabled'}><span>${esc(item.name)}</span><small>${item.pageCount} p.</small></button>`).join('') || '<small class="source-folder-empty">Aucun plan</small>'}</div></details>`;
+    }).join('') + ['architecture', 'design'].map(group => `<input id="${group}PlanInput" type="file" accept=".pdf,.png,.jpg,.jpeg" hidden aria-label="Importer un plan ${sourceFolderNames[group]}">`).join('');
+    host.querySelectorAll('[data-source-import]').forEach(button => { button.onclick = event => { event.preventDefault(); event.stopPropagation(); $('#' + button.dataset.sourceImport + 'PlanInput').click(); }; });
+    for (const group of ['architecture', 'design']) $('#' + group + 'PlanInput').onchange = event => { const file = event.target.files[0]; event.target.value = ''; importSourceDocument(file, group); };
+    host.querySelectorAll('[data-source-document]').forEach(button => { button.onclick = () => openSourceDocument(button.dataset.sourceDocument); });
+    const current = sources.some(item => item.fingerprint === state.documentKey);
+    const oldRow = $('#treeFile')?.closest('.tree-page'); if (oldRow) oldRow.hidden = current;
+  }
 
   function install() {
     if ($('#workspaceProjectBtn')) return;
@@ -6768,6 +6981,7 @@ const workspaceUIFactory = (function createWorkspaceUI(options) {
     $('#workspaceProjectBtn').onclick = projectDialog;
     $('#workspaceRollsBtn').onclick = rollDialog;
     $('#workspaceQuoteBtn').onclick = quoteDialog;
+    renderSourceFolders();
   }
 
   function projectDialog() {
@@ -6788,7 +7002,7 @@ const workspaceUIFactory = (function createWorkspaceUI(options) {
       }), selected.work?.roomId || '')}${selected.kind === 'area' ? field('wsAssignLayer', 'Couche ou système de la zone', selected.work?.layer || 'finish', 'text', 'required maxlength="80"') : ''}<button type="button" id="wsAssignRoomBtn" ${workspace.rooms.length && options.getWork && options.setMeasurementWork ? '' : 'disabled'}>Affecter à cette pièce</button>
       ${selected.kind === 'area' ? `<p>Le contour de référence d’une pièce sert à contrôler ses zones. Il est conservé sur le plan mais exclu des achats.</p><button type="button" id="wsRoomBoundaryBtn" ${workspace.rooms.length && options.setRoomBoundary ? '' : 'disabled'}>Utiliser ce contour pour la pièce, hors achats</button>` : ''}
       ${selected.kind === 'area' ? `<h3>Produit de la surface sélectionnée</h3><p>Appliquer un produit exige la revalidation de cette surface. Une perte inconnue reste à compléter avant validation.</p>${select('wsAssignProduct', 'Produit du projet', workspace.products.map(product => [product.id, [product.reference, product.name, product.format, product.color].filter(Boolean).join(' · ')]), selected.work?.productId || '')}<button type="button" id="wsAssignProductBtn" ${workspace.products.length && options.setMeasurementProduct ? '' : 'disabled'}>Appliquer ce produit à la surface</button>` : ''}` : '<p>Sélectionnez une mesure du plan pour la rattacher à une pièce.</p>'}
-      <h3>Document actuellement ouvert</h3><p>${esc(state.fileName)} · ${state.pages} page(s)</p><button type="button" id="wsCaptureDocument">Ajouter ce document à l’organisation</button>` : ''}
+      <h3>Document actuellement ouvert</h3><p>${esc(state.fileName)} · ${state.pages} page(s)</p>${select('wsDocumentDiscipline', 'Dossier du plan', Object.entries(sourceFolderNames), workspace.documents.find(item => item.fingerprint === state.documentKey)?.discipline || 'other')}<button type="button" id="wsCaptureDocument">Enregistrer le classement du plan</button>` : ''}
       ${alert('wsProjectError')}<h3>Plans conservés dans ce navigateur</h3><div id="wsSavedDocuments">Chargement…</div>
       ${actions('<button type="button" id="wsExportStructure">Exporter l’organisation</button>')}`, 'wide');
     $('#wsProjectForm').onsubmit = event => {
@@ -6840,10 +7054,7 @@ const workspaceUIFactory = (function createWorkspaceUI(options) {
       $('#wsCaptureDocument').disabled = !state.plan;
       $('#wsCaptureDocument').onclick = () => {
         try {
-          if (model().documents.some(item => item.fingerprint === state.documentKey)) throw new Error('Ce fichier est déjà dans l’organisation.');
-          const mediaType = state.pdf ? 'application/pdf' : /\.png$/i.test(state.fileName) ? 'image/png' : 'image/jpeg';
-          const next = projects.add(model(), 'document', { id: 'doc-' + uid(), name: state.fileName, fileName: state.fileName, mediaType, pageCount: state.pages, fingerprint: state.documentKey });
-          change(() => { getState().estimation.workspace = next; });
+          captureSourceDocument($('#wsDocumentDiscipline').value);
           projectDialog();
         } catch (failure) { error('wsProjectError', failure); }
       };
@@ -7455,7 +7666,7 @@ const workspaceUIFactory = (function createWorkspaceUI(options) {
     }; });
   }
 
-  return { install, projectDialog, rollDialog, quoteDialog, quoteLines, validateSavedRoll };
+  return { install, projectDialog, rollDialog, quoteDialog, quoteLines, validateSavedRoll, renderSourceFolders };
 });
 const projectSession = (function createProjectSession(getStorage) {
   const prefix = 'estimation-project-v1:';
@@ -9492,6 +9703,7 @@ function refreshBase() {
   $('#treePageCount').textContent=`${S.pages} page${S.pages>1?'s':''}`;
   $('#zoomText').textContent=`${Math.round(S.zoom*100)} %`;
   $('#emptyDemo').hidden=!!S.plan; $('#hint').hidden=!S.plan;
+  $('#saveProjectBtn').disabled=!S.plan||S.loading;
   $('#hint').textContent=S.loading ? 'Chargement de la feuille…' : {
     area:'Cliquez les coins, puis Entrée ou double-clic pour terminer',
     linear:'Tracez le parcours, puis Entrée ou double-clic',
@@ -10096,6 +10308,7 @@ function renderInspector() {
 }
 function refresh() {
   refreshBase();renderPages();$('#stageFile').textContent=S.plan?pageName(S.page):S.fileName;
+  if($('#planSourceFolders'))workspaceUI.renderSourceFolders();
   refreshPlanAngles();
   $('#stageFile').title=S.fileName;$('#fitView')?.setAttribute('title','Afficher toute la feuille · 0');
   const hints={fixtureBox:'Cliquez deux coins opposés autour du bain ou de la douche · Échap : annuler',fixturePolygon:'Cliquez le contour du bain ou de la douche · Entrée : retrancher · Échap : annuler',fixtureEdit:'Glissez les coins orange de l’emprise · Ctrl+Z : annuler · double-clic : propriétés',hand:'Glissez pour déplacer le plan · molette : zoom au pointeur',
@@ -10956,6 +11169,7 @@ function installCompactProjectTools() {
   `;document.head.append(style);refreshPlanAngles();
 }
 installCompactProjectTools();
+workspaceLayout.install({fit:()=>{fitPlan();refresh();}});
 
 function projectArchiveDialog() {
   openDialog('Sauvegarder et restaurer les données du projet',`<p>L’archive contient les plans originaux conservés dans ce navigateur, les relevés, les paramètres et les instantanés. Conservez aussi la version du logiciel selon la procédure de sauvegarde du code.</p><p>La restauration refuse d’écraser un relevé différent déjà présent. Essayez-la dans un profil navigateur vierge.</p><button type="button" id="createProjectArchive">Exporter les plans et relevés</button><form id="restoreProjectArchive"><label>Archive de projet<input id="projectArchiveFile" type="file" accept=".zip" required></label><button type="submit">Restaurer cette archive</button></form><p id="projectArchiveStatus" role="status"></p><p id="projectArchiveError" class="v4-error" role="alert"></p>`,'wide');
