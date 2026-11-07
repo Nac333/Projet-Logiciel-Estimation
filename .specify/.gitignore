@@ -1,0 +1,5 @@
+# Machine-local Spec Kit state — not meant to be shared.
+feature.json
+extensions/*/local-config.yml
+integrations/packages/
+integrations/packages.json

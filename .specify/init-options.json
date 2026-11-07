@@ -1,0 +1,10 @@
+{
+  "ai": "codex",
+  "integration": "codex",
+  "here": true,
+  "script": "py",
+  "feature_numbering": "sequential",
+  "speckit_version": "1.3.2",
+  "allow_symlinks": false,
+  "ai_skills": true
+}
