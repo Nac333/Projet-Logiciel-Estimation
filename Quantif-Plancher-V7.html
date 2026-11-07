@@ -230,6 +230,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .topbar .outline{color:#18354d;border-color:#7faaca;background:#eff8ff}.measure-row.selected,.measure-row[aria-selected=true],.tree-project,.tree-doc{background:#e4f2fd}
 .review-kitchen-status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#eaf5fd;font-size:12px}
 </style>
+<style>
+.takeoff-summary{display:flex;flex:0 0 auto;align-items:center;gap:12px;flex-wrap:wrap;padding:5px 10px;border-bottom:1px solid #bfd6e5;background:#f3faff;color:#17354d;font:11px/1.3 Arial,sans-serif}.takeoff-summary[hidden]{display:none}.takeoff-summary-value{display:flex;flex-direction:column;min-width:76px}.takeoff-summary-value>b{font-size:12px}.takeoff-summary-scope{font-weight:600}.takeoff-summary-scope small,.takeoff-summary-state small{display:block;font-size:10px;font-weight:400;color:#526b7f}.takeoff-summary-state{margin-left:auto;max-width:210px;font-size:10px;color:#815300}@media(max-width:800px){.takeoff-summary{gap:4px 10px}.takeoff-summary-scope,.takeoff-summary-state{flex-basis:100%;margin:0}.takeoff-summary-scope small,.takeoff-summary-state small{display:inline;margin-left:8px}}
+</style>
 </head>
 <body><div id="root"></div>
 <script>/**
@@ -549,15 +552,21 @@ function sanitaryWallPaths(paths,baths,scale) {
   });
 }
 function sanitaryRejectionKey(documentKey,page,symbolId) {return 'sanitary:'+JSON.stringify([documentKey,page,symbolId]);}
+function sanitaryWallSupport(footprint,model,scale) {
+  if(!Array.isArray(footprint)||!footprint.length||model?.source!=='vector'||!Array.isArray(model.physicalWallSegments)||!(scale>0))return;
+  const box=boundsOf(footprint),margin=4/12/scale,near=model.physicalWallSegments.filter(s=>Math.max(s.a.x,s.b.x)>=box.x-margin&&Math.min(s.a.x,s.b.x)<=box.right+margin&&Math.max(s.a.y,s.b.y)>=box.y-margin&&Math.min(s.a.y,s.b.y)<=box.bottom+margin);
+  if(near.length>1024)return;
+  return near.map(s=>({a:{...s.a},b:{...s.b}}));
+}
 function applySanitaryProposals(candidates,info,scale,model,documentKey,page,roi) {
   const detection=sanitaryForPage(info,scale,roi),rejected=new Set(S.settings.sanitaryRejects||[]),
-    baths=detection.baths.filter(bath=>!rejected.has(sanitaryRejectionKey(documentKey,page,bath.id))),
+    baths=detection.baths.filter(bath=>!rejected.has(sanitaryRejectionKey(documentKey,page,bath.id))).map(bath=>({...bath,wallSupportSegments:sanitaryWallSupport(bath.footprintRing,model,scale)})),
     result=sanitaryRooms.associate(baths,candidates,{scale,model});
   for(const match of result.assignments) {
     const item=candidates[match.roomIndex],bath=baths.find(entry=>entry.id===match.symbolId);if(!item||!bath)continue;
     item.bathroom=true;item.spaceType='bathroom';if(item.laundry)item.laundryInBathroom=true;if(item.unnamed)item.name='Salle de bains proposée '+(match.roomIndex+1);
     if(item.materialSource!=='code du plan')Object.assign(item,detectionFinishes.propose({bathroom:true,spaceType:'bathroom',activeMaterial:item.material,name:item.name,page,...(item.laundry?{laundry:true,laundryInBathroom:true}:{})},MATERIALS.map(entry=>entry.code),S.settings.detectionFinishes));
-    item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:bath.kind==='shower'?'shower':'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true,...(bath.footprintRing?{footprintRing:structuredClone(bath.footprintRing),footprintSource:'vector-outer-outline'}:{})}];
+    item.sanitaryEvidence=[...(item.sanitaryEvidence||[]),{symbolId:bath.id,kind:bath.kind==='shower'?'shower':'bath',source:'vector-shape',status:'proposed',basinRing:structuredClone(bath.basinRing),drainRing:structuredClone(bath.drainRing),roomAssociation:'geometry-adjacency',associationMode:match.mode,requiresFootprintReview:true,...(bath.footprintRing?{footprintRing:structuredClone(bath.footprintRing),footprintSource:'vector-outer-outline'}:{}),...(bath.wallSupportSegments?{wallSupportSegments:structuredClone(bath.wallSupportSegments),wallEvidenceSource:'physical-vector-after-furniture-filter'}:{})}];
     applyRecognizedFixtures(item,info,scale);
   }
   return {...result,baths,warnings:detection.warnings||[],rejectedCount:detection.baths.length-baths.length};
@@ -639,11 +648,15 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   const off=document.createElement('canvas');off.width=width;off.height=height;
   const context=off.getContext('2d',{willReadFrequently:true});context.fillStyle='#ffffff';context.fillRect(0,0,width,height);
   const wallDiagnostics={mode:settings.wallMode==='all'?'all':'structure',capturePhysical:true};
-  const sanitary=sanitaryForPage(info,scale,roi),inputWallPaths=closetHatching.filter(laundryFixtures.filter(sanitaryWallPaths(floorWallPaths(info),sanitary.baths,scale),[...(info?.labels||[]),...(info?.texts||[])],{scale}),{scale}),
-    furniture=bathroomFurniture.analyze(inputWallPaths,{scale,baths:sanitary.baths}),furniturePaths=new Set(furniture.excludePathIndices),wallPaths=inputWallPaths.filter((_,index)=>!furniturePaths.has(index));
-  Object.assign(wallDiagnostics,{furnitureSymbols:furniture.evidence.length,furniturePathsIgnored:furniturePaths.size,furnitureWarnings:furniture.warnings});
+  const sanitary=sanitaryForPage(info,scale,roi),inputWallPaths=floorWallPaths(info),
+    furniture=bathroomFurniture.analyze(inputWallPaths,{scale,baths:sanitary.baths}),
+    kitchen=bathroomFurniture.analyze(inputWallPaths,{scale,baths:[],kitchenLabels:info?.texts||[]}),
+    equipment=planAnnotations.equipmentMarkers(inputWallPaths,{scale,regions:kitchen.evidence}),
+    furniturePaths=new Set([...furniture.excludePathIndices,...kitchen.excludePathIndices,...equipment.excludePathIndices]),symbolFreePaths=inputWallPaths.filter((_,index)=>!furniturePaths.has(index)),
+    wallPaths=closetHatching.filter(laundryFixtures.filter(sanitaryWallPaths(symbolFreePaths,sanitary.baths,scale),[...(info?.labels||[]),...(info?.texts||[])],{scale}),{scale});
+  Object.assign(wallDiagnostics,{furnitureSymbols:furniture.evidence.length,kitchenFurnitureSymbols:kitchen.evidence.length,equipmentMarkers:equipment.evidence.length,furniturePathsIgnored:furniturePaths.size,furnitureWarnings:[...furniture.warnings,...kitchen.warnings,...equipment.warnings]});
   const vectorCount=wallPaths.length?drawWallPaths(context,wallPaths,factor,settings.threshold,scale,info.texts,settings.doorInches,info.labels,wallDiagnostics.mode,wallDiagnostics):0;
-  const wallFaceSegments=wallDiagnostics.faceSegments||[],wallFaceBands=wallDiagnostics.bandPolygons||[];delete wallDiagnostics.faceSegments;delete wallDiagnostics.bandPolygons;
+  const wallFaceSegments=wallDiagnostics.faceSegments||[],physicalWallSegments=wallDiagnostics.physicalFaceSegments||[],wallFaceBands=wallDiagnostics.bandPolygons||[];delete wallDiagnostics.faceSegments;delete wallDiagnostics.physicalFaceSegments;delete wallDiagnostics.bandPolygons;
   if(!vectorCount)context.drawImage(image,0,0,width,height);
   // Suppress readable PDF labels so letters cannot masquerade as wall fragments.
   for(const t of vectorCount?[]:info?.texts||[])if(t.height>0&&t.height<80&&t.width<width/factor*.35) {
@@ -680,7 +693,7 @@ function makeWallModel(image,info,settings,scale,dividers=[],roi=null) {
   model.rooms=model.rooms.filter(r=>r.right-r.x>=2&&r.bottom-r.y>=2&&r.right<maxRight&&
     (roi?r.x>roi.x*factor&&r.y>roi.y*factor&&r.right<roi.right*factor&&r.bottom<roi.bottom*factor:
       r.x>width*.027&&r.y>height*.027&&r.right<width*.973&&r.bottom<height*.973));
-  const base={...model,factor,mask,wallMask,wallFaceSegments,wallFaceBands,structuralEnvelope:envelope,source:vectorCount?'vector':'raster',wallDiagnostics},splittingInfo=sanitarySplittingInfo(base,info,sanitary.baths,scale);
+  const base={...model,factor,mask,wallMask,wallFaceSegments,physicalWallSegments,wallFaceBands,structuralEnvelope:envelope,source:vectorCount?'vector':'raster',wallDiagnostics},splittingInfo=sanitarySplittingInfo(base,info,sanitary.baths,scale);
   const result=splitNarrowPassages(base,splittingInfo,scale,settings.doorInches,{splitSingleDwelling:settings.splitSingleDwelling===true,sanitaryRoomIds:base.sanitaryRoomIds});
   result.exactSharedBoundaries=result.rooms.length>model.rooms.length;
   applyInteriorEnvelope(result,info,scale,settings);
@@ -709,7 +722,7 @@ function roomCandidate(model,room,info,material,settings,scale,page=S.page) {
   if(item.bathroom)applyRecognizedFixtures(item,info||{},scale);
   item.qty=netArea(item)*scale*scale;if(settings.minArea&&area(item.points)*scale*scale<settings.minArea)return null;return item;
 }
-function applyCandidateWallFaces(candidate,model,scale) {
+function applyCandidateWallFaces(candidate,model,scale,peers=[]) {
   // Ce lot qualifie les pièces sanitaires identifiées. Les grands sols de
   // logements conservent leur géométrie regroupée jusqu'à leur propre recette.
   if(!candidate.bathroom||!model.wallFaceSegments?.length)return candidate;
@@ -725,9 +738,22 @@ function applyCandidateWallFaces(candidate,model,scale) {
       return candidate;
     }
   }
+  for(const peer of peers){
+    if(peer===candidate||peer.kind!=='area'||peer.page!==candidate.page||peer.work?.roomBoundary||peer.wallTakeoff||zones.layer(peer)!==zones.layer(candidate)||peer.id&&peer.id===candidate.id)continue;
+    const neighbor=boundsOf(peer.points);if(neighbor.right<box.x||neighbor.x>box.right||neighbor.bottom<box.y||neighbor.y>box.bottom)continue;
+    if(zones.intersectNet(item,peer)>zones.intersectNet(candidate,peer)+rounding){
+      if(model.wallDiagnostics)model.wallDiagnostics.faceWarnings=[...new Set([...(model.wallDiagnostics.faceWarnings||[]),'Raccord empiétant sur un sol voisin : contour conservé.'])];
+      return candidate;
+    }
+  }
   item.qty=netArea(item)*scale*scale;if(!(item.qty>0))return candidate;
   if(model.wallDiagnostics)model.wallDiagnostics.faceAdjustedRooms=(model.wallDiagnostics.faceAdjustedRooms||0)+1;
   return item;
+}
+function applyAllCandidateWallFaces(candidates,model,scale,savedPeers=[]) {
+  const adjusted=[];
+  for(let index=0;index<candidates.length;index++)adjusted.push(applyCandidateWallFaces(candidates[index],model,scale,[...adjusted,...candidates.slice(index+1),...savedPeers]));
+  return adjusted;
 }
 
 /* Adapter for the exact PDF.js 5.6.205 build embedded in this HTML. Its packed
@@ -1017,7 +1043,7 @@ function drawWallPaths(context,paths,factor,threshold,scale,texts=[],doorInches=
     doors=doorInches>0?doorOpenings.detect(paths,{scale,maxOpeningInches:Math.min(120,doorInches),wallSegments:retained}):{openings:[],warnings:[]},
     doorPaths=new Set(doors.openings.flatMap(opening=>opening.excludePathIndices)),segments=retained.filter(segment=>!doorPaths.has(segment.pathIndex));
   if(diagnostics){const walls=physicalWallGeometry(segments,scale);Object.assign(diagnostics,{admittedSegments:admitted.length,wallSegments:segments.length,ignoredSegments:admitted.length-segments.length,doorOpenings:doors.openings.length,doorWarnings:doors.warnings,
-    faceSegments:[...walls.faces,...doors.openings.flatMap(opening=>opening.closures)],bandPolygons:walls.bands});}
+    faceSegments:[...walls.faces,...doors.openings.flatMap(opening=>opening.closures)],physicalFaceSegments:walls.faces,bandPolygons:walls.bands});}
   let filled=0;
   for(const entry of paths)if(entry.fill&&entry.fillBrightness<threshold) {
     context.beginPath();
@@ -1303,19 +1329,107 @@ function applyAutomaticFiling(itemIds) {
   return plan.issues;
 }
 function syncSanitaryQuantities() {
+  for(const item of S.items)if(item.sanitarySource?.sourceKind==='manual-point'){const parent=manualSanitaryParent(item.points[0],item.page);if(parent){item.sanitarySource.parentId=parent.id;delete item.sanitarySource.roomNeedsReview;}else{delete item.sanitarySource.parentId;item.sanitarySource.roomNeedsReview=true;}}
   const parents=new Set(S.items.filter(item=>item.kind==='area').map(item=>item.id)),rejects=new Set(S.settings.sanitaryCountRejects||[]);
   S.items=S.items.filter(item=>!item.sanitarySource||parents.has(item.sanitarySource.parentId)||!item.sanitarySource.parentId&&item.sanitarySource.roomNeedsReview===true);
-  const unassignedSymbols=Object.entries(S.reviewByPage||{}).flatMap(([page,pack])=>pack.key!==S.documentKey?[]:(pack.sanitary?.pending||[]).flatMap(entry=>{const bath=pack.sanitary.baths.find(bath=>bath.id===entry.symbolId);return bath?[{page:+page,documentKey:S.documentKey,symbolId:bath.id,kind:bath.kind,basinRing:bath.basinRing}]:[];}));
+  const unassignedSymbols=Object.entries(S.reviewByPage||{}).flatMap(([page,pack])=>pack.key!==S.documentKey?[]:(pack.sanitary?.pending||[]).flatMap(entry=>{const bath=pack.sanitary.baths.find(bath=>bath.id===entry.symbolId);return bath?[{page:+page,documentKey:S.documentKey,symbolId:bath.id,kind:bath.kind,basinRing:bath.basinRing,footprintRing:bath.footprintRing,wallSupportSegments:bath.wallSupportSegments}]:[];}));
   const {proposals}=sanitaryCounts.derive({unassignedSymbols,items:S.items.filter(item=>item.kind==='area').map(item=>({...item,documentKey:S.documentKey})),existingCounts:[...S.items.filter(item=>item.kind==='count'),...(S.settings.sanitaryCountChoices||[]).map(choice=>({kind:'count',sanitaryType:choice.type,sanitarySource:{sourceKey:choice.key,classificationSource:'manual'}}))],bathUsage:'bath-shower'});
   const keys=new Set(S.items.filter(item=>item.sanitarySource).map(item=>item.sanitarySource.sourceKey));
-  for(const proposal of proposals){const existing=S.items.find(item=>item.sanitarySource?.sourceKey===proposal.sanitarySource.sourceKey);if(existing){if(proposal.sanitarySource.parentId){existing.sanitarySource.parentId=proposal.sanitarySource.parentId;delete existing.sanitarySource.roomNeedsReview;}continue;}if(rejects.has(proposal.sanitarySource.sourceKey)||S.items.length>=3000)continue;
+  for(const proposal of proposals){const existing=S.items.find(item=>item.sanitarySource?.sourceKey===proposal.sanitarySource.sourceKey);if(existing){if(proposal.sanitarySource.parentId){existing.sanitarySource.parentId=proposal.sanitarySource.parentId;delete existing.sanitarySource.roomNeedsReview;delete existing.sanitarySource.geometry;delete existing.sanitarySource.identityRing;}else{if(proposal.sanitarySource.geometry)existing.sanitarySource.geometry=structuredClone(proposal.sanitarySource.geometry);if(proposal.sanitarySource.identityRing)existing.sanitarySource.identityRing=structuredClone(proposal.sanitarySource.identityRing);}continue;}if(rejects.has(proposal.sanitarySource.sourceKey)||manualSanitaryForProposal(proposal)||S.items.length>=3000)continue;
     const item={...proposal,id:uid(),name:sanitaryTypeLabel(proposal.sanitaryType),method:'Comptage sanitaire proposé',work:{layer:'finish'},wasteConfirmed:true};
     item.work=workOf(item);S.items.push(item);keys.add(item.sanitarySource.sourceKey);}
+  refreshSanitarySpecifications();
+}
+function sanitaryChoiceDialog(type='shower',id=null) {
+  const item=id?S.items.find(row=>row.id===id&&row.sanitarySource&&row.page===S.page):null;
+  if(!S.plan||S.loading||id&&!item)return;
+  const context={page:S.page,documentKey:S.documentKey,plan:S.plan},source=item?.sanitarySource,
+    spec=source?.manualSpecification||source?.specification?.dimensions?.proposed||{},
+    wallCount=source?.manualSpecification?.wallCount??source?.specification?.wallCount,
+    width=Number.isInteger(spec.widthInches)&&spec.widthInches>=1&&spec.widthInches<=240?spec.widthInches:36,length=Number.isInteger(spec.lengthInches)&&spec.lengthInches>=1&&spec.lengthInches<=240?spec.lengthInches:48,preset=['36x48','36x60','36x36','32x60','32x48','34x54'].includes(width+'x'+length)?width+'x'+length:'other';
+  openDialog(item?'Corriger l’appareil':'Ajouter un appareil',`<form id="sanitaryChoiceForm"><label>Type<select id="sanitaryChoiceType">${['shower','bath-shower','bath','unknown'].map(value=>`<option value="${value}" ${(item?.sanitaryType||type)===value?'selected':''}>${sanitaryTypeLabel(value)}</option>`).join('')}</select></label><div class="v4-fields"><label>Format nominal (po)<select id="sanitaryChoicePreset">${['36x48','36x60','36x36','32x60','32x48','34x54'].map(value=>`<option value="${value}" ${value===preset?'selected':''}>${value.replace('x',' × ')}</option>`).join('')}<option value="other" ${preset==='other'?'selected':''}>Autre format</option></select></label><label>Murs entourant l’appareil<select id="sanitaryChoiceWalls"><option value="" ${![2,3].includes(wallCount)?'selected':''}>À vérifier</option><option value="2" ${wallCount===2?'selected':''}>2M · deux murs</option><option value="3" ${wallCount===3?'selected':''}>3M · trois murs</option></select></label><label>Largeur (po entiers)<input id="sanitaryChoiceWidth" type="number" min="1" max="240" step="1" value="${width}" required></label><label>Longueur (po entiers)<input id="sanitaryChoiceLength" type="number" min="1" max="240" step="1" value="${length}" required></label></div><p>Format déclaré par vous. ${item?'Le point et la localisation sont conservés.':'Cliquez ensuite sur le plan pour placer le point.'} Les surfaces et exclusions se corrigent dans leurs contours.</p><p id="sanitaryChoiceError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="cancelSanitaryChoice">Annuler</button><button type="submit" class="primary">${item?'Enregistrer la correction':'Placer le point'}</button></div></form>`);
+  $('#cancelSanitaryChoice').onclick=closeDialog;
+  $('#sanitaryChoicePreset').onchange=()=>{const value=$('#sanitaryChoicePreset').value;if(value!=='other'){const [w,l]=value.split('x');$('#sanitaryChoiceWidth').value=w;$('#sanitaryChoiceLength').value=l;}};
+  for(const selector of ['#sanitaryChoiceWidth','#sanitaryChoiceLength'])$(selector).oninput=()=>{$('#sanitaryChoicePreset').value='other';};
+  $('#sanitaryChoiceForm').onsubmit=event=>{event.preventDefault();try{
+    if(S.page!==context.page||S.documentKey!==context.documentKey||S.plan!==context.plan||id&&!S.items.includes(item))throw new Error('La feuille a changé. Rouvrez les options sur la feuille active.');
+    const choice=sanitaryManual.choice({type:$('#sanitaryChoiceType').value,widthInches:Number($('#sanitaryChoiceWidth').value),lengthInches:Number($('#sanitaryChoiceLength').value),wallCount:$('#sanitaryChoiceWalls').value?Number($('#sanitaryChoiceWalls').value):null});
+    if(item){const choices=(S.settings.sanitaryCountChoices||[]).filter(row=>row.key!==source.sourceKey);if(choices.length>=5000)throw new Error('Limite de choix sanitaires atteinte : exportez le projet.');remember();item.sanitaryType=choice.type;item.name=sanitaryTypeLabel(choice.type);item.sanitarySource={...item.sanitarySource,manualSpecification:choice,classificationSource:'manual',typeNeedsReview:choice.type==='unknown'};S.settings.sanitaryCountChoices=[...choices,{key:source.sourceKey,type:choice.type}];item.status='à valider';closeDialog();save();refresh();}
+    else {closeDialog();S.sanitaryDraft={...context,choice};S.tool='sanitaryPoint';S.draft=[];S.fixtureDrawing=null;S.fixtureEditing=null;refresh();canvas.focus();toast('Cliquez sur le plan pour placer '+sanitaryTypeLabel(choice.type).toLowerCase()+'. Échap pour annuler.');}
+  }catch(error){$('#sanitaryChoiceError').textContent=error.message;}};
+}
+function sanitaryCountIdentityRing(item) {
+  const source=item.sanitarySource,parent=S.items.find(row=>row.id===source.parentId&&row.page===item.page),proof=parent?.sanitaryEvidence?.find(row=>row.symbolId===source.symbolId),pack=S.reviewByPage?.[item.page];
+  // Le bassin est un indice d’identité pour éviter deux points sur le même
+  // appareil. Il ne devient jamais une emprise à déduire ni un format mesuré.
+  return parent?.fixtureCuts?.find(row=>row.hintKey===source.symbolId)?.points||proof?.footprintRing||source.geometry?.footprintRing||proof?.basinRing||source.identityRing||(pack?.key===S.documentKey?pack.sanitary?.baths?.find(row=>row.id===source.symbolId)?.basinRing:null);
+}
+
+function manualSanitaryForProposal(proposal) {
+  const footprint=sanitaryCountIdentityRing(proposal);
+  return S.items.find(row=>row.kind==='count'&&row.page===proposal.page&&row.sanitarySource?.sourceKind==='manual-point'&&row.points.length===1&&(footprint?inside(row.points[0],footprint):dist(row.points[0],proposal.points[0])<1e-6));
+}
+
+function manualSanitaryParent(point,page) {
+  const parents=S.items.filter(row=>row.kind==='area'&&row.page===page&&surfaceSpaceType(row)==='bathroom'&&inside(point,row.points));
+  return parents.length===1?parents[0]:null;
+}
+function placeManualSanitary(point) {
+  const draft=S.sanitaryDraft;
+  if(!draft||draft.page!==S.page||draft.documentKey!==S.documentKey||draft.plan!==S.plan){S.sanitaryDraft=null;S.tool='select';refresh();return toast('Placement annulé : la feuille a changé.');}
+  if(!Number.isFinite(point.x)||!Number.isFinite(point.y)||point.x<0||point.y<0||point.x>S.plan.width||point.y>S.plan.height)return toast('Placez le point à l’intérieur de la feuille.');
+  if(S.items.length>=3000)return toast('Limite de mesures atteinte : exportez le projet.');
+  const existing=S.items.find(row=>row.page===S.page&&row.sanitarySource&&(row.points.some(p=>dist(p,point)<=8/S.zoom)||(sanitaryCountIdentityRing(row)&&inside(point,sanitaryCountIdentityRing(row)))));
+  if(existing){S.tool='select';S.sanitaryDraft=null;selectItem(existing.id);return toast('Un appareil est déjà pointé ici. Utilisez ses options pour le corriger.');}
+  const choice=sanitaryManual.choice(draft.choice),id=uid(),parent=manualSanitaryParent(point,S.page),source={sourceKey:JSON.stringify([S.documentKey,S.page,'manual:'+id]),symbolId:'manual:'+id,sourceKind:'manual-point',classificationSource:'manual',typeNeedsReview:choice.type==='unknown',manualSpecification:choice,initialChoice:structuredClone(choice),...(parent?{parentId:parent.id}:{roomNeedsReview:true})};
+  remember();const item={id,kind:'count',name:sanitaryTypeLabel(choice.type),material:'QT-01',qty:1,waste:0,wasteConfirmed:true,status:'à valider',method:'Comptage sanitaire manuel',points:[{x:point.x,y:point.y}],page:S.page,sanitaryType:choice.type,sanitarySource:source,work:{layer:'finish',...(parent?{block:workOf(parent).block,level:workOf(parent).level,unit:workOf(parent).unit,type:workOf(parent).type}:{})}};
+  item.work=workOf(item);S.items.push(item);const filingIssues=applyAutomaticFiling([id]);S.tool='select';S.sanitaryDraft=null;setSelection([id]);save();refresh();toast(filingIssues.length?'Appareil ajouté. Dossier à choisir : limite de dossiers atteinte.':'Appareil ajouté dans Salles de bain. Ctrl+Z pour annuler.');
+}
+function resetSanitaryChoice(id) {
+  const item=S.items.find(row=>row.id===id&&row.page===S.page&&row.sanitarySource);if(!item)return;
+  remember();const source=item.sanitarySource;S.settings.sanitaryCountChoices=(S.settings.sanitaryCountChoices||[]).filter(row=>row.key!==source.sourceKey);
+  if(source.sourceKind==='manual-point'){
+    const initial=sanitaryManual.choice(source.initialChoice);source.manualSpecification=initial;item.sanitaryType=initial.type;source.classificationSource='manual';source.typeNeedsReview=initial.type==='unknown';
+  }else{
+    delete source.manualSpecification;
+    const parent=S.items.find(row=>row.id===source.parentId&&row.page===item.page),evidence=parent?.sanitaryEvidence?.find(row=>row.symbolId===source.symbolId),cut=parent?.fixtureCuts?.find(row=>row.hintKey===source.symbolId)||parent?.fixturePending?.find(row=>row.key===source.symbolId),kind=evidence?.kind||cut?.type||(source.symbolId.startsWith('shower:')?'shower':source.symbolId.startsWith('bath:')?'bath':'unknown');
+    item.sanitaryType=kind==='bath'?'bath-shower':kind;source.classificationSource=kind==='bath'?'project-default':source.sourceKind;source.typeNeedsReview=!['shower','bath-shower'].includes(kind);
+  }
+  item.name=sanitaryTypeLabel(item.sanitaryType);item.status='à valider';save();refresh();toast('Type et format réinitialisés. Le point et la localisation sont conservés.');
+}
+function sanitaryMenuEntries(item) {
+  const entries=[{id:'custom-add-shower',label:'Ajouter une douche…',run:()=>sanitaryChoiceDialog('shower')},{id:'custom-add-bath-shower',label:'Ajouter un bain-douche…',run:()=>sanitaryChoiceDialog('bath-shower')}];
+  if(item?.sanitarySource)entries.unshift(
+    {id:'custom-sanitary-format',label:'Type, dimensions et murs…',run:()=>sanitaryChoiceDialog(item.sanitaryType,item.id)},
+    {id:'custom-sanitary-type',label:item.sanitaryType==='shower'?'Changer en bain-douche':'Changer en douche',run:()=>changeSanitaryType(item.id,item.sanitaryType==='shower'?'bath-shower':'shower')},
+    {id:'custom-sanitary-reset',label:'Réinitialiser le type et le format',run:()=>resetSanitaryChoice(item.id)},
+    {id:'custom-sanitary-delete',label:'Supprimer cet appareil',run:()=>{selectItem(item.id);deleteSelection();}});
+  return entries;
 }
 function sanitaryTypeLabel(type){return ({shower:'Douche','bath-shower':'Bain-douche',bath:'Bain seul',unknown:'Équipement à identifier'})[type]||'Équipement à identifier';}
+function sanitarySpecificationFor(item,state=S) {
+  const source=item.sanitarySource;if(!source)return null;
+  if(source.manualSpecification)return sanitaryManual.specification({...source.manualSpecification,type:item.sanitaryType});
+  const parent=state.items.find(row=>row.id===source.parentId&&row.kind==='area'&&row.page===item.page),
+    proof=parent?.sanitaryEvidence?.find(row=>row.symbolId===source.symbolId)||(!source.parentId?source.geometry:null);
+  if(!Array.isArray(proof?.footprintRing))return null;
+  const corrected=parent?.fixtureCuts?.find(cut=>cut.hintKey===source.symbolId)?.points;
+  return sanitaryDimensions.analyze({footprintRing:corrected||proof.footprintRing,scale:state.scales[item.page],wallSegments:proof.wallSupportSegments,scaleVerified:state.scaleMeta?.[item.page]?.verified===true});
+}
+function refreshSanitarySpecifications(page=null) {
+  for(const item of S.items){if(!item.sanitarySource||page!==null&&item.page!==page)continue;
+    const source=item.sanitarySource,result=sanitarySpecificationFor(item),previous=source.specificationLabel,
+      automatic=item.name===previous||['shower','bath-shower','bath','unknown'].map(sanitaryTypeLabel).includes(item.name);
+    if(!result){delete source.specification;delete source.specificationLabel;if(previous&&item.name===previous)item.name=sanitaryTypeLabel(item.sanitaryType);continue;}
+    source.specification=result;
+    const dimensions=result.dimensions?.proposed?.label,label=(item.sanitaryType==='bath-shower'?'BD':sanitaryTypeLabel(item.sanitaryType))+
+      (dimensions?' '+dimensions:' · dimensions à préciser')+(result.wallConfiguration?'-'+result.wallConfiguration:' · murs à vérifier')+(result.needsReview?' · à vérifier':'');
+    source.specificationLabel=label;if(automatic)item.name=label;
+  }
+}
 function changeSanitaryType(id,type) {
   const item=S.items.find(item=>item.id===id&&item.sanitarySource);if(!item||!['shower','bath-shower','bath','unknown'].includes(type))return;
-  remember();const choices=(S.settings.sanitaryCountChoices||[]).filter(choice=>choice.key!==item.sanitarySource.sourceKey);choices.push({key:item.sanitarySource.sourceKey,type});if(choices.length>5000)return toast('Limite de choix sanitaires atteinte : exportez le projet.');S.settings={...S.settings,sanitaryCountChoices:choices};item.sanitaryType=type;item.name=sanitaryTypeLabel(type);item.sanitarySource={...item.sanitarySource,classificationSource:'manual',typeNeedsReview:type==='unknown'};item.status='à valider';save();refresh();
+  remember();const choices=(S.settings.sanitaryCountChoices||[]).filter(choice=>choice.key!==item.sanitarySource.sourceKey);choices.push({key:item.sanitarySource.sourceKey,type});if(choices.length>5000)return toast('Limite de choix sanitaires atteinte : exportez le projet.');S.settings={...S.settings,sanitaryCountChoices:choices};item.sanitaryType=type;item.name=sanitaryTypeLabel(type);item.sanitarySource={...item.sanitarySource,classificationSource:'manual',typeNeedsReview:type==='unknown'};item.status='à valider';refreshSanitarySpecifications(item.page);save();refresh();
 }
 function synchronizeDetected(candidates) {
   const accepted=[],skipped=[];
@@ -1354,6 +1468,23 @@ function closeReview() {
   $('.app').classList.remove('review-open');
   $('#inspector').hidden=innerWidth<780;
   refreshWorkflow();
+}
+function renderTakeoffSummary() {
+  const host=$('#takeoffSummary');if(!host)return;
+  host.hidden=!S.plan;if(!S.plan)return;
+  const records=S.items.filter(item=>item.page===S.page).flatMap(item=>{
+    const work=workOf(item),isCeramic=item.material.startsWith('CER');
+    const base={id:item.id,documentKey:S.documentKey,page:item.page,isCeramic,included:work.included&&work.layer==='finish',confirmed:isConfirmed(item)};
+    if(item.sanitarySource)return [{...base,kind:'sanitary',quantity:measureForEstimate(item),sanitaryType:item.sanitaryType,typeNeedsReview:item.sanitarySource.typeNeedsReview}];
+    if(isWallTakeoff(item))return [{...base,kind:item.wallTakeoff?.type==='backsplash'?'backsplash':'wall',quantity:wallTakeoffQuantity(item)}];
+    if(item.kind==='area')return [{...base,kind:'floor',quantity:measureForEstimate(item)}];
+    return [];
+  });
+  const result=takeoffSummary.summarize({records,page:S.page}),labels={floorTotal:'Total plancher',ceramicFloor:'dont céramique',ceramicWall:'Céramique murale',showers:'Douches',bathShowers:'Bains-douches',backsplashes:'Dosserets'},values=Object.entries(labels).map(([key,label])=>{
+    const metric=result.metrics[key],unit=metric.unit==='sqft'?' pi²':'',amount=metric.total===null?fmt(metric.knownTotal,metric.unit==='sqft'?1:0)+' + ?':fmt(metric.total,metric.unit==='sqft'?1:0),details='Confirmé : '+fmt(metric.knownConfirmed)+' · À valider : '+fmt(metric.knownPending)+(metric.unknown?' · À compléter : '+metric.unknown:'');
+    return `<span class="takeoff-summary-value" data-summary-metric="${key}" title="${esc(details)}"><span>${label}</span><b>${amount}${unit}</b></span>`;
+  }).join('');
+  host.innerHTML=`<span class="takeoff-summary-scope">Feuille ${S.page}<small>Net unique · brouillons inclus</small></span>${values}<span class="takeoff-summary-state">${result.incomplete?'Quantités à compléter':!records.some(row=>row.included)?'Aucun relevé':records.some(row=>row.included&&!row.confirmed)||Object.values(result.metrics).some(metric=>metric.knownPending>0)?'À valider':'Relevé confirmé'}${S.scaleMeta?.[S.page]?.verified!==true?' · échelle à vérifier':''}<small>Sans pertes ni répétitions</small></span>`;
 }
 function refreshWorkflow() {
   if (!$('#stepDetect')) return;
@@ -1408,14 +1539,21 @@ function validateDetectionOptions(settings,pages=S.pages) {
   if(settings?.splitSingleDwelling!==undefined&&typeof settings.splitSingleDwelling!=='boolean')throw new Error('Le réglage de séparation des logements doit être un booléen.');
   if(settings?.sanitaryRejects!==undefined&&(!Array.isArray(settings.sanitaryRejects)||settings.sanitaryRejects.length>5000||new Set(settings.sanitaryRejects).size!==settings.sanitaryRejects.length||!settings.sanitaryRejects.every(key=>typeof key==='string'&&key.startsWith('sanitary:')&&key.length<=600)))throw new Error('Les refus de symboles sanitaires sont invalides.');
 }
+function validateSanitaryWallSupport(value) {
+  if(value===undefined)return;
+  const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<1e7&&Math.abs(p.y)<1e7;
+  if(!Array.isArray(value)||value.length>1024||value.some(s=>!s||!point(s.a)||!point(s.b)))throw new Error('Les appuis muraux sanitaires sont invalides.');
+}
 function validateSanitaryData(item) {
   if(item.sanitaryEvidence===undefined)return;
   if(item.kind!=='area'||!Array.isArray(item.sanitaryEvidence)||item.sanitaryEvidence.length>50)throw new Error('Les indices sanitaires sont invalides.');
-  const ids=new Set(),allowed=['symbolId','kind','source','status','basinRing','drainRing','roomAssociation','associationMode','requiresFootprintReview','footprintRing','footprintSource'],ring=value=>Array.isArray(value)&&value.length>=3&&value.length<=512&&value.every(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&Math.abs(point.x)<1e7&&Math.abs(point.y)<1e7);
+  const ids=new Set(),allowed=['symbolId','kind','source','status','basinRing','drainRing','roomAssociation','associationMode','requiresFootprintReview','footprintRing','footprintSource','wallSupportSegments','wallEvidenceSource'],ring=value=>Array.isArray(value)&&value.length>=3&&value.length<=512&&value.every(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&Math.abs(point.x)<1e7&&Math.abs(point.y)<1e7);
   for(const entry of item.sanitaryEvidence) {
     if(!entry||typeof entry!=='object'||Object.keys(entry).some(key=>!allowed.includes(key))||typeof entry.symbolId!=='string'||!/^(?:bath|shower):[\d:-]{1,150}$/.test(entry.symbolId)||ids.has(entry.symbolId)||!['bath','shower'].includes(entry.kind)||!entry.symbolId.startsWith(entry.kind+':')||entry.source!=='vector-shape'||entry.status!=='proposed'||entry.roomAssociation!=='geometry-adjacency'||!['contains','adjacent'].includes(entry.associationMode)||entry.requiresFootprintReview!==true||!ring(entry.basinRing)||!ring(entry.drainRing))throw new Error('Une preuve sanitaire est invalide.');
     if(entry.footprintRing!==undefined&&(!Array.isArray(entry.footprintRing)||entry.footprintRing.length!==4||!validPolygon(entry.footprintRing)||entry.footprintSource!=='vector-outer-outline'||!containsRing({points:entry.footprintRing},entry.basinRing)))throw new Error('Le contour extérieur proposé de l’équipement est invalide.');
     if(entry.footprintSource!==undefined&&entry.footprintRing===undefined)throw new Error('Le contour extérieur de l’équipement est absent.');
+    if(entry.wallSupportSegments!==undefined)validateSanitaryWallSupport(entry.wallSupportSegments);
+    if(entry.wallEvidenceSource!==undefined&&(entry.wallEvidenceSource!=='physical-vector-after-furniture-filter'||entry.wallSupportSegments===undefined))throw new Error('La provenance des murs sanitaires est invalide.');
     ids.add(entry.symbolId);
   }
 }
@@ -1745,7 +1883,7 @@ async function runDetectionPages(pages) {
       candidates=candidates.slice(0,3000).map((candidate,n)=>({...candidate,page,selected:candidate.selected&&(!candidate.unnamed||candidate.bathroom||candidate.spaceType==='circulation'||(candidate.floorEvidence?candidate.floorEvidence.inside>0&&candidate.floorEvidence.outside===0:!hasNames)),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
       candidates=candidates.map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
       model.minimumCandidateArea=settings.minArea;
-      candidates=groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material).map(candidate=>applyCandidateWallFaces(candidate,model,scale)).map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
+      candidates=applyAllCandidateWallFaces(groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material),model,scale,S.items).map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
       const provenance={...detected.provenance,warnings:[...new Set([...detected.warnings,...sanitary.warnings,...model.wallDiagnostics.faceWarnings||[]])]};
       candidates=candidates.map(candidate=>({...applyDetectionBaseboard(candidate,job.key,page),detectionProvenance:provenance}));
       S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:LOCAL_ROOM_ENGINE_VERSION,provenance,sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
@@ -4013,7 +4151,64 @@ const planAnnotations = (function createPlanAnnotations() {
     }
     return { paths: ids.size ? paths.filter((_, i) => !ids.has(i)) : paths, removed };
   }
-  return { analyze, filter: (paths, texts, labels) => analyze(paths, texts, labels).paths };
+  function equipmentMarkers(paths,{scale,regions=[]}={}) {
+    const excluded=new Set(),evidence=[],warnings=[],result=()=>({excludePathIndices:[...excluded].sort((a,b)=>a-b),evidence,warnings});
+    if(!Number.isFinite(scale)||scale<=0||!Array.isArray(paths)||paths.length>250000||!Array.isArray(regions)||regions.length>2000)return result();
+    const rings=regions.filter(r=>r?.kind==='kitchen'&&r.source==='vector-kitchen-furniture'&&r.status==='proposed').flatMap(r=>r.footprintRings||[])
+      .filter(r=>Array.isArray(r)&&r.length>=3&&r.length<=512&&r.every(finite));
+    if(!rings.length)return result();
+    let work=0;const limit={};const spend=(n=1)=>{if((work+=n)>8000000)throw limit;};
+    const inside=(p,ring)=>{let yes=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      spend();const a=ring[j],b=ring[i],dx=b.x-a.x,dy=b.y-a.y,n=dx*dx+dy*dy,t=n?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/n)):0;
+      if(Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy)*scale<=.005)return true;
+      if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)yes=!yes;
+    }return yes;};
+    const coherent=(a,b)=>Math.abs(a.width-b.width)<=Math.max(a.width,b.width)*.05&&Math.abs(a.brightness-b.brightness)<=2;
+    const circles=[],lines=[],cells=new Map(),cell=2/scale;
+    try{
+      for(let id=0;id<paths.length;id++){
+        spend();const e=paths[id],p=e?.path;
+        if(!e||e.stroke===false||e.fill||!Number.isFinite(e.width)||e.width<=0||e.width*scale>=.125||!Number.isFinite(e.brightness)||e.brightness<0||e.brightness>60||
+          !Array.isArray(p)||p.length<6||p.length>4096)continue;
+        const points=[];let valid=true,moves=0;
+        for(let i=0;i<p.length;){spend();const code=p[i++];if(code===4){if(points.length)points.push({...points[0]});continue;}
+          if(code!==0&&code!==1||i+2>p.length||code===0&&moves++){valid=false;break;}
+          const q={x:p[i++],y:p[i++]};if(!finite(q)||Math.abs(q.x)>1e7||Math.abs(q.y)>1e7){valid=false;break;}points.push(q);
+        }
+        if(!valid)continue;
+        if(points.length===2){const [a,b]=points,len=distance(a,b);if(!len)continue;
+          const row={id,a,b,len,width:e.width,brightness:e.brightness},key=Math.floor((a.x+b.x)/2/cell)+','+Math.floor((a.y+b.y)/2/cell);
+          lines.push(row);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(row);continue;
+        }
+        if(points.length<9||points.length>65||distance(points[0],points.at(-1))*scale>.005)continue;
+        points.pop();const x=Math.min(...points.map(q=>q.x)),right=Math.max(...points.map(q=>q.x)),y=Math.min(...points.map(q=>q.y)),bottom=Math.max(...points.map(q=>q.y)),
+          center={x:(x+right)/2,y:(y+bottom)/2},radius=(right-x+bottom-y)/4;
+        if(radius*scale<.15||radius*scale>1||Math.abs((right-x)/(bottom-y)-1)>.06||points.some(q=>Math.abs(distance(q,center)/radius-1)>.06))continue;
+        if(!rings.some(r=>points.every(q=>inside(q,r))))continue;
+        circles.push({id,center,radius,points,width:e.width,brightness:e.brightness});
+      }
+      for(const circle of circles){
+        const {center,radius}=circle,gx=Math.floor(center.x/cell),gy=Math.floor(center.y/cell),near=[];
+        for(let x=gx-1;x<=gx+1;x++)for(let y=gy-1;y<=gy+1;y++)near.push(...cells.get(x+','+y)||[]);
+        if(near.length>256){warnings.push('Voisinage de symbole électrique ambigu : annotation conservée.');continue;}
+        const bars=near.filter(l=>{spend();if(!coherent(l,circle)||l.len<2*radius||l.len>4*radius||Math.max(distance(l.a,center),distance(l.b,center))>3*radius)return false;
+          const ux=(l.b.x-l.a.x)/l.len,uy=(l.b.y-l.a.y)/l.len,t=(center.x-l.a.x)*ux+(center.y-l.a.y)*uy;
+          return t>=0&&t<=l.len&&Math.abs((center.x-l.a.x)*uy-(center.y-l.a.y)*ux)<radius*.75;
+        });
+        for(let i=0;i<bars.length;i++)for(let j=i+1;j<bars.length;j++){
+          spend();const a=bars[i],b=bars[j],ux=(a.b.x-a.a.x)/a.len,uy=(a.b.y-a.a.y)/a.len,bx=(b.b.x-b.a.x)/b.len,by=(b.b.y-b.a.y)/b.len;
+          if(Math.abs(ux*bx+uy*by)<.9995||Math.abs(a.len-b.len)>a.len*.15)continue;
+          const da=(a.a.x-center.x)*uy-(a.a.y-center.y)*ux,db=(b.a.x-center.x)*uy-(b.a.y-center.y)*ux,gap=Math.abs(da-db);
+          if(da*db>=0||gap<radius*.25||gap>radius*1.5||Math.abs((da+db)/2)>radius*.1)continue;
+          if(!rings.some(r=>[...circle.points,a.a,a.b,b.a,b.b].every(q=>inside(q,r))))continue;
+          for(const id of [circle.id,a.id,b.id])excluded.add(id);
+          evidence.push({kind:'equipment-marker',source:'circle-parallel-bars-in-proven-kitchen',center:{...center},radiusFeet:radius*scale,pathIndices:[circle.id,a.id,b.id]});
+        }
+      }
+    }catch(error){if(error!==limit)throw error;warnings.push('Budget de symboles électriques atteint : annotations restantes conservées.');}
+    return result();
+  }
+  return { analyze, equipmentMarkers, filter: (paths, texts, labels) => analyze(paths, texts, labels).paths };
 })();
 const workspaceLayout = (function createWorkspaceLayout() {
   const key = 'estimation-panel-layout-v1';
@@ -5289,7 +5484,17 @@ const bathroomFurniture = (function createBathroomFurniture() {
     }
     const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<=1e9&&Math.abs(p.y)<=1e9&&
       Math.abs(p.x*scale)<=1e12&&Math.abs(p.y*scale)<=1e12;
-    const contexts=options.baths.filter(b=>b?.source==='vector-shape'&&b.status==='proposed'&&
+    const kitchenMode=options.kitchenLabels!==undefined;
+    if(kitchenMode&&(!Array.isArray(options.kitchenLabels)||options.kitchenLabels.length>100000)){
+      warn('Étiquettes cuisine invalides ou trop nombreuses : analyse non exécutée.');return result();
+    }
+    const kitchenLabels=kitchenMode?options.kitchenLabels.filter(l=>l&&/^(?:C|REF|LV)$/.test(String(l.text).trim())&&point({x:l.cx,y:l.cy})):[];
+    if(kitchenLabels.length>200){warn('Limite de 200 repères cuisine atteinte : analyse non exécutée.');return result();}
+    const contexts=kitchenMode?kitchenLabels.filter(l=>kitchenLabels.some(other=>other!==l&&other.text!==l.text&&
+      dist({x:l.cx,y:l.cy},{x:other.cx,y:other.cy})*scale<=10)).map(l=>({
+      id:'kitchen:'+l.text+':'+l.cx+':'+l.cy,kitchenAnchor:l,
+      search:{x:l.cx-8/scale,y:l.cy-8/scale,right:l.cx+8/scale,bottom:l.cy+8/scale}
+    })):options.baths.filter(b=>b?.source==='vector-shape'&&b.status==='proposed'&&
       Array.isArray(b.footprintRing)&&b.footprintRing.length>=4&&b.footprintRing.length<=10000&&b.footprintRing.every(point)&&
       Array.isArray(b.basinRing)&&b.basinRing.length>=4&&b.basinRing.length<=10000&&b.basinRing.every(point)).map(b=>({...b,
         search:{x:Math.min(...b.footprintRing.map(p=>p.x))-8/scale,right:Math.max(...b.footprintRing.map(p=>p.x))+8/scale,
@@ -5298,8 +5503,8 @@ const bathroomFurniture = (function createBathroomFurniture() {
     let work=0,invalid=0;const exhausted={};
     function spend(n=1){work+=n;if(work>MAX_WORK){warn('Budget de calcul atteint : analyse du mobilier sanitaire partielle.');throw exhausted;}}
     const project=(p,o,u)=>dot(minus(p,o),u)*scale;
-    const coherent=(a,b)=>Math.abs(a.brightness-b.brightness)<=24&&Math.max(a.width,b.width)/Math.min(a.width,b.width)<=2;
-    const weak=p=>p.brightness>60&&p.brightness<=225&&p.width*scale<.08&&!p.fill&&p.stroke!==false;
+    const coherent=(a,b)=>Math.abs(a.brightness-b.brightness)<=24&&Math.max(a.width,b.width)/Math.min(a.width,b.width)<=3;
+    const weak=p=>p.brightness>60&&p.brightness<=225&&p.width*scale<.11&&!p.fill&&p.stroke!==false;
     const length=p=>dist(p.points[0],p.points.at(-1))*scale;
     function segmentDistance(p,a,b){const d=minus(b,a),l=dot(d,d),t=l?Math.max(0,Math.min(1,dot(minus(p,a),d)/l)):0;
       return Math.hypot(p.x-a.x-t*d.x,p.y-a.y-t*d.y);}
@@ -5307,6 +5512,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
       spend();const a=ring[i],b=ring[j];if(segmentDistance(p,a,b)*scale<=TOL)return true;
       if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)yes=!yes;}return yes;}
     function nearContext(p,b){spend();const box=b.search;if(p.x<box.x||p.x>box.right||p.y<box.y||p.y>box.bottom)return false;
+      if(b.kitchenAnchor)return true;
       const r=b.footprintRing;if(inside(p,r))return true;
       return r.some((a,i)=>{spend();return segmentDistance(p,a,r[(i+1)%r.length])*scale<=8;});}
     function parse(entry,index){
@@ -5388,7 +5594,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
       return found;
     }
     // Four independently present faces, with actual short corner connectors.
-    function rectangles(lines,nearLines,nearAll,min,max){const result=[];
+    function rectangles(lines,nearLines,nearAll,min,max,allowOpen=false){const result=[];
       for(let i=0;i<lines.length;i++){const a=lines[i],la=length(a);if(la<min||la>max)continue;const aa=a.points[0],ab=a.points.at(-1),u=minus(ab,aa),n=dist(aa,ab);u.x/=n;u.y/=n;const v={x:-u.y,y:u.x};
         for(let j=i+1;j<lines.length;j++){spend();const b=lines[j],lb=length(b);if(lb<min||lb>max||!coherent(a,b))continue;
           let ba=b.points[0],bb=b.points.at(-1);if(project(ba,aa,u)>project(bb,aa,u))[ba,bb]=[bb,ba];
@@ -5398,7 +5604,14 @@ const bathroomFurniture = (function createBathroomFurniture() {
             const c=dist(e.points[0],p)<dist(e.points.at(-1),p)?e.points[0]:e.points.at(-1),d=c===e.points[0]?e.points.at(-1):e.points[0];
             if(dist(c,p)*scale>.12||dist(d,q)*scale>.12)continue;
             const one=connectable(p,c,nearAll,a),two=connectable(q,d,nearAll,a);if(one!==null&&two!==null)faces.push({edge:e,parts:[e,...one,...two]});}return faces;}
-          for(const x of endFaces(aa,ba))for(const y of endFaces(ab,bb)){spend();if(x.edge===y.edge)continue;
+          const first=endFaces(aa,ba),last=endFaces(ab,bb);
+          // A U is only a furniture hypothesis here. It never closes the wall
+          // mask, and its caller must independently prove the sink and tap.
+          if(allowOpen&&((first.length===0)!==(last.length===0)))for(const end of first.length?first:last){
+            const parts=[a,b,...end.parts],ring=[aa,ab,bb,ba,aa].map(copy),box=bounds(ring,aa,u,v);
+            result.push({parts,ring,faces:[a,b,end.edge],origin:aa,u,v,bounds:box,open:true,openSide:first.length?[ab,bb]:[aa,ba]});
+          }
+          for(const x of first)for(const y of last){spend();if(x.edge===y.edge)continue;
             const parts=[a,b,...x.parts,...y.parts],ring=join(parts);if(!ring)continue;const box=bounds(ring,aa,u,v);
             result.push({parts,ring,faces:[a,b,x.edge,y.edge],origin:aa,u,v,bounds:box});}
         }}return result;
@@ -5452,6 +5665,45 @@ const bathroomFurniture = (function createBathroomFurniture() {
             }}}
       }return found;
     }
+    function roundedTapBasins(lines,nearLines,nearAll){
+      const found=[],bases=rectangles(lines,nearLines,nearAll,.05,.35,true);
+      for(const bowl of rectangles(lines,nearLines,nearAll,.5,3.5,true)){
+        if(!bowl.open)continue;
+        const [a,b]=bowl.openSide,len=dist(a,b),u={x:(b.x-a.x)/len,y:(b.y-a.y)/len},v={x:-u.y,y:u.x},span=len*scale;
+        const fragments=lines.filter(p=>coherent(p,bowl.parts[0])&&p.points.every(q=>Math.abs(project(q,a,v))<=.005)).map(p=>{
+          const values=p.points.map(q=>project(q,a,u));return {p,lo:Math.min(...values),hi:Math.max(...values)};
+        }).filter(p=>p.lo>=-TOL&&p.hi<=span+TOL).sort((p,q)=>p.lo-q.lo),merged=[];
+        for(const f of fragments){const last=merged.at(-1);if(last&&f.lo<=last.hi+TOL)last.hi=Math.max(last.hi,f.hi);else merged.push({...f});}
+        if(merged.length!==2||merged[0].lo>TOL||merged[1].hi<span-TOL)continue;
+        const low=merged[0].hi,high=merged[1].lo;if(high-low<.025||high-low>.2)continue;
+        const crossing=[];
+        for(const p of lines){spend();if(!coherent(p,bowl.parts[0])||length(p)<.1||length(p)>.8)continue;
+          const c=p.points[0],d=p.points.at(-1),dc=project(c,a,v),dd=project(d,a,v);if(dc*dd>=0)continue;
+          const t=dc/(dc-dd),hit={x:c.x+(d.x-c.x)*t,y:c.y+(d.y-c.y)*t},position=project(hit,a,u);
+          if(position<low-.02||position>high+.02)continue;
+          const endpoint=inside(c,bowl.ring)?c:inside(d,bowl.ring)?d:null;if(endpoint)crossing.push({p,endpoint,outside:endpoint===c?d:c,position});
+        }
+        let proven=false;
+        for(let i=0;i<crossing.length&&!proven;i++)for(let j=i+1;j<crossing.length&&!proven;j++){
+          const x=crossing[i],y=crossing[j],gap=dist(x.endpoint,y.endpoint)*scale;
+          if(gap<.02||gap>.25||Math.abs(x.position-y.position)<.02)continue;
+          const base=bases.find(p=>coherent(p.parts[0],x.p)&&inside(x.outside,p.ring)&&inside(y.outside,p.ring));if(!base)continue;
+          // The real connecting tip may be curved. No imaginary bridge joins
+          // the tap, the interrupted rim, or the enclosing cabinet.
+          const tip=(at,used=[],total=0)=>{
+            if(dist(at,y.endpoint)*scale<=TOL)return used;if(used.length>=4)return null;
+            for(const p of nearAll(at,TOL)){spend();if(used.includes(p)||p===x.p||p===y.p||!coherent(p,x.p)||!p.points.every(q=>inside(q,bowl.ring)))continue;
+              const cost=p.points.slice(1).reduce((sum,q,k)=>sum+dist(q,p.points[k])*scale,0);if(total+cost>.5)continue;
+              const first=p.points[0],last=p.points.at(-1),next=dist(first,at)*scale<=TOL?last:dist(last,at)*scale<=TOL?first:null;
+              if(next){const joined=tip(next,[...used,p],total+cost);if(joined)return joined;}
+            }return null;
+          };
+          const joined=tip(x.endpoint);if(joined)proven={basinRing:bowl.ring,parts:[...bowl.parts,...fragments.map(f=>f.p),x.p,y.p,...joined,...base.parts]};
+        }
+        if(proven)found.push(proven);
+      }
+      return found;
+    }
     function emit(kind,parts,rings,protectedParts,anchors,local,bath){
       const points=rings.flat(),cx=(Math.min(...points.map(p=>p.x))+Math.max(...points.map(p=>p.x)))/2,
         cy=(Math.min(...points.map(p=>p.y))+Math.max(...points.map(p=>p.y)))/2;
@@ -5460,7 +5712,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
       const roleSegments=parts.flatMap(p=>p.points.slice(1).map((b,i)=>({a:p.points[i],b}))),style=parts[0];
       for(const p of local){spend();if(!weak(p)||!coherent(p,style)||p.ids.some(i=>protectedIds.has(i))||!p.points.every(q=>rings.some(r=>inside(q,r))))continue;
         const tolerance=kind==='wc'?.04:TOL;
-        if(!p.points.every(q=>roleSegments.some(s=>segmentDistance(q,s.a,s.b)*scale<=tolerance)))continue;
+        if(kind!=='kitchen'&&!p.points.every(q=>roleSegments.some(s=>segmentDistance(q,s.a,s.b)*scale<=tolerance)))continue;
         // Verify complete segments too: two endpoints on a symbol never prove
         // that an unrelated diagonal crossing its interior belongs to it.
         let whole=true,samples=0;
@@ -5468,7 +5720,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
           const a=p.points[k-1],b=p.points[k],steps=Math.max(1,Math.ceil(dist(a,b)*scale/.02));
           if((samples+=steps)>4096){whole=false;warn('Limite de vérification d’un chemin atteinte : analyse du mobilier partielle.');break;}
           for(let j=1;j<steps;j++){spend();const t=j/steps,q={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
-            if(!rings.some(r=>inside(q,r))||!roleSegments.some(s=>segmentDistance(q,s.a,s.b)*scale<=tolerance)){whole=false;break;}}
+            if(!rings.some(r=>inside(q,r))||kind!=='kitchen'&&!roleSegments.some(s=>segmentDistance(q,s.a,s.b)*scale<=tolerance)){whole=false;break;}}
         }
         if(!whole)continue;
         // A shared wall face is retained regardless of colour or pen width.
@@ -5476,7 +5728,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
         accepted.push(...p.ids);
       }
       const ids=[...new Set(accepted)].sort((a,b)=>a-b);if(!ids.length)return;
-      evidence.push({kind,source:'vector-bathroom-furniture',status:'proposed',bathId:bath.id,
+      evidence.push({kind,source:kind==='kitchen'?'vector-kitchen-furniture':'vector-bathroom-furniture',status:'proposed',...(kind==='kitchen'?{kitchenId:bath.id}:{bathId:bath.id}),
         pathIndices:[...new Set(parts.flatMap(p=>p.ids||[]))].sort((a,b)=>a-b),excludePathIndices:ids,
         protectedPathIndices:[...protectedIds].sort((a,b)=>a-b),wallSupportPathIndices:[...new Set(anchors.flatMap(p=>p.ids))].sort((a,b)=>a-b),
         footprintRings:rings.map(r=>r.map(copy)),center:{x:cx,y:cy},...(kind==='vanity'?{drainRequired:false}:{}),
@@ -5497,10 +5749,38 @@ const bathroomFurniture = (function createBathroomFurniture() {
       anchorNear=wallIndex(anchors);
       for(const bath of contexts){const local=parsed.filter(p=>nearContext(p.points[Math.floor(p.points.length/2)],bath));
         if(local.length>4096){warn('Limite des chemins locaux atteinte : analyse du mobilier partielle.');continue;}
-        const lines=local.filter(p=>p.line),mainLines=lines.filter(p=>length(p)>=.25&&length(p)<=6),nearLines=index(lines),nearAll=index(local);
+        const lines=local.filter(p=>p.line),mainLines=lines.filter(p=>length(p)>=.25&&length(p)<=(kitchenMode?12:6)),nearLines=index(lines),nearAll=index(local);
         // Micro-strokes may prove a tap, but cannot be the principal face of
         // either accepted fixture. They do not consume the pair-search budget.
         if(mainLines.length>MAX_LOCAL){warn('Limite de 512 faces principales locales atteinte : analyse du mobilier partielle.');continue;}
+        if(kitchenMode){
+          // Four real faces plus nearby, distinct appliance labels prove a
+          // cabinet/counter context. A rectangle alone is never discarded.
+          const subEdges=[];
+          // PDF polylines may contain two or three adjacent cabinet faces.
+          // Split their existing straight edges, never invent a corner or gap.
+          for(const p of local)if(!p.line)for(let i=1;i<p.points.length;i++){
+            spend();const a=p.points[i-1],b=p.points[i];if(dist(a,b)*scale<.25)continue;
+            subEdges.push({...p,closed:false,line:true,points:[a,b]});
+          }
+          const faces=[...mainLines,...subEdges];
+          if(faces.length>MAX_LOCAL){warn('Limite des faces cuisine atteinte : analyse du mobilier partielle.');continue;}
+          const nearFaces=index([...lines,...subEdges]);
+          let tapBasins;
+          for(const panel of rectangles(faces,nearFaces,nearAll,.75,12,true)){
+            const dimensions=[panel.bounds.hi-panel.bounds.lo,panel.bounds.top-panel.bounds.bottom].sort((a,b)=>a-b);
+            if(dimensions[0]<1||dimensions[0]>4.5||dimensions[1]>12)continue;
+            const label=bath.kitchenAnchor,q={x:label.cx,y:label.cy};
+            if(!inside(q,panel.ring)&&!panel.ring.some((p,i)=>segmentDistance(q,p,panel.ring[(i+1)%panel.ring.length])*scale<=1))continue;
+            if(panel.open&&!sinks(panel,[...lines,...subEdges],nearFaces).length){
+              tapBasins??=roundedTapBasins([...lines,...subEdges],nearFaces,nearAll);
+              if(!tapBasins.some(b=>b.basinRing.every(p=>inside(p,panel.ring))))continue;
+            }
+            const supported=panel.faces.map(p=>({p,s:supports(p,panel.parts,anchors)})).filter(row=>row.s.length);
+            emit('kitchen',panel.parts,[panel.ring],supported.map(row=>row.p),supported.flatMap(row=>row.s),local,bath);
+          }
+          continue;
+        }
         const arcs=local.map(arc).filter(Boolean),bodyCache=new Map(),bodyOf=a=>{if(!bodyCache.has(a))bodyCache.set(a,bodies(a,nearLines,nearAll));return bodyCache.get(a);};
         for(const outer of arcs)for(const inner of arcs){spend();const rim=outer.radius-inner.radius;
           if(rim<.005||rim>.15||dist(outer.center,inner.center)*scale>TOL||dot(outer.u,inner.u)<.995||!coherent(outer.path,inner.path))continue;
@@ -5515,11 +5795,16 @@ const bathroomFurniture = (function createBathroomFurniture() {
               if(support.length)emit('wc',parts,[body.ring,tank.ring],[],support,local,bath);
             }}
         }
-        for(const panel of rectangles(mainLines,nearLines,nearAll,1,6)){const box=panel.bounds,dimensions=[box.hi-box.lo,box.top-box.bottom].sort((a,b)=>a-b);
+        let roundedBasins;
+        for(const panel of rectangles(mainLines,nearLines,nearAll,1,6,true)){const box=panel.bounds,dimensions=[box.hi-box.lo,box.top-box.bottom].sort((a,b)=>a-b);
           if(dimensions[0]<1||dimensions[0]>3||dimensions[1]<1.5||dimensions[1]>6)continue;
           const supported=panel.faces.map(p=>({p,s:supports(p,panel.parts,anchors)})).filter(row=>row.s.length);
+          if(panel.open){const face={...panel.parts[0],ids:[],points:panel.openSide},support=supports(face,panel.parts,anchors);
+            if(!support.length||supported.length)continue;supported.push({p:face,s:support});}
           if(supported.length!==1)continue;
-          for(const sink of sinks(panel,lines,nearLines))emit('vanity',sink.parts,[panel.ring],[supported[0].p],supported[0].s,local,bath);
+          let matched=sinks(panel,lines,nearLines);
+          if(!matched.length){roundedBasins??=roundedTapBasins(lines,nearLines,nearAll);matched=roundedBasins.filter(b=>b.basinRing.every(p=>inside(p,panel.ring)));}
+          if(matched.length)emit('vanity',[...panel.parts,...matched.flatMap(sink=>sink.parts)],[panel.ring],[supported[0].p],supported[0].s,local,bath);
         }
       }
     } catch(error){if(error!==exhausted)throw error;}
@@ -7023,7 +7308,9 @@ const wallTopology = (function createWallTopology() {
     }
 
     for (const room of roomById.values()) {
-      if (room.spaceType !== undefined || outside.has(room.id) || !(room.area > 0) || room.perimeter === undefined) continue;
+      // Physical ownership outranks a corridor guess from shape/adjacency.
+      // Explicit circulation labels have already been applied above.
+      if (room.unitId || room.spaceType !== undefined || outside.has(room.id) || !(room.area > 0) || room.perimeter === undefined) continue;
       const elongation = room.perimeter * room.perimeter / (16 * room.area);
       const adjacentUnitCount = adjacentUnits.get(room.id)?.size || 0;
       if (Number.isFinite(elongation) && elongation >= 2 && adjacentUnitCount >= 3) {
@@ -8073,7 +8360,11 @@ const sanitaryCounts = (function createSanitaryCounts() {
       } else if (finitePoint({ x: source.cx, y: source.cy })) point = { x: source.cx, y: source.cy };
       else { issue('missing-position', item, symbolId); return; }
       const scope = scopeFor(item), sourceKey = JSON.stringify([item.docId || item.documentKey || documentKey || '', item.page, symbolId]);
-      const candidate = { item, sourceKey, symbolId, sourceKind, kind, point, box, scope, aliases: [sourceKey] };
+      const footprint=source.footprintRing,wallSupport=source.wallSupportSegments;
+      const geometry=sourceKind==='vector-shape'&&Array.isArray(footprint)&&footprint.length>=4&&footprint.length<=512&&footprint.every(finitePoint)?
+        {footprintRing:footprint.map(p=>({x:p.x,y:p.y})),...(Array.isArray(wallSupport)&&wallSupport.length<=1024&&wallSupport.every(s=>finitePoint(s?.a)&&finitePoint(s?.b))?{wallSupportSegments:wallSupport.map(s=>({a:{...s.a},b:{...s.b}}))}:{})}:null;
+      const identityRing=sourceKind==='vector-shape'&&Array.isArray(ring)&&ring.length<=512?ring.map(p=>({x:p.x,y:p.y})):null;
+      const candidate = { item, sourceKey, symbolId, sourceKind, kind, point, box, scope, aliases: [sourceKey], geometry, identityRing };
       let previous = byKey.get(sourceKey);
       const x = Math.floor(point.x / 32), y = Math.floor(point.y / 32);
       if (!previous) for (let dx = -1; dx <= 1 && !previous; dx++) for (let dy = -1; dy <= 1 && !previous; dy++) {
@@ -8137,7 +8428,9 @@ const sanitaryCounts = (function createSanitaryCounts() {
       const sanitarySource = { sourceKey: predecessor?.sanitarySource.sourceKey || sourceKey,
         symbolId: text(predecessor?.sanitarySource.symbolId) ? predecessor.sanitarySource.symbolId : symbolId,
         ...(item.id ? { parentId: item.id } : {}), ...(item.roomNeedsReview ? { roomNeedsReview: true } : {}),
-        sourceKind, classificationSource, typeNeedsReview };
+        sourceKind, classificationSource, typeNeedsReview,
+        ...(item.roomNeedsReview&&fixture.geometry?{geometry:structuredClone(fixture.geometry)}:{}),
+        ...(item.roomNeedsReview&&fixture.identityRing?{identityRing:structuredClone(fixture.identityRing)}:{}) };
       proposals.push({ kind: 'count', name: labels[sanitaryType] + (typeNeedsReview ? ' à confirmer' : ''), material: 'QT-01',
         qty: 1, waste: 0, status: 'à valider', points: [point], page: item.page,
         ...(item.docId !== undefined ? { docId: item.docId } : {}),
@@ -8147,6 +8440,455 @@ const sanitaryCounts = (function createSanitaryCounts() {
     return { proposals, issues };
   }
   return { derive };
+})();
+const sanitaryDimensions = (function createSanitaryDimensions() {
+  const MAX_RING_POINTS = 512, MAX_WALL_SEGMENTS = 50000, MAX_LOCAL_SEGMENTS = 2048;
+  const EPS = 1e-7, MAX_COORDINATE = 1e7, MAX_PHYSICAL_COORDINATE = 1e6;
+  const ANGLE_TOLERANCE = .5, STRAIGHTNESS_TOLERANCE = .125, OPPOSITE_LENGTH_TOLERANCE = .125;
+  const WALL_ANGLE_TOLERANCE = 1, MAX_WALL_DISTANCE = 2, MAX_INWARD_DISTANCE = .25;
+  const MIN_COVERAGE = .9, MAX_JOIN_GAP = .25, MAX_LINE_SPREAD = .25, NOMINAL_TOLERANCE = 1;
+  const dot = (a, b) => a.x * b.x + a.y * b.y;
+  const cross = (a, b) => a.x * b.y - a.y * b.x;
+  const minus = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+  const length = p => Math.hypot(p.x, p.y);
+  const copy = p => ({ x: p.x, y: p.y });
+  const finitePoint = p => p && Number.isFinite(p.x) && Number.isFinite(p.y) &&
+    Math.abs(p.x) <= MAX_COORDINATE && Math.abs(p.y) <= MAX_COORDINATE;
+  const degrees = value => value * 180 / Math.PI;
+  const rules = () => ({ scaleUnit: 'feet-per-sheet-unit', dimensionUnit: 'in',
+    minContinuousCoverageRatio: MIN_COVERAGE, maxWallDistanceInches: MAX_WALL_DISTANCE,
+    maxInwardDistanceInches: MAX_INWARD_DISTANCE, maxWallAngleDegrees: WALL_ANGLE_TOLERANCE,
+    maxJoinGapInches: MAX_JOIN_GAP, maxLineSpreadInches: MAX_LINE_SPREAD,
+    rectangleAngleToleranceDegrees: ANGLE_TOLERANCE, rectangleStraightnessToleranceInches: STRAIGHTNESS_TOLERANCE,
+    oppositeLengthToleranceInches: OPPOSITE_LENGTH_TOLERANCE,
+    maxRingPoints: MAX_RING_POINTS, maxWallSegments: MAX_WALL_SEGMENTS, maxLocalSegmentsPerSide: MAX_LOCAL_SEGMENTS });
+
+  function intersects(a, b, c, d) {
+    const ab = minus(b, a), cd = minus(d, c), lab = length(ab), lcd = length(cd);
+    const ac = cross(ab, minus(c, a)) / lab, ad = cross(ab, minus(d, a)) / lab;
+    const ca = cross(cd, minus(a, c)) / lcd, cb = cross(cd, minus(b, c)) / lcd;
+    if (Math.max(a.x, b.x) + EPS < Math.min(c.x, d.x) || Math.max(c.x, d.x) + EPS < Math.min(a.x, b.x) ||
+      Math.max(a.y, b.y) + EPS < Math.min(c.y, d.y) || Math.max(c.y, d.y) + EPS < Math.min(a.y, b.y)) return false;
+    return (ac <= EPS && ad >= -EPS || ad <= EPS && ac >= -EPS) &&
+      (ca <= EPS && cb >= -EPS || cb <= EPS && ca >= -EPS);
+  }
+
+  function rectangle(ring, inchesPerUnit) {
+    if (!Array.isArray(ring) || ring.length < 4 || ring.length > MAX_RING_POINTS || !ring.every(finitePoint)) {
+      return { reason: Array.isArray(ring) && ring.length > MAX_RING_POINTS ? 'footprint-point-limit' : 'invalid-footprint' };
+    }
+    const origin = ring[0], pts = [];
+    for (const point of ring) {
+      const p = { x: (point.x - origin.x) * inchesPerUnit, y: (point.y - origin.y) * inchesPerUnit, original: point };
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || Math.abs(p.x) > MAX_PHYSICAL_COORDINATE ||
+        Math.abs(p.y) > MAX_PHYSICAL_COORDINATE) return { reason: 'invalid-physical-footprint' };
+      // Seulement les doublons numériques consécutifs; aucune réparation de forme.
+      if (!pts.length || length(minus(p, pts.at(-1))) > EPS) pts.push(p);
+    }
+    if (pts.length > 1 && length(minus(pts[0], pts.at(-1))) <= EPS) pts.pop();
+    if (pts.length < 4) return { reason: 'degenerate-footprint' };
+    const n = pts.length;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      if (j === i + 1 || i === 0 && j === n - 1) continue;
+      if (intersects(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n])) return { reason: 'self-intersecting-footprint' };
+    }
+    const corners = [], turns = [];
+    for (let i = 0; i < n; i++) {
+      const before = minus(pts[i], pts[(i + n - 1) % n]), after = minus(pts[(i + 1) % n], pts[i]);
+      const turn = degrees(Math.atan2(cross(before, after), dot(before, after)));
+      if (Math.abs(turn) > ANGLE_TOLERANCE) { corners.push(i);turns.push(turn); }
+    }
+    if (corners.length !== 4 || turns.some(t => Math.abs(Math.abs(t) - 90) > ANGLE_TOLERANCE + EPS) ||
+      turns.some(t => Math.sign(t) !== Math.sign(turns[0]))) return { reason: 'non-rectangular-footprint' };
+    const sides = [], deviations = [];
+    for (let side = 0; side < 4; side++) {
+      const start = corners[side], end = corners[(side + 1) % 4], a = pts[start], b = pts[end];
+      const vector = minus(b, a), sideLength = length(vector);
+      if (sideLength <= EPS) return { reason: 'degenerate-footprint' };
+      const u = { x: vector.x / sideLength, y: vector.y / sideLength };
+      let previous = 0, deviation = 0;
+      for (let i = (start + 1) % n; i !== end; i = (i + 1) % n) {
+        const q = minus(pts[i], a), along = dot(q, u);
+        deviation = Math.max(deviation, Math.abs(cross(u, q)));
+        if (along < previous - EPS || along < -EPS || along > sideLength + EPS || deviation > STRAIGHTNESS_TOLERANCE + EPS) {
+          return { reason: 'non-rectangular-footprint' };
+        }
+        previous = along;
+      }
+      deviations.push(deviation);
+      sides.push({ index: side, a: copy(a.original), b: copy(b.original), lengthInches: sideLength, u });
+    }
+    const sideLengths = sides.map(side => side.lengthInches), differences = [Math.abs(sideLengths[0] - sideLengths[2]),
+      Math.abs(sideLengths[1] - sideLengths[3])];
+    if (differences.some(delta => delta > OPPOSITE_LENGTH_TOLERANCE + EPS)) return { reason: 'non-rectangular-footprint' };
+    const size = [(sideLengths[0] + sideLengths[2]) / 2, (sideLengths[1] + sideLengths[3]) / 2].sort((a, b) => a - b);
+    const approximate = differences.some(delta => delta > EPS) || turns.some(t => Math.abs(Math.abs(t) - 90) > EPS) ||
+      deviations.some(delta => delta > EPS);
+    return { sides, size, winding: Math.sign(turns[0]), approximate,
+      proof: { kind: approximate ? 'near-rectangle' : 'rectangle', cornerAnglesDegrees: turns.map(t => 180 - Math.abs(t)),
+        sideLengthsInches: sideLengths, oppositeSideDifferencesInches: differences,
+        maxStraightnessDeviationInches: Math.max(...deviations), cornerPoints: sides.map(side => copy(side.a)) } };
+  }
+
+  function dimensions(size) {
+    const [widthInches, lengthInches] = size;
+    // Les cotes commerciales sont proposées, jamais substituées à la mesure.
+    // Catalogue fourni par l’utilisateur : tolérance d’un pouce sur chaque côté.
+    const supplied = [[32,60],[36,36],[36,48],[36,60]].filter(([w,l]) =>
+      Math.abs(w-widthInches)<=NOMINAL_TOLERANCE+EPS && Math.abs(l-lengthInches)<=NOMINAL_TOLERANCE+EPS)
+      .sort((a,b) => Math.hypot(a[0]-widthInches,a[1]-lengthInches)-Math.hypot(b[0]-widthInches,b[1]-lengthInches))[0];
+    const [width,long] = supplied || [Math.max(1,Math.round(widthInches)),Math.max(1,Math.round(lengthInches))];
+    return { unit: 'in', measurement: 'outer-footprint', widthInches, lengthInches,
+      proposed: { widthInches: width, lengthInches: long, label: width+'×'+long },
+      rounding: { mode: supplied?'supplied-standard':'whole-inch', incrementInches: 1,
+        maxErrorInches: supplied?NOMINAL_TOLERANCE:.5,
+        widthErrorInches: Math.abs(width-widthInches), lengthErrorInches: Math.abs(long-lengthInches) } };
+  }
+
+  function excludedWall(wall) {
+    if (wall.physical === false || wall.isPhysicalWall === false || wall.physicalWall === false || wall.isWall === false || wall.realWall === false ||
+      wall.door === true || wall.isDoor === true || wall.auxiliary === true || wall.isAuxiliary === true ||
+      wall.furniture === true || wall.isFurniture === true || wall.closure === true || wall.isClosure === true || wall.synthetic === true) return true;
+    // L'appelant garantit des murs physiques. Ce filtre défensif refuse les
+    // autres catégories explicitement étiquetées; il ne classe pas un trait PDF.
+    const nonWall = /(?:^|-)(?:door|closure|auxiliary|furniture|fixture|cabinet|opening|window|glazing|symbol|shower|bath|virtual|synthetic|threshold|porte|fermeture|auxiliaire|mobilier|meuble|sanitaire|douche|bain|fenetre)(?:-|$)/;
+    return ['type', 'kind', 'role', 'wallType', 'sourceKind', 'source'].some(field => {
+      const value = wall[field];
+      if (typeof value !== 'string' || value.length > 256) return false;
+      return nonWall.test(value.replace(/([a-z])([A-Z])/g, '$1-$2').normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    });
+  }
+
+  function mergeIntervals(lines) {
+    const sorted = [...lines].sort((a, b) => a.low - b.low || a.high - b.high || a.index - b.index);
+    const runs = [];
+    for (const line of sorted) {
+      let run = runs.at(-1);
+      if (!run || line.low > run.high + MAX_JOIN_GAP + EPS) {
+        run = { low: line.low, high: line.high, covered: line.high - line.low, maxGap: 0, lines: [line] };runs.push(run);
+      } else {
+        run.maxGap = Math.max(run.maxGap, Math.max(0, line.low - run.high));
+        run.covered += Math.max(0, line.high - Math.max(line.low, run.high));
+        run.high = Math.max(run.high, line.high);run.lines.push(line);
+      }
+    }
+    return runs.sort((a, b) => b.covered - a.covered || a.low - b.low);
+  }
+
+  function sideSupport(side, candidates) {
+    // Grouper par même ligne physique avant de joindre des fragments : deux
+    // lignes parallèles décalées ne peuvent pas fabriquer un appui continu.
+    const sorted = [...candidates].sort((a, b) => a.midNormal - b.midNormal || a.slope - b.slope || a.index - b.index);
+    const groups = [];
+    for (const line of sorted) {
+      let group = groups.at(-1);
+      if (!group || line.midNormal - group.minNormal > MAX_LINE_SPREAD + EPS ||
+        (Math.max(line.slope, group.maxSlope) - Math.min(line.slope, group.minSlope)) * side.lengthInches > MAX_LINE_SPREAD + EPS) {
+        group = { minNormal: line.midNormal, minSlope: line.slope, maxSlope: line.slope, lines: [] };groups.push(group);
+      }
+      group.minSlope = Math.min(group.minSlope, line.slope);group.maxSlope = Math.max(group.maxSlope, line.slope);group.lines.push(line);
+    }
+    let best = null;
+    for (const group of groups) for (const run of mergeIntervals(group.lines)) {
+      if (!best || run.covered > best.covered + EPS || Math.abs(run.covered - best.covered) <= EPS && run.low < best.low) best = run;
+    }
+    const covered = candidates.length ? mergeIntervals(candidates).reduce((sum, run) => sum + run.covered, 0) : 0;
+    const continuous = best?.covered || 0, supported = continuous + EPS >= side.lengthInches * MIN_COVERAGE;
+    const proofLines = best ? [...best.lines].sort((a, b) => a.index - b.index) : [];
+    return { index: side.index, a: copy(side.a), b: copy(side.b), lengthInches: side.lengthInches, supported,
+      reason: supported ? 'continuous-wall-support' : candidates.length ? 'insufficient-continuous-wall-coverage' : 'no-near-parallel-wall',
+      coverageInches: covered, coverageRatio: Math.min(1, covered / side.lengthInches),
+      longestContinuousInches: continuous, longestContinuousRatio: Math.min(1, continuous / side.lengthInches),
+      continuousSpanInches: best ? best.high - best.low : 0, maxBridgedGapInches: best?.maxGap || 0,
+      supportSegmentIndices: supported ? proofLines.map(line => line.index) : [],
+      segments: proofLines.map(line => ({ index: line.index, ...(line.id !== undefined ? { id: line.id } : {}),
+        overlapInches: line.high - line.low, intervalInches: [line.low, line.high],
+        maxDistanceInches: line.maxDistance, angleDegrees: line.angle })) };
+  }
+
+  function analyze(input) {
+    const result = { status: 'needsReview', needsReview: true, reasons: [], dimensions: null,
+      wallCount: null, wallConfiguration: null, sides: [], evidence: { scale: null, rectangle: null, walls: null }, rules: rules() };
+    const issue = reason => { if (!result.reasons.includes(reason)) result.reasons.push(reason); };
+    if (!input || typeof input !== 'object' || Array.isArray(input)) { issue('invalid-input');return result; }
+    const { footprintRing, scale, wallSegments, scaleVerified } = input;
+    if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(1 / scale)) {
+      issue('invalid-scale');return result;
+    }
+    const inchesPerUnit = scale * 12;
+    if (!Number.isFinite(inchesPerUnit) || inchesPerUnit <= 0) { issue('invalid-scale');return result; }
+    result.evidence.scale = { feetPerSheetUnit: scale, verified: scaleVerified === true };
+    if (scaleVerified !== true) issue('scale-unverified');
+    const rect = rectangle(footprintRing, inchesPerUnit);
+    if (rect.reason) { issue(rect.reason);return result; }
+    result.dimensions = dimensions(rect.size);result.evidence.rectangle = rect.proof;
+    if (rect.approximate) issue('near-rectangular-footprint');
+    if (!Array.isArray(wallSegments)) { issue('missing-wall-segments');return result; }
+    const wallProof = { providedSegments: wallSegments.length, physicalSegments: 0, excludedSegments: 0, invalidSegments: 0,
+      complete: false, contract: 'physical-wall-segments-only' };
+    result.evidence.walls = wallProof;
+    if (wallSegments.length > MAX_WALL_SEGMENTS) { issue('wall-segment-limit');return result; }
+    const candidates = rect.sides.map(() => []);
+    let limited = false;
+    for (let index = 0; index < wallSegments.length; index++) {
+      const wall = wallSegments[index];
+      if (!wall || typeof wall !== 'object' || Array.isArray(wall)) { wallProof.invalidSegments++;continue; }
+      if (excludedWall(wall)) { wallProof.excludedSegments++;continue; }
+      if (!finitePoint(wall.a) || !finitePoint(wall.b)) { wallProof.invalidSegments++;continue; }
+      const delta = { x: (wall.b.x - wall.a.x) * inchesPerUnit, y: (wall.b.y - wall.a.y) * inchesPerUnit }, len = length(delta);
+      if (!Number.isFinite(len) || len <= EPS || len > MAX_PHYSICAL_COORDINATE) { wallProof.invalidSegments++;continue; }
+      wallProof.physicalSegments++;
+      for (const side of rect.sides) {
+        const along = dot(delta, side.u), normal = cross(side.u, delta), angle = degrees(Math.atan2(Math.abs(normal), Math.abs(along)));
+        if (angle > WALL_ANGLE_TOLERANCE + EPS || Math.abs(along) <= EPS) continue;
+        const q = { x: (wall.a.x - side.a.x) * inchesPerUnit, y: (wall.a.y - side.a.y) * inchesPerUnit };
+        const first = dot(q, side.u), last = first + along, low = Math.max(0, Math.min(first, last)),
+          high = Math.min(side.lengthInches, Math.max(first, last));
+        if (high <= low + EPS) continue;
+        const n0 = cross(side.u, q), slope = normal / along, lowNormal = n0 + (low - first) * slope,
+          highNormal = n0 + (high - first) * slope, maxDistance = Math.max(Math.abs(lowNormal), Math.abs(highNormal));
+        if (!Number.isFinite(maxDistance) || maxDistance > MAX_WALL_DISTANCE + EPS ||
+          Math.max(lowNormal * rect.winding, highNormal * rect.winding) > MAX_INWARD_DISTANCE + EPS) continue;
+        const list = candidates[side.index];
+        if (list.length >= MAX_LOCAL_SEGMENTS) { limited = true;break; }
+        list.push({ index, low, high, maxDistance, angle, slope, midNormal: n0 + (side.lengthInches / 2 - first) * slope,
+          ...(typeof wall.id === 'string' && wall.id.length <= 256 ? { id: wall.id } : {}) });
+      }
+      if (limited) break;
+    }
+    if (wallProof.invalidSegments) issue('invalid-wall-segments');
+    if (limited) issue('wall-density-limit');
+    result.sides = rect.sides.map(side => sideSupport(side, candidates[side.index]));
+    if (result.sides.some(side => !side.supported && side.coverageInches > EPS)) issue('partial-wall-support');
+    wallProof.complete = !limited && wallProof.invalidSegments === 0;
+    if (wallProof.complete) {
+      result.wallCount = result.sides.filter(side => side.supported).length;
+      if (result.wallCount === 2 || result.wallCount === 3) result.wallConfiguration = result.wallCount + 'M';
+      else issue(result.wallCount === 4 ? 'four-supported-sides' : 'insufficient-supported-sides');
+    }
+    result.needsReview = result.reasons.length > 0;result.status = result.needsReview ? 'needsReview' : 'proposed';
+    return result;
+  }
+  return { analyze };
+})();
+const sanitaryManual = (function createSanitaryManual() {
+  function choice(input) {
+    if(!input||typeof input!=='object'||Array.isArray(input)||
+      !['shower','bath-shower','bath','unknown'].includes(input.type)||
+      ![input.widthInches,input.lengthInches].every(v=>Number.isInteger(v)&&v>=1&&v<=240)||
+      ![null,2,3].includes(input.wallCount))throw new Error('Choisissez un type, des dimensions entières de 1 à 240 po et 2M, 3M ou des murs à vérifier.');
+    const [widthInches,lengthInches]=[input.widthInches,input.lengthInches].sort((a,b)=>a-b);
+    return {type:input.type,widthInches,lengthInches,wallCount:input.wallCount};
+  }
+  function specification(input) {
+    const value=choice(input),needsReview=value.wallCount===null;
+    return {status:'declared',needsReview,reasons:needsReview?['manual-wall-count-unresolved']:[],
+      dimensions:{unit:'in',measurement:'manual-nominal',proposed:{widthInches:value.widthInches,lengthInches:value.lengthInches,label:value.widthInches+'×'+value.lengthInches}},
+      wallCount:value.wallCount,wallConfiguration:value.wallCount?value.wallCount+'M':null,sides:[],evidence:{source:'manual-choice'}};
+  }
+  return {choice,specification};
+})();
+const takeoffSummary = (function createTakeoffSummary() {
+  const limits = Object.freeze({ maxRecords: 50000, maxIdentityLength: 512, maxIssues: 200 });
+  const metricNames = ['floorTotal', 'ceramicFloor', 'ceramicWall', 'showers', 'bathShowers', 'backsplashes'];
+  const areaMetrics = new Set(['floorTotal', 'ceramicFloor', 'ceramicWall']);
+  const fields = ['id', 'documentKey', 'page', 'kind', 'isCeramic', 'quantity',
+    'included', 'confirmed', 'sanitaryType', 'typeNeedsReview'];
+  const validPage = value => Number.isSafeInteger(value) && value >= 1;
+  const validIdentity = value => typeof value === 'string' && value.length <= limits.maxIdentityLength && value.trim().length > 0;
+  const validQuantity = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+  function statusFor(row) {
+    if (typeof row.confirmed !== 'boolean') return 'unknown';
+    if (row.kind === 'sanitary' && (row.typeNeedsReview !== false ||
+        !['shower', 'bath-shower', 'bath'].includes(row.sanitaryType))) return 'pending';
+    return row.confirmed ? 'confirmed' : 'pending';
+  }
+
+  // Métriques possiblement concernées par une entrée non exploitable. Cette
+  // liste n'attribue jamais un type ni une quantité à une entrée incertaine.
+  function possibleMetrics(row) {
+    if (row.included === false) return [];
+    if (row.kind === 'floor') return ['floorTotal', ...(row.isCeramic === false ? [] : ['ceramicFloor'])];
+    if (row.kind === 'wall') return row.isCeramic === false ? [] : ['ceramicWall'];
+    if (row.kind === 'backsplash') return ['backsplashes', ...(row.isCeramic === false ? [] : ['ceramicWall'])];
+    if (row.kind === 'sanitary') {
+      if (row.sanitaryType === 'shower') return ['showers'];
+      if (row.sanitaryType === 'bath-shower') return ['bathShowers'];
+      if (row.sanitaryType === 'bath') return [];
+      return ['showers', 'bathShowers'];
+    }
+    return metricNames.slice();
+  }
+
+  function summarize(input = {}) {
+    const sums = Object.fromEntries(metricNames.map(name => [name, {
+      confirmed: 0, pending: 0, unknown: 0, unknownConfirmed: 0, unknownPending: 0, unknownStatus: 0,
+    }]));
+    const result = { metrics: {}, incomplete: false, issues: [], issueCount: 0, omittedIssues: 0,
+      scope: { page: null }, limits,
+      stats: { inputRecords: 0, scopeRecords: 0, uniqueRecords: 0, excludedRecords: 0,
+        duplicateRecords: 0, conflictingRecords: 0 } };
+
+    function issue(reason, metrics, row, index) {
+      result.issueCount++;
+      if (result.issues.length >= limits.maxIssues) return;
+      const entry = { reason, metrics: metrics.slice() };
+      if (row && validIdentity(row.id) && validIdentity(row.documentKey) && validPage(row.page)) {
+        entry.id = row.id;entry.documentKey = row.documentKey;entry.page = row.page;
+      }
+      if (index !== undefined) entry.index = index;
+      result.issues.push(entry);
+    }
+
+    function unknown(name, status) {
+      const sum = sums[name];
+      sum.unknown++;
+      if (status === 'confirmed') sum.unknownConfirmed++;
+      else if (status === 'pending') sum.unknownPending++;
+      else sum.unknownStatus++;
+    }
+
+    function reject(reason) {
+      issue(reason, metricNames);
+      for (const name of metricNames) unknown(name, 'unknown');
+      return finish();
+    }
+
+    function finish() {
+      for (const name of metricNames) {
+        const sum = sums[name];
+        const knownConfirmed = Number.isFinite(sum.confirmed) ? sum.confirmed : null;
+        const knownPending = Number.isFinite(sum.pending) ? sum.pending : null;
+        const combined = knownConfirmed !== null && knownPending !== null ? knownConfirmed + knownPending : null;
+        const knownTotal = combined !== null && Number.isFinite(combined) ? combined : null;
+        const confirmed = sum.unknownConfirmed || sum.unknownStatus ? null : knownConfirmed;
+        const pending = sum.unknownPending || sum.unknownStatus ? null : knownPending;
+        const total = sum.unknown ? null : knownTotal;
+        result.metrics[name] = { unit: areaMetrics.has(name) ? 'sqft' : 'count', total, confirmed, pending,
+          unknown: sum.unknown, knownTotal, knownConfirmed, knownPending, complete: total !== null };
+        if (knownTotal === null) issue('quantity-overflow', [name]);
+      }
+      result.incomplete = metricNames.some(name => !result.metrics[name].complete);
+      result.omittedIssues = result.issueCount - result.issues.length;
+      return result;
+    }
+
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return reject('invalid-input');
+    const records = input.records === undefined ? [] : input.records, page = input.page;
+    if (!Array.isArray(records)) return reject('invalid-records');
+    result.stats.inputRecords = records.length;
+    if (records.length > limits.maxRecords) return reject('record-limit');
+    if (page !== undefined && !validPage(page)) return reject('invalid-page-filter');
+    result.scope.page = page === undefined ? null : page;
+
+    const groups = new Map();
+    for (let index = 0; index < records.length; index++) {
+      const source = records[index];
+      if (!source || typeof source !== 'object' || Array.isArray(source)) {
+        result.stats.scopeRecords++;
+        issue('invalid-record', metricNames, null, index);
+        for (const name of metricNames) unknown(name, 'unknown');
+        continue;
+      }
+      if (page !== undefined && validPage(source.page) && source.page !== page) continue;
+      result.stats.scopeRecords++;
+      // Projection bornée : aucun champ métier supplémentaire n'est consulté.
+      const row = Object.fromEntries(fields.map(field => [field, source[field]]));
+      if (row.quantity === 0) row.quantity = 0; // Même quantité pour 0 et -0.
+      if (!validIdentity(row.id) || !validIdentity(row.documentKey) || !validPage(row.page)) {
+        const affected = possibleMetrics(row);
+        issue('invalid-identity', affected, null, index);
+        for (const name of affected) unknown(name, statusFor(row));
+        continue;
+      }
+      const key = JSON.stringify([row.documentKey, row.page, row.id]);
+      let group = groups.get(key);
+      if (!group) {
+        group = { first: row, index, conflict: false, statuses: new Map(), allExcluded: true };
+        groups.set(key, group);
+      } else {
+        result.stats.duplicateRecords++;
+        if (!fields.every(field => Object.is(group.first[field], row[field]))) group.conflict = true;
+      }
+      group.allExcluded = group.allExcluded && row.included === false;
+      const status = statusFor(row);
+      for (const name of possibleMetrics(row)) {
+        if (!group.statuses.has(name)) group.statuses.set(name, new Set());
+        group.statuses.get(name).add(status);
+      }
+    }
+
+    result.stats.uniqueRecords = groups.size;
+    for (const group of groups.values()) {
+      const row = group.first;
+      if (group.allExcluded) result.stats.excludedRecords++;
+      if (group.conflict) {
+        result.stats.conflictingRecords++;
+        issue('conflicting-duplicate', [...group.statuses.keys()], row, group.index);
+        for (const [name, statuses] of group.statuses) {
+          unknown(name, statuses.size === 1 ? [...statuses][0] : 'unknown');
+        }
+        continue;
+      }
+      if (row.included === false) continue;
+      if (row.included !== true) {
+        const affected = possibleMetrics(row);
+        issue('invalid-inclusion', affected, row, group.index);
+        for (const name of affected) unknown(name, statusFor(row));
+        continue;
+      }
+
+      const entries = [];
+      const area = name => entries.push({ name, quantity: true });
+      const unresolved = name => entries.push({ name, value: null });
+      function ceramic(name) {
+        if (row.isCeramic === true) area(name);
+        else if (row.isCeramic !== false) {
+          unresolved(name);issue('invalid-ceramic-classification', [name], row, group.index);
+        }
+      }
+      if (row.kind === 'floor') {
+        area('floorTotal');ceramic('ceramicFloor');
+      } else if (row.kind === 'wall') {
+        ceramic('ceramicWall');
+      } else if (row.kind === 'backsplash') {
+        entries.push({ name: 'backsplashes', value: 1 });ceramic('ceramicWall');
+      } else if (row.kind === 'sanitary') {
+        if (row.sanitaryType === 'shower') area('showers');
+        else if (row.sanitaryType === 'bath-shower') area('bathShowers');
+        else if (row.sanitaryType !== 'bath') {
+          unresolved('showers');unresolved('bathShowers');
+          issue(row.sanitaryType === 'unknown' ? 'unknown-sanitary-type' : 'invalid-sanitary-type',
+            ['showers', 'bathShowers'], row, group.index);
+        }
+        if (['shower', 'bath-shower', 'bath'].includes(row.sanitaryType)) {
+          if (row.typeNeedsReview === true) issue('sanitary-type-needs-review', entries.map(entry => entry.name), row, group.index);
+          else if (row.typeNeedsReview !== false) issue('invalid-sanitary-review', entries.map(entry => entry.name), row, group.index);
+        }
+      } else {
+        issue('invalid-kind', metricNames, row, group.index);
+        for (const name of metricNames) unknown(name, statusFor(row));
+        continue;
+      }
+
+      const status = statusFor(row);
+      if (status === 'unknown') issue('invalid-confirmation-status', entries.map(entry => entry.name), row, group.index);
+      const quantityMetrics = entries.filter(entry => entry.quantity).map(entry => entry.name);
+      if (quantityMetrics.length && !validQuantity(row.quantity)) {
+        issue(row.quantity === null ? 'missing-quantity' : 'invalid-quantity', quantityMetrics, row, group.index);
+      }
+      for (const entry of entries) {
+        const value = entry.quantity ? validQuantity(row.quantity) ? row.quantity : null : entry.value;
+        if (value === null || status === 'unknown') unknown(entry.name, status);
+        else sums[entry.name][status] += value;
+      }
+    }
+    return finish();
+  }
+
+  return { summarize, limits };
 })();
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
@@ -10531,6 +11273,187 @@ const legendUIFactory = (function createLegendUI({ legends, getState, remember, 
 
   return { install, open: legendDialog };
 });
+const measurementContextMenuFactory = (function createMeasurementContextMenu(options) {
+  const {
+    canvas, getState, pointFromEvent, hitTest, selectSurface,
+    removeLastPoint, resetTool, openFinish, openLocation,
+    openTileSettings, activateOrigin, canSetOrigin, isBlocked = () => false,
+    additionalEntries = () => [], pageEntries = () => [],
+  } = options;
+  const document = canvas.ownerDocument, window = document.defaultView;
+  let installed = false, menu = null, target = null;
+
+  function available() {
+    const state = getState();
+    return !!state.plan && !state.loading && !state.dragging && !state.selectionBox && !isBlocked();
+  }
+
+  function currentMeasurement(id) {
+    const state = getState();
+    return state.items.find(item => item.id === id && item.page === state.page && (item.kind === 'area' || item.kind === 'count' && item.sanitarySource));
+  }
+
+  function close(restoreFocus = false) {
+    if (menu) menu.remove();
+    menu = null; target = null;
+    if (restoreFocus && canvas.isConnected) canvas.focus();
+  }
+
+  function activate(action) {
+    const state = getState(), previous = target;
+    const item = previous?.id && currentMeasurement(previous.id);
+    const valid = available() && previous && (!previous.id || item) && state.page === previous.page && state.documentKey === previous.documentKey && state.plan === previous.plan;
+    if (!valid) { close(true); return; }
+    const custom=previous.actions.get(action);
+    if(custom?.disabled)return;
+    if (action === 'origin' && !canSetOrigin(item)) return;
+    close(true);
+    if(item)selectSurface(item.id);
+    if(custom)custom.run(item,previous.point);
+    else ({ finish: openFinish, location: openLocation, format: openTileSettings, origin: activateOrigin })[action]?.(item?.id);
+  }
+
+  function focusEntry(index) {
+    const entries = [...menu.querySelectorAll('[role="menuitem"]')];
+    const next = (index + entries.length) % entries.length;
+    entries.forEach((entry, position) => { entry.tabIndex = position === next ? 0 : -1; });
+    entries[next].focus();
+  }
+
+  function menuKeydown(event) {
+    event.stopPropagation();
+    const entries = [...menu.querySelectorAll('[role="menuitem"]')];
+    const index = entries.indexOf(document.activeElement);
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      focusEntry(event.key === 'Home' ? 0 : event.key === 'End' ? entries.length - 1 : index + (event.key === 'ArrowDown' ? 1 : -1));
+    } else if (event.key === 'Escape') { event.preventDefault(); close(true); }
+    else if (event.key === 'Tab') close(true);
+  }
+
+  function show(item, x, y, point) {
+    close();
+    if (!available() || item && !currentMeasurement(item.id)) return false;
+    const custom=(item?additionalEntries(item,point):pageEntries(point)).slice(0,12).filter(entry=>entry&&typeof entry.id==='string'&&/^custom-[a-z-]{1,60}$/.test(entry.id)&&typeof entry.label==='string'&&typeof entry.run==='function');
+    if(!item&&!custom.length)return false;
+    if(item)selectSurface(item.id);
+    const state = getState();
+    target = { id: item?.id, page: state.page, documentKey: state.documentKey, plan: state.plan, point:point?{x:point.x,y:point.y}:null,actions:new Map(custom.map(entry=>[entry.id,entry])) };
+    menu = document.createElement('div');
+    menu.id = 'measurementContextMenu';
+    menu.className = 'measurement-context-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', item?(item.kind === 'area' ? 'Surface : ' : 'Comptage : ') + item.name:'Plan : ajouter un appareil');
+    const heading = document.createElement('div');
+    heading.className = 'measurement-context-title';
+    heading.textContent = item?.name || 'Ajouter un appareil sur cette feuille';
+    heading.setAttribute('aria-hidden', 'true');
+    menu.append(heading);
+    const entries = !item?[]:item.kind === 'count' ? [['location', 'Changer la localisation…']] : [
+      ['finish', 'Changer le fini…'], ['location', 'Changer la localisation…'],
+      ['format', 'Format de tuile…'], ['origin', 'Point de départ…'],
+    ];
+    entries.push(...custom.map(entry=>[entry.id,entry.label]));
+    for (const [action, label] of entries) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.tabIndex = -1;
+      button.dataset.measurementAction = action;
+      button.setAttribute('role', 'menuitem'); button.textContent = label;
+      if (target.actions.get(action)?.disabled)button.setAttribute('aria-disabled','true');
+      if (action === 'origin' && !canSetOrigin(item)) {
+        button.setAttribute('aria-disabled', 'true');
+        const hint = document.createElement('small');
+        hint.textContent = 'Disponible pour une surface de céramique.';
+        button.append(hint);
+      }
+      button.addEventListener('click', () => activate(action));
+      menu.append(button);
+    }
+    menu.addEventListener('keydown', menuKeydown);
+    document.body.append(menu);
+    const viewport = window.visualViewport;
+    const left = viewport?.offsetLeft || 0, top = viewport?.offsetTop || 0;
+    const width = viewport?.width || window.innerWidth, height = viewport?.height || window.innerHeight;
+    menu.style.maxWidth = Math.max(0, width - 16) + 'px';
+    menu.style.maxHeight = Math.max(0, height - 16) + 'px';
+    const rectangle = menu.getBoundingClientRect();
+    menu.style.left = Math.max(left + 8, Math.min(x, left + width - rectangle.width - 8)) + 'px';
+    menu.style.top = Math.max(top + 8, Math.min(y, top + height - rectangle.height - 8)) + 'px';
+    focusEntry(0);
+    return true;
+  }
+
+  function contextmenu(event) {
+    event.preventDefault();
+    close();
+    const state = getState();
+    if (state.draft.length) { removeLastPoint(); return; }
+    if (!available()) return;
+    const point=pointFromEvent(event),item = hitTest(point);
+    if (!show(item, event.clientX, event.clientY,point)) resetTool();
+  }
+
+  function canvasKeydown(event) {
+    if (!(event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) return;
+    event.preventDefault(); event.stopPropagation();
+    if (!available() || getState().draft.length) return;
+    const item = currentMeasurement(getState().selected);
+    const rectangle = canvas.getBoundingClientRect();
+    const clientX=rectangle.left+rectangle.width/2,clientY=rectangle.top+rectangle.height/2;
+    show(item,clientX,clientY,pointFromEvent({clientX,clientY}));
+  }
+
+  function outside(event) {
+    if (menu && !menu.contains(event.target)) close();
+  }
+
+  function viewChanged(event) {
+    if (menu && !(event?.target instanceof window.Node && menu.contains(event.target))) close();
+  }
+
+  function install() {
+    if (installed) return;
+    installed = true;
+    if (!document.getElementById('measurementContextMenuStyle')) {
+      const style = document.createElement('style');
+      style.id = 'measurementContextMenuStyle';
+      style.textContent = `
+        .measurement-context-menu{position:fixed;z-index:1200;box-sizing:border-box;width:256px;overflow:auto;padding:4px;background:var(--v7-paper,#fff);border:1px solid var(--v7-focus,#174b72);border-radius:3px;box-shadow:0 4px 16px #17354d30;color:var(--v7-ink,#17354d);font:13px/1.4 Arial,sans-serif}
+        .measurement-context-title{padding:8px 10px;border-bottom:1px solid var(--v7-line,#bfd6e5);color:var(--v7-ink,#17354d);font-size:12px;font-weight:700;overflow-wrap:anywhere}
+        .measurement-context-menu button{display:block;box-sizing:border-box;width:100%;min-height:38px;padding:9px 10px;border:0;border-radius:0;background:var(--v7-paper,#fff);color:inherit;text-align:left;white-space:normal;font:inherit;cursor:pointer}
+        .measurement-context-menu button:hover,.measurement-context-menu button:focus{background:#d9efff}
+        .measurement-context-menu button:focus-visible{outline:2px solid var(--v7-focus,#174b72);outline-offset:-2px}
+        .measurement-context-menu button[aria-disabled="true"]{color:var(--v7-muted,#526b7f);cursor:default}
+        .measurement-context-menu small{display:block;margin-top:3px;font-size:12px;line-height:1.4}
+      `;
+      document.head.append(style);
+    }
+    canvas.addEventListener('contextmenu', contextmenu);
+    canvas.addEventListener('keydown', canvasKeydown);
+    document.addEventListener('pointerdown', outside, true);
+    document.addEventListener('focusin', outside);
+    window.addEventListener('scroll', viewChanged, true);
+    window.addEventListener('wheel', viewChanged, { capture: true, passive: true });
+    window.addEventListener('resize', viewChanged);
+    window.addEventListener('blur', viewChanged);
+  }
+
+  function destroy() {
+    close();
+    if (!installed) return;
+    installed = false;
+    canvas.removeEventListener('contextmenu', contextmenu);
+    canvas.removeEventListener('keydown', canvasKeydown);
+    document.removeEventListener('pointerdown', outside, true);
+    document.removeEventListener('focusin', outside);
+    window.removeEventListener('scroll', viewChanged, true);
+    window.removeEventListener('wheel', viewChanged, true);
+    window.removeEventListener('resize', viewChanged);
+    window.removeEventListener('blur', viewChanged);
+  }
+
+  return { install, close, destroy };
+});
 const zones = (function createZones(geometry) {
   for (const method of ['area', 'netArea', 'getHoles', 'excludedArea', 'validPolygon']) {
     if (typeof geometry?.[method] !== 'function') throw new Error('Moteur géométrique incomplet pour les zones.');
@@ -10632,7 +11555,7 @@ const zones = (function createZones(geometry) {
     return true;
   }
 
-  return { issues, validate };
+  return { issues, validate, intersectNet, layer };
 })(geometry);
 const view = (function createView() {
   const minimumZoom = 0.02, maximumZoom = 16;
@@ -10822,7 +11745,7 @@ $('#root').innerHTML=`<div class="app">
 <header class="topbar"><div class="brand" aria-label="AITE-BN" title="AITE-BN — Automated Interior Takeoff &amp; Estimation — BOUDJEMAI NACER"><div class="brandmark"><i data-lucide="layers-3"></i></div><span>AITE-BN</span></div><div class="menu"><button class="active">Accueil</button><button>Plan</button><button>Mesures</button><button id="estimateNav">Estimation</button><button id="catalogNav">Assemblages</button><button id="reportNav">Rapports</button></div><div class="project-title"><input id="projectName" value="Projet sans titre"><span id="fileName">Aucun plan</span></div><div class="top-actions"><button class="outline" id="takeoffBtn"><i data-lucide="file-text"></i> Rapport <span id="count">0</span></button><button class="primary" id="exportBtn"><i data-lucide="download"></i> Excel</button></div></header>
 <section class="ribbon"><div class="ribbon-group"><button id="uploadBtn"><i data-lucide="folder-open"></i><span>Ouvrir<br>un plan</span></button><input id="fileInput" hidden type="file" accept="application/pdf,image/*"><button id="demoBtn"><i data-lucide="file-text"></i><span>Plan<br>d’exemple</span></button><small>Projet</small></div><div class="ribbon-group compact"><button id="undo" title="Annuler"><i data-lucide="undo-2"></i><span>Annuler</span></button><button id="redo" title="Rétablir · Ctrl+Y"><i data-lucide="redo-2"></i><span>Rétablir</span></button><button id="deleteSelection" title="Supprimer la sélection · Suppr"><i data-lucide="trash-2"></i><span>Supprimer</span></button><small>Historique</small></div><div class="ribbon-group" id="tools"></div><div class="ribbon-group"><button id="tileSettings" title="Calepinage des carreaux"><i data-lucide="grid-3x3"></i><span>Carreaux<br>12×24 / 24×24</span></button><button id="toggleTileGrid" title="Afficher la trame de carreaux"><i data-lucide="layout-grid"></i><span>Trame<br>ON/OFF</span></button><small>Céramique</small></div><div class="ribbon-group ai-group"><button class="ai-action" id="aiAnalyze"><i data-lucide="sparkles"></i><span>Analyse IA<br><b>Tout quantifier</b></span></button><button id="aiReview"><i data-lucide="list-checks"></i><span>Réviser<br>les détections</span></button><small>Détection des pièces</small></div><div class="ribbon-group compact"><button type="button" id="saveProjectBtn" title="Sauvegarder le relevé · Ctrl+S"><i data-lucide="save"></i><span>Sauvegarder<br>le relevé</span></button><input id="projectInput" hidden type="file" accept=".json"><button type="button" id="helpBtn" title="Souris et raccourcis · ?"><i data-lucide="keyboard"></i><span>Souris et<br>raccourcis</span></button><small>Relevé et aide</small></div></section>
 <div class="workspace"><aside class="sidebar"><div class="pane-title"><span>PROJET ET PAGES</span><button><i data-lucide="panel-left-close"></i></button></div><div class="side-tabs"><button class="active">Pages</button><button>Takeoff</button></div><div class="side-search"><i data-lucide="search"></i><input placeholder="Rechercher"></div><div class="tree"><div class="tree-root"><i data-lucide="folder-open"></i><b id="treeProject">Projet sans titre</b></div><div class="tree-page active"><i data-lucide="file-text"></i><span id="treeFile">Aucun plan</span><em id="treePageCount">0 page</em></div></div><div class="pane-title split-title"><span>MESURES DU PLAN</span><b id="zoneCount">0</b></div><div class="measure-tree" id="measureTree"><p>Aucune quantité mesurée</p></div></aside>
-<main class="stage"><div class="stagebar"><div class="document"><i data-lucide="file-text"></i><strong id="stageFile">Aucun plan</strong><div class="pages" id="pages" hidden><button id="prevPage">‹</button><span id="pageNum">1 / 1</span><button id="nextPage">›</button></div></div><button type="button" class="scale" id="scaleStatus" aria-label="Réglages de l’échelle"><span class="dot"></span><span>Échelle non calibrée</span></button></div><div class="canvas-wrap"><canvas id="planCanvas"></canvas><button class="empty-demo" id="emptyDemo">Ouvrir le plan d’exemple</button><div class="zoom"><button id="zoomOut"><i data-lucide="minus"></i></button><span id="zoomScaleText" aria-label="Échelle du plan">Échelle non calibrée</span><span id="zoomText" aria-label="Zoom à l’écran">82 %</span><button id="zoomIn"><i data-lucide="plus"></i></button></div><div class="hint" id="hint" hidden></div></div><section class="quantity-grid"><div class="grid-head"><b>QUANTITÉS</b><span id="gridSummary">0 zone · 0,0 pi²</span><button id="collapseGrid"><i data-lucide="chevron-down"></i></button></div><div class="grid-scroll"><table><thead><tr><th>Pièce / zone</th><th>Code</th><th>Type</th><th>Net</th><th>Perte</th><th>Total</th><th>Statut</th></tr></thead><tbody id="gridRows"><tr><td colspan="7" class="grid-empty">Lancez l’analyse IA ou tracez une surface pour commencer.</td></tr></tbody></table></div></section></main>
+<main class="stage"><div class="stagebar"><div class="document"><i data-lucide="file-text"></i><strong id="stageFile">Aucun plan</strong><div class="pages" id="pages" hidden><button id="prevPage">‹</button><span id="pageNum">1 / 1</span><button id="nextPage">›</button></div></div><button type="button" class="scale" id="scaleStatus" aria-label="Réglages de l’échelle"><span class="dot"></span><span>Échelle non calibrée</span></button></div><section id="takeoffSummary" class="takeoff-summary" role="status" aria-live="polite" aria-label="Récapitulatif net de la feuille" hidden></section><div class="canvas-wrap"><canvas id="planCanvas"></canvas><button class="empty-demo" id="emptyDemo">Ouvrir le plan d’exemple</button><div class="zoom"><button id="zoomOut"><i data-lucide="minus"></i></button><span id="zoomScaleText" aria-label="Échelle du plan">Échelle non calibrée</span><span id="zoomText" aria-label="Zoom à l’écran">82 %</span><button id="zoomIn"><i data-lucide="plus"></i></button></div><div class="hint" id="hint" hidden></div></div><section class="quantity-grid"><div class="grid-head"><b>QUANTITÉS</b><span id="gridSummary">0 zone · 0,0 pi²</span><button id="collapseGrid"><i data-lucide="chevron-down"></i></button></div><div class="grid-scroll"><table><thead><tr><th>Pièce / zone</th><th>Code</th><th>Type</th><th>Net</th><th>Perte</th><th>Total</th><th>Statut</th></tr></thead><tbody id="gridRows"><tr><td colspan="7" class="grid-empty">Lancez l’analyse IA ou tracez une surface pour commencer.</td></tr></tbody></table></div></section></main>
 <aside class="inspector" id="inspector"></aside><button class="reopen" id="reopen" hidden><i data-lucide="panel-right-open"></i></button></div><div id="overlay"></div><div id="toast" class="toast" hidden></div></div>`;
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+'<small>Mesurer et naviguer</small>';
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
@@ -10920,6 +11843,7 @@ function readSaved(key, fallback) {
   return persistence.readSaved(key, fallback);
 }
 function save() {
+  if(S.items.some(item=>item.sanitarySource))refreshSanitarySpecifications();
   for(const item of S.items)if(item.status==='confirmée'&&confirmationIssues(item).length)item.status='à valider';
   const saved=S.libraryEmpty?true:persistence.save(S);
   const shared=S.documentKey==='legacy'&&S.estimation.workspace?.planLibrary?projectSession.saveWorkspace(S.estimation):projectSession.save(S);
@@ -11525,7 +12449,7 @@ async function detectRoom(point) {
       {isCurrent:prior=>key===S.documentKey&&page===S.page&&image===S.plan&&pdf===S.pdf&&Number.isFinite(S.scales[page])&&S.scales[page]>0&&engine.matchesContext(prior,localDetectionContext({page,image,info,requestId,generation,point}))});
     const source=detected.proposals[0];
     if(!source)return toast('Contour fermé introuvable. Fermez le passage avec B, ou tracez la surface avec S.');
-    const candidate=applyCandidateWallFaces(source,model,S.scales[page]);
+    const candidate=applyCandidateWallFaces(source,model,S.scales[page],S.items);
     candidate.detectionProvenance={...detected.provenance,warnings:[...new Set([...detected.warnings,...model.wallDiagnostics?.faceWarnings||[]])]};
     if(candidate.needsSeparation){S.preview={page:S.page,items:[candidate]};return detectionResults([candidate]);}
     const result=addDetected([candidate]);
@@ -11565,7 +12489,8 @@ function forgetAutomaticMeasures(ids) {
   }
   const rejects=new Set(S.settings.sanitaryCountRejects||[]);for(const item of S.items)if(ids.has(item.id)&&item.sanitarySource)rejects.add(item.sanitarySource.sourceKey);
   S.settings={...S.settings,sanitaryCountRejects:[...rejects]};
-  S.items=S.items.filter(item=>!ids.has(item.id)&&!(item.sanitarySource&&ids.has(item.sanitarySource.parentId))).map(item=>{
+  S.items=S.items.filter(item=>!ids.has(item.id)&&!(item.sanitarySource&&item.sanitarySource.sourceKind!=='manual-point'&&ids.has(item.sanitarySource.parentId))).map(item=>{
+    if(item.sanitarySource?.sourceKind==='manual-point'&&ids.has(item.sanitarySource.parentId)){delete item.sanitarySource.parentId;item.sanitarySource.roomNeedsReview=true;}
     if(item.kind!=='area')return item;
     const subzones={...item.subzones};let changed=false;for(const id of ids)if(Object.hasOwn(subzones,id)){delete subzones[id];changed=true;}
     if(ids.has(item.parentId)){delete item.parentId;changed=true;}
@@ -11614,7 +12539,7 @@ function recalculatePage(page) {
       qty=sameRounding?item.qty:calculated;
     const changed=!Number.isFinite(item.qty)||Math.abs(qty-item.qty)>Math.max(1e-7,Math.abs(qty)*1e-9);
     return {...item,qty,status:changed?'à valider':item.status};
-  });S.detectorCache=null;
+  });refreshSanitarySpecifications(page);S.detectorCache=null;
 }
 
 function zoomAt(next,x=canvas.clientWidth/2,y=canvas.clientHeight/2) {
@@ -11712,7 +12637,7 @@ function keyboard(event) {
   if(key==='delete'||key==='backspace') {
     event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else deleteSelection();return;
   }
-  if(key==='escape'){event.preventDefault();if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
+  if(key==='escape'){event.preventDefault();S.sanitaryDraft=null;if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
   if(key==='enter') {
     if(finishManualTool()){event.preventDefault();return;}
     const row=event.target.closest?.('[data-item]');
@@ -11899,6 +12824,9 @@ function renderInspector() {
     $('#bathroomFlag').onchange=event=>updateItem(item.id,{bathroom:event.target.checked,spaceType:event.target.checked?'bathroom':surfaceSpaceType(item)==='bathroom'?'room':surfaceSpaceType(item)});
     $('#editVertices').onclick=()=>activateTool('edit');$('#excludeInside').onclick=()=>activateTool('exclude');
     if($('#placeTileOrigin')){$('#placeTileOrigin').onclick=activateOrigin;$('#openTileSettings').onclick=tileModal;$('#rotateTiles').onclick=()=>rotateTile();}
+  }else if(S.selection.size===1&&item?.sanitarySource) {
+    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Appareil sélectionné</h3><p>${esc(item.sanitarySource.specificationLabel||item.name)} · ${item.sanitarySource.sourceKind==='manual-point'?'Point ajouté à la main':'Détection automatique'}</p><button type="button" id="sanitarySelectedFormat" class="selection-action">Type, dimensions et murs</button><button type="button" id="sanitarySelectedLocation" class="selection-action">Changer la localisation</button><button type="button" id="sanitarySelectedReset" class="selection-action">Réinitialiser le type et le format</button><button type="button" id="sanitarySelectedDelete" class="selection-action danger">Supprimer cet appareil</button></section>`);
+    $('#sanitarySelectedFormat').onclick=()=>sanitaryChoiceDialog(item.sanitaryType,item.id);$('#sanitarySelectedLocation').onclick=()=>workDialog(item.id);$('#sanitarySelectedReset').onclick=()=>resetSanitaryChoice(item.id);$('#sanitarySelectedDelete').onclick=()=>{selectItem(item.id);deleteSelection();};
   }else if(!S.selection.size) {
     host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Murs affiche les limites retenues. Détecter propose les contours. Fermer un passage sépare les pièces communicantes. Choisissez les finis selon le plan ou le devis.</p><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan<br>Sélection : glisser pour encadrer plusieurs surfaces, puis Suppr<br>Clic sur une surface : sommets modifiables</p></section>`);
   }
@@ -11913,7 +12841,7 @@ function refresh() {
   refreshPlanAngles();
   if($('#detachPlanView'))$('#detachPlanView').disabled=!S.plan||S.loading;
   $('#stageFile').title=S.fileName;$('#fitView')?.setAttribute('title','Afficher toute la feuille · 0');
-  const hints={fixtureBox:'Cliquez deux coins opposés autour du bain ou de la douche · Échap : annuler',fixturePolygon:'Cliquez le contour du bain ou de la douche · Entrée : retrancher · Échap : annuler',fixtureEdit:'Glissez les coins orange de l’emprise · Ctrl+Z : annuler · double-clic : propriétés',hand:'Glissez pour déplacer le plan · molette : zoom au pointeur',
+  const hints={sanitaryPoint:'Cliquez sur le plan pour placer l’appareil · Échap : annuler',fixtureBox:'Cliquez deux coins opposés autour du bain ou de la douche · Échap : annuler',fixturePolygon:'Cliquez le contour du bain ou de la douche · Entrée : retrancher · Échap : annuler',fixtureEdit:'Glissez les coins orange de l’emprise · Ctrl+Z : annuler · double-clic : propriétés',hand:'Glissez pour déplacer le plan · molette : zoom au pointeur',
     divider:'Cliquez les deux extrémités du passage à fermer · Maj : aligner · Ctrl+Z : annuler',
     region:'Cliquez deux coins autour du dessin à analyser',edit:'Glissez les carrés pour corriger le contour · Ctrl+Z : annuler',
     exclude:'Tracez une exclusion entièrement dans la surface sélectionnée, puis Entrée',
@@ -11923,7 +12851,7 @@ function refresh() {
   canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   $('#toggleTileGrid').setAttribute('aria-pressed',String(S.tileGrid));
   $('#hint').hidden=true;
-  refreshWorkflow();refreshManualUI();
+  refreshWorkflow();refreshManualUI();renderTakeoffSummary();
 }
 function downloadBlob(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
@@ -11938,7 +12866,7 @@ function exportProject() {
 function validateAutomaticMetadata(item,documentKey) {
   if(item.autoTakeoff!==undefined){const value=item.autoTakeoff;if(item.kind!=='area'||!value||value.documentKey!==documentKey||typeof value.key!=='string'||!value.key.trim()||value.key.length>100000)throw new Error('Provenance du relevé automatique invalide.');if(value.provenance!==undefined)getLocalRoomEngine().validateProvenance(value.provenance,{documentKey,page:item.page});}
   if(item.takeoffFiling!==undefined){const value=item.takeoffFiling;if(!value||!['auto','manual'].includes(value.mode)||value.mode==='auto'&&(value.folderId!==item.folderId||!['vinyl','wood','laminate','ceramic','sanitary'].includes(value.category)))throw new Error('Classement automatique invalide.');}
-  if(item.sanitarySource!==undefined||item.sanitaryType!==undefined){const value=item.sanitarySource;if(item.kind!=='count'||!['shower','bath-shower','bath','unknown'].includes(item.sanitaryType)||!value||typeof value.sourceKey!=='string'||value.sourceKey.length>2000||typeof value.symbolId!=='string'||value.symbolId.length>300||(value.parentId!==undefined&&(typeof value.parentId!=='string'||value.parentId.length>60))||(value.parentId===undefined&&value.roomNeedsReview!==true)||(value.roomNeedsReview!==undefined&&typeof value.roomNeedsReview!=='boolean')||typeof value.classificationSource!=='string'||typeof value.typeNeedsReview!=='boolean')throw new Error('Comptage sanitaire invalide.');}
+  if(item.sanitarySource!==undefined||item.sanitaryType!==undefined){const value=item.sanitarySource;if(item.kind!=='count'||!['shower','bath-shower','bath','unknown'].includes(item.sanitaryType)||!value||typeof value.sourceKey!=='string'||value.sourceKey.length>2000||typeof value.symbolId!=='string'||value.symbolId.length>300||(value.parentId!==undefined&&(typeof value.parentId!=='string'||value.parentId.length>60))||(value.parentId===undefined&&value.roomNeedsReview!==true)||(value.roomNeedsReview!==undefined&&typeof value.roomNeedsReview!=='boolean')||typeof value.classificationSource!=='string'||typeof value.typeNeedsReview!=='boolean')throw new Error('Comptage sanitaire invalide.');if(value.identityRing!==undefined&&(value.parentId!==undefined||!Array.isArray(value.identityRing)||value.identityRing.length<3||value.identityRing.length>512||!value.identityRing.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<1e7&&Math.abs(p.y)<1e7)||!validPolygon(value.identityRing)))throw new Error('Indice d’identité sanitaire invalide.');if(value.manualSpecification!==undefined)sanitaryManual.choice({...value.manualSpecification,type:item.sanitaryType});if(value.sourceKind==='manual-point'){if(item.points.length!==1||value.manualSpecification===undefined||value.initialChoice===undefined)throw new Error('Point sanitaire manuel invalide.');sanitaryManual.choice(value.initialChoice);}else if(value.initialChoice!==undefined)throw new Error('Origine du point sanitaire invalide.');if(value.geometry!==undefined){const g=value.geometry;if(value.parentId!==undefined||!g||!Array.isArray(g.footprintRing)||g.footprintRing.length<4||g.footprintRing.length>512||!g.footprintRing.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<1e7&&Math.abs(p.y)<1e7)||!validPolygon(g.footprintRing))throw new Error('Emprise du comptage sanitaire invalide.');validateSanitaryWallSupport(g.wallSupportSegments);}}
 }
 function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
   if(data.format!=='quantif-plancher'||![4,5,6,7,8,9,10].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V10 valide.');
@@ -12623,6 +13551,7 @@ canvas.onclick=event=>{
   if(!S.plan||S.loading||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
   const point=snapPoint(canvasPoint(event),event);
+  if(S.tool==='sanitaryPoint'){placeManualSanitary(point);return;}
   if(S.tool==='wallSamples'){recordWallSample(point);return;}
   if(handleManualClick(point,event))return;
   if(['fixtureBox','fixturePolygon'].includes(S.tool)){if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);if(S.tool==='fixtureBox'&&S.draft.length===2)finishFixtureDrawing();}
@@ -12645,7 +13574,18 @@ canvas.ondblclick=event=>{
   else if(S.tool==='fixturePolygon'&&S.draft.length>=3)finishFixtureDrawing();
   else if(['select','edit','fixtureEdit'].includes(S.tool)){const hit=surfaceForEdit(canvasPoint(event));if(hit)openItemEditor(hit.id);else if(S.tool==='select')zoomSelection();}
 };
-canvas.oncontextmenu=event=>{event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else {S.tool='select';refresh();}};
+const measurementContextMenu=measurementContextMenuFactory({
+  canvas,getState:()=>S,pointFromEvent:canvasPoint,hitTest:surfaceForEdit,
+  isBlocked:()=>!!$('#overlay').innerHTML.trim(),
+  selectSurface:id=>{S.tool='select';S.fixtureDrawing=null;S.fixtureEditing=null;selectItem(id);},
+  removeLastPoint:()=>{S.draft.pop();refresh();},resetTool:()=>{S.tool='select';refresh();},
+  openFinish:id=>{openItemEditor(id);$('#surfaceMaterial')?.focus();},
+  openLocation:id=>{workDialog(id);$('#workBlock')?.focus();},
+  openTileSettings:()=>{tileModal();$('#tileFormat')?.focus();},
+  activateOrigin:()=>activateOrigin(),canSetOrigin:item=>item.material.startsWith('CER'),
+  additionalEntries:item=>sanitaryMenuEntries(item),pageEntries:()=>sanitaryMenuEntries(null),
+});
+measurementContextMenu.install();
 canvas.onpointerdown=event=>{
   if(!S.plan||S.loading)return;S.dragged=false;canvas.focus();
   if(event.button===1||(S.spaceHeld||S.tool==='hand')&&event.button===0) {
