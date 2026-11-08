@@ -233,6 +233,30 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 <style>
 .takeoff-summary{display:flex;flex:0 0 auto;align-items:center;gap:12px;flex-wrap:wrap;padding:5px 10px;border-bottom:1px solid #bfd6e5;background:#f3faff;color:#17354d;font:11px/1.3 Arial,sans-serif}.takeoff-summary[hidden]{display:none}.takeoff-summary-value{display:flex;flex-direction:column;min-width:76px}.takeoff-summary-value>b{font-size:12px}.takeoff-summary-scope{font-weight:600}.takeoff-summary-scope small,.takeoff-summary-state small{display:block;font-size:10px;font-weight:400;color:#526b7f}.takeoff-summary-state{margin-left:auto;max-width:210px;font-size:10px;color:#815300}@media(max-width:800px){.takeoff-summary{gap:4px 10px}.takeoff-summary-scope,.takeoff-summary-state{flex-basis:100%;margin:0}.takeoff-summary-scope small,.takeoff-summary-state small{display:inline;margin-left:8px}}
 </style>
+<style>
+/* Devis.AI : propriétaire des styles du panneau documentaire. */
+#inspector.specification-inspector{--spec-surface:#fff;--spec-ground:#f3f8fc;--spec-ink:#18354d;--spec-muted:#526b7f;--spec-accent:#16557d;--spec-focus:#145f96;--spec-control:#73899c;--spec-divider:#d4e1eb;--spec-warning:#815300;--spec-warning-bg:#fff7e6;--spec-radius:6px;display:flex;flex-direction:column;flex:0 0 318px;width:318px;min-width:0;padding:0;overflow:hidden;background:var(--spec-surface);color:var(--spec-ink);font:12px/1.5 Arial,sans-serif;border-left:1px solid var(--spec-control)}
+#inspector.specification-inspector[hidden]{display:none!important}
+.specification-tabs-header{display:flex;align-items:center;flex:0 0 auto;background:var(--spec-ground);border-bottom:1px solid var(--spec-divider);padding:4px;gap:4px}
+.specification-tabs{display:flex;min-width:0;flex:1;gap:2px}.specification-tabs button{flex:1;min-width:0;min-height:34px;padding:6px 4px;border:0;border-radius:var(--spec-radius);background:transparent;color:var(--spec-muted);font:600 11px/1.2 Arial,sans-serif;white-space:nowrap}.specification-tabs button[aria-selected=true]{background:var(--spec-surface);color:var(--spec-accent);box-shadow:inset 0 -2px var(--spec-accent)}
+#inspector.specification-inspector #closeInspector{flex:0 0 26px;min-width:26px;min-height:32px;margin:0;padding:0;border:0;background:transparent;color:var(--spec-muted);font-size:20px}
+.specification-pane{flex:1;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;padding:12px}.specification-pane[hidden]{display:none!important}
+.specification-pane h2{margin:0 0 4px;font:700 16px/1.35 Arial,sans-serif;color:var(--spec-ink)}.specification-intro{margin-bottom:12px}.specification-intro p{margin:4px 0;color:var(--spec-muted);font-size:12px;line-height:1.5}.specification-pane small{display:block;color:var(--spec-muted);font:11px/1.4 Arial,sans-serif}
+.specification-pane button{max-width:100%;min-height:30px;border:1px solid var(--spec-control);border-radius:var(--spec-radius);padding:4px 8px;color:var(--spec-accent);background:var(--spec-surface);font:12px/1.35 Arial,sans-serif}.specification-pane button:hover{background:var(--spec-ground)}.specification-pane button:disabled{color:var(--spec-muted);background:var(--spec-ground);cursor:default}.specification-inspector :is(button,input,select,summary):focus-visible{outline:2px solid var(--spec-focus);outline-offset:2px}
+.specification-source-actions{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px}.specification-source-actions button{font-size:11px}.specification-pane details{border-top:1px solid var(--spec-divider);border-bottom:1px solid var(--spec-divider);padding:8px 0;margin:8px 0 12px}.specification-pane summary{color:var(--spec-accent);font-size:11px;cursor:pointer}.specification-pane details p{margin:8px 0;overflow-wrap:anywhere}.specification-pane label{display:block;margin:0;color:var(--spec-muted);font:11px/1.4 Arial,sans-serif}.specification-pane input,.specification-pane select{display:block;width:100%;min-width:0;max-width:100%;min-height:32px;margin:4px 0 8px;border:1px solid var(--spec-control);border-radius:var(--spec-radius);padding:6px 8px;color:var(--spec-ink);background:var(--spec-surface);font:12px/1.4 Arial,sans-serif}
+#specificationProgress{display:block;width:100%;height:5px;accent-color:var(--spec-accent);margin:8px 0}#specificationProgress[hidden]{display:none}.specification-filters{display:flex;gap:4px;margin-bottom:8px}.specification-filters button{flex:1;padding:4px;font-size:11px}.specification-filters button[aria-pressed=true]{background:var(--spec-accent);border-color:var(--spec-accent);color:#fff}.specification-count{margin:4px 0 8px;color:var(--spec-muted);font-size:11px}
+.specification-card{padding:10px 0;border-top:1px solid var(--spec-divider);min-width:0;overflow-wrap:anywhere}.specification-card-title{display:flex;align-items:baseline;gap:8px;min-width:0}.specification-code{display:inline-block;flex:0 0 auto;max-width:80px;padding:2px 5px;border-radius:4px;background:var(--spec-ground);color:var(--spec-accent);font:700 12px/1.4 Arial,sans-serif}.specification-card-title strong{min-width:0;font:600 12px/1.4 Arial,sans-serif}.specification-card-meta,.specification-product-detail{margin:4px 0;color:var(--spec-muted);font-size:11px;line-height:1.45}.specification-card-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.specification-card-actions button{font-size:11px;padding:4px 6px}.specification-card-actions button:first-child{background:var(--spec-accent);border-color:var(--spec-accent);color:#fff}.specification-pane .specification-source-link{border:0;padding:0;min-height:24px;font-size:11px;text-align:left;text-decoration:underline;text-underline-offset:2px;background:transparent}.specification-review{padding:4px 6px;margin:6px 0;color:var(--spec-warning);background:var(--spec-warning-bg);font-size:11px}.specification-reviewed{margin:4px 0;color:var(--spec-muted);font-size:11px}
+.specification-empty{padding:16px 0;color:var(--spec-muted)}.specification-empty b{color:var(--spec-ink);font-size:12px}.specification-empty p,.specification-help{font-size:11px;line-height:1.5;color:var(--spec-muted);margin:6px 0 12px}.specification-quantity-row{display:flex!important;width:100%;align-items:center;justify-content:space-between;text-align:left;gap:8px;margin:0 0 8px;padding:10px!important;overflow-wrap:anywhere}.specification-quantity-row>span:first-child{min-width:0}.specification-quantity-row b{display:block;color:var(--spec-accent);font-size:11px}.specification-quantity-row strong{display:block;color:var(--spec-ink);font-size:12px;font-weight:500}.specification-quantity-number{flex:0 0 auto;max-width:42%;text-align:right;color:var(--spec-ink);font-weight:700;font-variant-numeric:tabular-nums}.specification-quantity-number small{display:block;font-weight:400}
+.project-command-bar #workspaceTools #devisToolBtn{display:flex;align-items:center;justify-content:center;gap:4px;width:auto;min-width:78px;padding:4px 6px;border:1px solid #73899c;background:#fff;color:#16557d;border-radius:6px;font:600 11px/1.4 Arial,sans-serif}.project-command-bar #workspaceTools #devisToolBtn span{font-size:16px}
+@media(max-width:1100px){#inspector.specification-inspector{position:absolute;right:0;top:0;bottom:0;max-height:none;height:100%;z-index:7;max-width:calc(100% - 16px);box-shadow:-8px 0 24px #18354d24}}@media(max-width:480px){#inspector.specification-inspector{width:calc(100% - 16px)}.specification-pane{padding:12px}.specification-card-title{display:block}.specification-card-title strong{display:block;margin-top:4px}.specification-card-actions{display:block}.specification-card-actions button{margin:4px 4px 0 0}.specification-source-actions{display:block}.specification-source-actions button{margin:0 4px 4px 0}}
+
+
+#takeoffSummary{height:52px;min-height:52px;max-height:52px;flex:0 0 52px;overflow-y:hidden}#takeoffSummary .takeoff-summary-scope,#takeoffSummary .takeoff-summary-value,#takeoffSummary .takeoff-summary-state{flex:0 0 auto;white-space:nowrap}#takeoffSummary .takeoff-summary-state{margin-left:auto}
+@media(max-width:520px){.topbar .project-command-bar{max-width:calc(100vw - 20px);flex:1 1 auto}.project-command-bar #workspaceTools{min-width:0;overflow-x:auto;scrollbar-width:thin}.project-command-bar #workspaceTools>button{flex-shrink:0}.project-command-bar #workspaceTools #workspaceProjectBtn{order:-2}.project-command-bar #workspaceTools #devisToolBtn{order:-1}}
+</style>
+<style>
+#takeoffSummary{min-width:0;max-width:100%;overflow-x:auto;flex-wrap:nowrap;gap:16px}.takeoff-summary-scope{flex:0 0 auto}.takeoff-summary-product{flex:0 0 auto;max-width:250px;min-width:130px;padding:0 4px;border:0;background:transparent;color:#18354d;text-align:left;cursor:pointer}.takeoff-summary-product>span{display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.takeoff-summary-product:focus-visible{outline:2px solid #145f96;outline-offset:1px}
+</style>
 </head>
 <body><div id="root"></div>
 <script>/**
@@ -1280,6 +1304,7 @@ function confirmationIssues(item,state=S) {
   if(workspace&&!work.roomId){const located=workOf(item,state);if(work.block&&!located.blockId&&workspace.blocks.filter(block=>block.name===work.block).length>1)reasons.push('bloc ambigu : affectez une pièce du projet');if(work.unit&&!located.unitId&&workspace.units.filter(unit=>unit.code===work.unit).length>1)reasons.push('logement ambigu : affectez une pièce du projet');}
   if(work.roomId&&!workspace?.rooms.some(room=>room.id===work.roomId))reasons.push('pièce supprimée ou rattachement à reprendre');
   if(work.unitId&&!workspace?.units.some(unit=>unit.id===work.unitId))reasons.push('logement supprimé ou rattachement à reprendre');
+  if(work.specificationId){const entry=specificationEntry(item,state);if(!entry)reasons.push('fini du devis à réaffecter');else if(!entry.usages.includes(specificationUsage(item)))reasons.push('usage du fini à corriger');else if(work.specificationSignature!==specificationSignature(entry))reasons.push('fini du devis modifié : réaffecter avant validation');}
   if(work.productId){const product=workspace?.products.find(product=>product.id===work.productId);if(!product)reasons.push('produit à réaffecter');else if(work.productSignature!==JSON.stringify([product.id,product.saleUnit,product.coverage,product.rollWidth,product.format,product.color,product.packaging,product.wastePercent]))reasons.push('produit modifié : réaffecter avant validation');}
   if (!Number.isFinite(item.qty) || item.qty<=0) reasons.push('quantité non positive');
   reasons.push(...wallTakeoffIssues(item,state));
@@ -1437,7 +1462,7 @@ function synchronizeDetected(candidates) {
     if(!source.selected){if(existing&&existing.status!=='confirmée'){forgetAutomaticMeasures(new Set([existing.id]));delete source.autoSavedId;}else if(existing)source.selected=true;continue;}
     if(source.mixedBathroom||source.needsSeparation)continue;
     if(existing){
-      if(existing.status!=='confirmée'&&existing.materialNeedsReview===true&&existing.materialSource!=='choix estimateur'&&!existing.work?.productId){
+      if(existing.status!=='confirmée'&&existing.materialNeedsReview===true&&existing.materialSource!=='choix estimateur'&&!existing.work?.productId&&!existing.work?.specificationId){
         existing.material=source.material;existing.materialNeedsReview=source.materialNeedsReview;existing.materialSource=source.materialSource;
       }
       continue;
@@ -1453,7 +1478,7 @@ function synchronizeDetected(candidates) {
     if(result.ok){delete source.importIssue;items.push(candidate);S.items=items;source.autoSavedId=candidate.id;accepted.push(candidate.id);}
     else{source.importIssue=result.reason;skipped.push({name:source.name,reason:result.reason});}
   }
-  syncSanitaryQuantities();applyAutomaticFiling(S.items.filter(item=>item.autoTakeoff||item.sanitarySource).map(item=>item.id));
+  syncSanitaryQuantities();applySpecificationSuggestions(S.items);applyAutomaticFiling(S.items.filter(item=>item.autoTakeoff||item.sanitarySource).map(item=>item.id));
   return {accepted:accepted.length,acceptedIds:accepted,skipped};
 }
 function synchronizeDetectionChoice(candidate) {
@@ -1469,9 +1494,100 @@ function closeReview() {
   $('#inspector').hidden=innerWidth<780;
   refreshWorkflow();
 }
+function inspectorPropertiesHost() {
+  let host=$('#inspectorProperties');if(!host){host=document.createElement('div');host.id='inspectorProperties';$('#inspector').append(host);}return host;
+}
+function specificationData(state=S) {return state.estimation?.specifications;}
+function specificationEntry(item,state=S) {
+  const id=item.work?.specificationId,data=specificationData(state);if(!id||!data)return null;
+  // Le catalogue est remplacé atomiquement par ses propriétaires. Une nouvelle
+  // analyse, correction, restauration ou source obtient donc un nouvel index.
+  let index=specificationEntryIndexes.get(data);if(!index){index=new Map();for(const entry of specificationCatalog.entries(data,{includeIgnored:true}))for(const alias of entry.aliases)index.set(alias,entry);specificationEntryIndexes.set(data,index);}return index.get(id)||null;
+}
+function specificationSignature(entry) {return JSON.stringify([entry.code,entry.family,entry.scope,entry.usages,entry.manufacturer,entry.model,entry.color,entry.formatText]);}
+function visibleEstimateCode(code) {return profile(code).reference||code;}
+function specificationUsage(item,entry=null) {return item.kind==='area'?'floor':isWallTakeoff(item)?item.wallTakeoff?.type==='backsplash'?'backsplash':'wall':item.kind==='linear'?(entry?.usages.find(usage=>['baseboard','moulding','threshold'].includes(usage))||item.work?.specificationUsage||'baseboard'):item.kind==='count'&&!item.sanitarySource?'threshold':null;}
+function specificationUnit(item) {return item.kind==='count'?'u':item.kind==='linear'&&!isWallTakeoff(item)?'pi':'pi²';}
+function specificationKeyForItem(item,usage=specificationUsage(item),state=S) {const e=specificationEntry(item,state);return e&&usage&&e.usages.includes(usage)?specificationCatalog.profileKey(e.id,usage,specificationUnit(item)):null;}
+function specificationScope(item) {const w=workOf(item);return w.unit||w.unitId||item.detectedUnit||item.unitId?'units':surfaceSpaceType(item)==='circulation'||isSharedSpaceName(item.name)?'common':'unspecified';}
+function specificationFamily(item) {return item.material?.startsWith('CER')?'ceramic':item.material?.startsWith('VP-')?'vinyl':item.material?.startsWith('BOI-')?'wood':item.material?.startsWith('LAM-')?'laminate':item.material?.startsWith('TAP-')?'carpet':item.kind==='linear'?'baseboard':null;}
+function specificationMaterial(entry) {return ({vinyl:'VP-01',wood:'BOI-01',laminate:'LAM-01',carpet:'TAP-01',ceramic:/12\s*[x×]\s*24/i.test(entry.formatText.replace(/['"″]/g,''))?'CER-12X24':'CER-01'})[entry.family]||null;}
+function applySpecification(item,entry,origin='manual') {
+  const usage=specificationUsage(item,entry);if(!usage||!entry.usages.includes(usage)||item.sanitarySource||item.measureOnly||workOf(item).roomBoundary)throw new Error('Ce fini ne correspond pas au type de mesure sélectionné.');
+  if(origin==='auto'&&(item.work?.productId||item.work?.specificationId||item.materialNeedsReview===false))return false;
+  const work=workOf(item);item.work={...work,productId:'',productSignature:'',specificationId:entry.id,specificationUsage:usage,specificationOrigin:origin,specificationSignature:specificationSignature(entry)};
+  const material=specificationMaterial(entry);if(material&&item.kind==='area')item.material=material;
+  item.materialNeedsReview=origin==='auto';item.status='à valider';item.waste=0;item.wasteConfirmed=item.kind==='count';if(isWallTakeoff(item))item.work.wall={...item.work.wall,waste:0};return true;
+}
+function applyActiveSpecification(items) {
+  const active=S.activeSpecification;if(!active)return;const entry=specificationCatalog.getEntry(specificationData(),active.id);if(!entry||entry.ignored)return;
+  for(const item of items)if(!item.measureOnly&&!item.sanitarySource&&!workOf(item).roomBoundary&&entry.usages.includes(specificationUsage(item,entry))&&!item.work?.specificationId)applySpecification(item,entry,'manual');
+}
+function applySpecificationSuggestions(items) {
+  if(!specificationData())return;
+  for(const item of items){if(!item.autoTakeoff||item.measureOnly||workOf(item).roomBoundary||item.work?.productId||item.work?.specificationId||item.materialNeedsReview===false)continue;
+    const entry=specificationCatalog.match(specificationData(),{usage:specificationUsage(item),scope:specificationScope(item),family:specificationFamily(item)});if(entry)applySpecification(item,entry,'auto');}
+}
+function specificationView() {
+  const data=specificationCatalog.validate(specificationData()),entries=specificationCatalog.entries(data),job=S.specificationJob;
+  const current=data.documents.find(doc=>doc.key===S.documentKey);
+  return {documents:data.documents,entries,notes:data.documents.flatMap(doc=>doc.notes),job,
+    status:S.specificationError?'Analyse à compléter · '+S.specificationError:job?'Lecture des finis · '+job.done+'/'+job.total+' feuilles':current?(S.specificationCacheReused?'Analyse enregistrée · ':'')+entries.length+' références pertinentes dans le projet':data.documents.length?entries.length+' références repérées · ajoutez les autres sources':'Ajoutez les plans Architecture ou Design. Leurs finis seront recherchés automatiquement.'};
+}
+function specificationQuantities(options={}) {
+  const selected=options.scope!=='page'&&S.selection.size>0,items=S.items.filter(item=>item.page===S.page&&(!selected||S.selection.has(item.id))),groups=new Map();
+  for(const item of items){const work=workOf(item);if(!work.included||work.layer!=='finish'||item.measureOnly||work.roomBoundary)continue;
+    const usage=specificationUsage(item);if(!usage&&!item.sanitarySource)continue;const entry=specificationEntry(item),unit=specificationUnit(item),scope=entry?.scope||specificationScope(item),code=displayCodeForItem(item),label=entry?specificationCatalog.displayLabel(entry,usage).split(' — ').slice(1).join(' — '):labelForItem(item),key=JSON.stringify([code,label,usage||item.sanitaryType,scope,unit]);
+    if(!groups.has(key))groups.set(key,{key,code,label,usageLabel:item.sanitarySource?sanitaryTypeLabel(item.sanitaryType):({floor:'Plancher',wall:'Mural',backsplash:'Dosseret',baseboard:'Linéaire',moulding:'Moulure',threshold:'Seuil'})[usage],scopeLabel:scope==='units'?'Unités':scope==='common'?'Espaces communs':'Localisation à préciser',unit,net:0,knownNet:0,pending:false,ids:[]});
+    const row=groups.get(key),net=isWallTakeoff(item)?wallTakeoffQuantity(item):measureForEstimate(item);row.ids.push(item.id);row.pending ||=!isConfirmed(item)||!!item.sanitarySource?.typeNeedsReview;if(net===null)row.net=null;else {row.knownNet+=net;if(row.net!==null)row.net+=net;}
+  }
+  return {label:(selected?'Sélection · '+items.length+' mesure(s)':'Feuille '+S.page)+' · net unique',rows:[...groups.values()].sort((a,b)=>a.code.localeCompare(b.code,undefined,{numeric:true})||a.usageLabel.localeCompare(b.usageLabel))};
+}
+function chooseSpecification(id) {const entry=specificationCatalog.getEntry(specificationData(),id);if(!entry)return;S.activeSpecification={id:entry.id};const material=specificationMaterial(entry);if(material)S.material=material;toast(entry.code+' choisi pour les prochains tracés compatibles.');refresh();}
+function assignSpecificationSelection(id) {
+  const entry=specificationCatalog.getEntry(specificationData(),id),items=S.items.filter(item=>item.page===S.page&&S.selection.has(item.id));if(!entry||!items.length)return toast('Sélectionnez une mesure sur le plan.');
+  if(items.some(item=>!entry.usages.includes(specificationUsage(item,entry))||item.sanitarySource||item.measureOnly||workOf(item).roomBoundary))return toast('La sélection contient une mesure incompatible avec ce fini.');
+  remember();items.forEach(item=>applySpecification(item,entry));applyAutomaticFiling(items.map(item=>item.id));save();refresh();toast(entry.code+' affecté à '+items.length+' mesure(s). Contours et quantités nettes conservés.');
+}
+function editSpecification(id) {
+  const entry=specificationCatalog.getEntry(specificationData(),id);if(!entry)return;
+  openDialog('Corriger le fini '+entry.code,`<form id="specificationEditForm"><div class="v4-fields">${[['code','Code du devis'],['label','Description'],['model','Modèle / collection'],['color','Couleur'],['formatText','Format indiqué']].map(([field,label])=>`<label>${label}<input id="specEdit${field}" value="${esc(entry[field])}" maxlength="${field==='code'?40:1000}"></label>`).join('')}</div><p>La source d’origine reste conservée. Cette correction sera reprise à la prochaine ouverture.</p><p id="specEditError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="specEditCancel">Annuler</button><button type="submit" class="primary">Enregistrer le fini</button></div></form>`);
+  $('#specEditCancel').onclick=closeDialog;$('#specificationEditForm').onsubmit=event=>{event.preventDefault();try{const patch=Object.fromEntries(['code','label','model','color','formatText'].map(field=>[field,$('#specEdit'+field).value.trim()]));const next=specificationCatalog.override(specificationData(),id,patch);remember();S.estimation.specifications=next;for(const item of S.items)if(entry.aliases.includes(item.work?.specificationId)){item.status='à valider';item.materialNeedsReview=true;}closeDialog();save();refresh();}catch(error){$('#specEditError').textContent=error.message;}};
+}
+function ignoreSpecification(id) {try {const next=specificationCatalog.ignore(specificationData(),id);remember();S.estimation.specifications=next;save();refresh();toast('Référence masquée dans les propositions. Ses affectations existantes sont conservées.');}catch(error){toast(error.message);}}
+async function showSpecificationSource(id) {
+  const entry=specificationCatalog.getEntry(specificationData(),id);if(!entry)return;
+  const source=entry.source;
+  if(source.documentKey!==S.documentKey){const file=await documents.get(source.documentKey);if(!file?.bytes)return toast('Rouvrez le document source depuis Architecture ou Design.');const opened=await loadFile(new File([file.bytes],file.name,{type:file.type,lastModified:file.lastModified}));if(!opened)return;}
+  if(source.documentKey!==S.documentKey)return;await showPage(source.page);specificationUI.open('devis');toast((source.sheetName||'Source')+' · page '+source.page);
+}
+function specificationBegin(pdf,key,force=false) {
+  S.specificationError='';const reused=!force&&specificationCatalog.reusable(specificationData(),key,pdf.numPages);S.specificationCacheReused=reused;
+  if(reused){S.specificationJob=null;specificationUI?.render();return null;}
+  const job={key,pdf,indexToken:S.indexToken,total:pdf.numPages,done:0,pages:new Map(),unreadable:0};S.specificationJob=job;specificationUI?.render();return job;
+}
+function specificationReadPage(job,info,page) {
+  if(!job||S.specificationJob!==job||S.documentKey!==job.key||S.pdf!==job.pdf||S.indexToken!==job.indexToken)return;
+  const revision=info.texts?.some(row=>/^EN COURS$/i.test(row.text))?'EN COURS':'';
+  let result;try{const texts=(info.texts||[]).map(row=>({...row,text:row.text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')}));result=finishSchedules.analyze({documentKey:job.key,page,sheetName:info.code||'',revision,texts,width:info.width,height:info.height});}catch(error){result={entries:[],notes:[],issues:[{message:'Feuille '+page+' : '+error.message}]};}job.pages.set(page,result);job.done=job.pages.size;if(!info.hasText||info.readError)job.unreadable++;specificationUI?.render();
+}
+function specificationFinish(job) {
+  if(!job||S.specificationJob!==job||S.documentKey!==job.key||S.pdf!==job.pdf||S.indexToken!==job.indexToken)return;
+  const pages=[...job.pages.values()],issues=[...new Set(pages.flatMap(page=>page.issues.map(issue=>issue.message||issue.code||'Lecture à vérifier')))];if(job.unreadable)issues.push(job.unreadable+' feuille(s) sans texte lisible.');if(job.done<job.total)issues.push('Lecture interrompue : '+job.done+'/'+job.total+' feuilles.');
+  try{S.estimation.specifications=specificationCatalog.replaceDocument(specificationData(),{key:job.key,name:S.fileName,pages:job.total,scannedPages:job.done,engineVersion:finishSchedules.version,status:job.done===job.total&&!job.unreadable&&!issues.length?'ready':'partial',entries:pages.flatMap(page=>page.entries),notes:pages.flatMap(page=>page.notes),issues});S.specificationJob=null;S.specificationCacheReused=false;applySpecificationSuggestions(S.items);save();refresh();}catch(error){S.specificationJob=null;S.specificationError=error.message;refresh();toast('Analyse des finis à compléter : '+error.message);}
+}
+async function rescanSpecifications() {
+  if(!S.pdf||S.specificationJob)return;const pdf=S.pdf,key=S.documentKey,token=S.indexToken,job=specificationBegin(pdf,key,true);
+  try{for(let n=1;n<=pdf.numPages;n++){if(S.pdf!==pdf||S.documentKey!==key||S.indexToken!==token)return;const info=S.pageInfo[n]||await inspectPdfScale(await pdf.getPage(n));if(S.pdf!==pdf||S.documentKey!==key||S.indexToken!==token)return;specificationReadPage(job,info,n);await new Promise(resolve=>setTimeout(resolve,0));}specificationFinish(job);}catch(error){if(S.specificationJob===job){S.specificationJob=null;toast('Analyse des finis interrompue : '+error.message);refresh();}}
+}
 function renderTakeoffSummary() {
   const host=$('#takeoffSummary');if(!host)return;
   host.hidden=!S.plan;if(!S.plan)return;
+  const quantities=specificationQuantities(),hasSpecifications=quantities.rows.some(row=>row.ids.some(id=>S.items.find(item=>item.id===id)?.work?.specificationId));
+  if(hasSpecifications){
+    host.innerHTML=`<span class="takeoff-summary-scope">${esc(quantities.label)}<small>Brouillons inclus · sans pertes</small></span>${quantities.rows.map((row,index)=>`<button type="button" class="takeoff-summary-value takeoff-summary-product" data-quantity-finish="${index}" title="${esc(row.label+' · '+row.usageLabel+' · '+row.scopeLabel)}"><span>${esc(row.code==='QT-01'?row.usageLabel:row.code+' — '+row.label)}</span><b>${row.net===null?fmt(row.knownNet)+' + ?':fmt(row.net,row.unit==='u'?0:1)} ${esc(row.unit)}</b></button>`).join('')}`;
+    $$('[data-quantity-finish]',host).forEach(button=>button.onclick=()=>{setSelection(quantities.rows[+button.dataset.quantityFinish].ids);refresh();});return;
+  }
   const records=S.items.filter(item=>item.page===S.page).flatMap(item=>{
     const work=workOf(item),isCeramic=item.material.startsWith('CER');
     const base={id:item.id,documentKey:S.documentKey,page:item.page,isCeramic,included:work.included&&work.layer==='finish',confirmed:isConfirmed(item)};
@@ -1941,6 +2057,7 @@ function unitForItem(item) {
 function labelForItem(item) {
   if(item.work?.roomBoundary)return 'Contour de pièce · hors achats';
   if(item.work?.productId)return S.estimation?.workspace?.products.find(product=>product.id===item.work.productId)?.name||'Produit à réaffecter';
+  const specification=specificationEntry(item);if(specification)return specificationCatalog.displayLabel(specification,specificationUsage(item));
   if(typeof isWallTakeoff==='function'&&isWallTakeoff(item))return wallTakeoffLabel(item);
   return item.kind==='count'?'Comptage':item.measureOnly?'Cote de référence':item.kind==='area'?mat(item.material).name:'Plinthe / moulure';
 }
@@ -2057,7 +2174,7 @@ function initRibbonOverflow() {
     const buttons=document.createElement('div');buttons.className='ribbon-overflow-buttons';overflow.append(buttons);$('#ribbonOverflowGroups').append(overflow);
     [...home.children].forEach((button,position)=>{
       const tool=button.dataset.tool,priority=lowPriority.includes(button.id)?lowPriority.indexOf(button.id):['auto','region','divider','edit'].includes(tool)?15+['auto','region','divider','edit'].indexOf(tool):middlePriority.includes(button.id)?25+middlePriority.indexOf(button.id):button.id==='deleteSelection'||tool==='split'?50:button.id==='manualScale'?70:button.id==='manualSelect'?80:90+index;
-      entries.push({button,home,group,overflow,buttons,position,priority});
+      entries.push({button,home,group,overflow,buttons,position,priority,alwaysAdvanced:['region','divider'].includes(tool)||button.id==='wallSamplesBtn'});
     });
   });
   ribbonOverflowState={ribbon,strip,main,panel,toggle,holder,groups,entries,order:[...entries].sort((a,b)=>a.priority-b.priority),scheduled:false,width:0};
@@ -2084,10 +2201,12 @@ function layoutRibbonOverflow() {
   const state=ribbonOverflowState;if(!state)return;
   const {strip,main,panel,toggle,holder,groups,entries,order}=state,focused=document.activeElement,wasOpen=!panel.hidden;
   for(const entry of entries){entry.home.append(entry.button);entry.overflow.hidden=true;}
-  groups.forEach(group=>group.hidden=false);holder.hidden=true;
+  for(const entry of entries.filter(row=>row.alwaysAdvanced)){entry.buttons.append(entry.button);entry.overflow.hidden=false;}
+  groups.forEach(group=>group.hidden=!$('.manual-group-buttons',group).children.length);holder.hidden=!entries.some(entry=>entry.alwaysAdvanced);
   if(strip.scrollWidth>strip.clientWidth+1){
     holder.hidden=false;
     for(const entry of order){
+      if(entry.alwaysAdvanced)continue;
       if(strip.scrollWidth<=strip.clientWidth+1)break;
       entry.buttons.append(entry.button);entry.overflow.hidden=false;
       if(!entry.home.children.length)entry.group.hidden=true;
@@ -2403,7 +2522,7 @@ function renderMeasureTree(visibleItems) {
   lucide.createIcons({attrs:{width:16,height:16,'stroke-width':1.8}});
 }
 function renderFolderInspector(item) {
-  const selected=selectedFolderItems(),host=$('#inspector');if(!selected.length||!host)return;
+  const selected=selectedFolderItems(),host=inspectorPropertiesHost();if(!selected.length||!host)return;
   const values=new Set(selected.map(entry=>entry.folderId||'')),mixed=values.size>1,value=mixed?'':[...values][0];
   host.insertAdjacentHTML('beforeend',`<section class="folder-inspector"><label for="assignFolderSelect">Dossier${selected.length>1?' · '+selected.length+' mesures':''}</label><select id="assignFolderSelect" ${folderBusy()?'disabled':''}>${mixed?'<option value="__mixed__" selected disabled>Plusieurs dossiers</option>':''}${folderOptions(value)}</select><button type="button" id="newFolderForSelection"><i data-lucide="folder-plus" aria-hidden="true"></i> Nouveau dossier pour la sélection</button></section>`);
   $('#assignFolderSelect').onchange=event=>{assignMeasuresToFolder(selected,event.target.value);$('#assignFolderSelect')?.focus();};
@@ -2645,7 +2764,7 @@ function openWallTakeoffEditor(points,existing=null,context={}) {
     const work={...wallTakeoffWork(height,openings,waste,existing?.work),included:$('#wallWorkIncluded').checked,block:$('#wallWorkBlock').value.trim(),level:$('#wallWorkLevel').value.trim(),unit:$('#wallWorkUnit').value.trim(),type:$('#wallWorkType').value.trim(),repeat:Number($('#wallWorkRepeat').value)};
     validateWork(work,'linear');
     if(existing){remember();existing.work=work;existing.wallTakeoff={...existing.wallTakeoff,type,source:existing.wallTakeoff?.source||'manual',reviewed,runKey:wallRunKey(points),heightBasis:measured.basis};existing.status='à valider';}
-    else{const item=createWallTakeoffItem(points,type,height,openings,reviewed,'manual',context.hint);item.work=work;item.wallTakeoff.heightBasis=measured.basis;remember();S.items.push(item);setSelection([item.id]);}
+    else{const item=createWallTakeoffItem(points,type,height,openings,reviewed,'manual',context.hint);item.work=work;item.wallTakeoff.heightBasis=measured.basis;remember();applyActiveSpecification([item]);S.items.push(item);setSelection([item.id]);}
     S.wallTakeoffPreview=null;closeDialog();save();refresh();toast('Relevé mural enregistré, à valider avant commande.');
   }catch(error){$('#wallTakeoffError').textContent=error.message;}};
   update();
@@ -8890,6 +9009,529 @@ const takeoffSummary = (function createTakeoffSummary() {
 
   return { summarize, limits };
 })();
+const finishSchedules = (function createFinishSchedules() {
+  // Coordonnées PDF haut-gauche, sans dépendance au zoom, au DOM ou au réseau.
+  // Les résultats sont des lectures sourcées, jamais des produits confirmés.
+  const LIMITS = { items: 50000, words: 100000, chars: 2000000, tables: 100, entries: 3000, notes: 300, coordinate: 10000000 };
+  const families = new Set(['vinyl', 'wood', 'laminate', 'ceramic', 'carpet', 'baseboard', 'moulding', 'threshold']);
+  const scopes = new Set(['units', 'common', 'unspecified']);
+  const usages = new Set(['floor', 'wall', 'backsplash', 'baseboard', 'moulding', 'threshold']);
+  const forbidden = new Set(['__proto__', 'prototype', 'constructor']);
+  const controls = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+  const codePattern = /^[a-z]{1,6}[-\u2010-\u2013]?\d{1,5}[a-z]?(?:[-.]\d{1,4})?$/i;
+  const entryKeys = ['id', 'code', 'label', 'family', 'scope', 'usages', 'manufacturer', 'model', 'color', 'formatText', 'source'];
+  const sourceKeys = ['documentKey', 'page', 'sheetName', 'revision', 'rect', 'text'];
+  const clean = value => value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+  const norm = value => clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const fieldText = words => clean(words.map(word => word.text).join(' '));
+  const valueText = words => fieldText(words).replace(/^(?:[-–—]\s*)+|(?:\s*[-–—])+$/g, '').trim();
+
+  function object(value, label, keys) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) {
+      throw new TypeError(label + ' : objet de données simple attendu.');
+    }
+    if (Object.getOwnPropertySymbols(value).length) throw new TypeError(label + ' : clé de données invalide.');
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (forbidden.has(key) || (keys && !keys.includes(key))) throw new TypeError(label + ' : champ ou clé interdit.');
+      if (!('value' in Object.getOwnPropertyDescriptor(value, key))) throw new TypeError(label + ' : accès aux champs de données uniquement.');
+    }
+    return value;
+  }
+
+  function array(value, label) {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) throw new TypeError(label + ' : liste de données attendue.');
+    if (Object.getOwnPropertySymbols(value).length) throw new TypeError(label + ' : clé de données invalide.');
+    for (const key of Object.getOwnPropertyNames(value)) {
+      if (key !== 'length' && (!/^(?:0|[1-9]\d*)$/.test(key) || !('value' in Object.getOwnPropertyDescriptor(value, key)))) {
+        throw new TypeError(label + ' : champ de liste invalide.');
+      }
+    }
+    return value;
+  }
+
+  function string(value, label, max, empty = false) {
+    if (typeof value !== 'string' || value.length > max || (!empty && !value.trim()) || controls.test(value) || forbidden.has(value)) {
+      throw new TypeError(label + ' : texte de fini invalide ou limite dépassée.');
+    }
+    return value;
+  }
+
+  function coordinate(value, label) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > LIMITS.coordinate) {
+      throw new TypeError(label + ' : coordonnées de source invalides.');
+    }
+    return value;
+  }
+
+  function source(value) {
+    object(value, 'Provenance du fini', sourceKeys);
+    const rect = object(value.rect, 'Rectangle de source', ['x', 'y', 'right', 'bottom']);
+    for (const key of ['x', 'y', 'right', 'bottom']) coordinate(rect[key], 'Rectangle de source');
+    if (rect.right <= rect.x || rect.bottom <= rect.y) throw new TypeError('Rectangle de source : coordonnées sans surface.');
+    if (!Number.isInteger(value.page) || value.page < 1 || value.page > 100000) throw new TypeError('Page de source invalide.');
+    return {
+      documentKey: string(value.documentKey, 'Document de source', 512), page: value.page,
+      sheetName: string(value.sheetName, 'Feuille de source', 256, true), revision: string(value.revision, 'Révision de source', 128, true),
+      rect: { x: rect.x, y: rect.y, right: rect.right, bottom: rect.bottom }, text: string(value.text, 'Texte de source', 12000),
+    };
+  }
+
+  function validateEntries(entries) {
+    array(entries, 'Liste des finis');
+    if (entries.length > LIMITS.entries) throw new TypeError('Limite de finis dépassée.');
+    const ids = new Set();
+    let chars = 0;
+    return entries.map(entry => {
+      object(entry, 'Fini', entryKeys);
+      const id = string(entry.id, 'Identifiant du fini', 128);
+      if (ids.has(id)) throw new TypeError('Identifiant de fini dupliqué.');
+      ids.add(id);
+      const code = string(entry.code, 'Code de fini', 40);
+      if (!codePattern.test(code)) throw new TypeError('Code de fini invalide.');
+      if (!families.has(entry.family)) throw new TypeError('Famille de fini invalide.');
+      if (!scopes.has(entry.scope)) throw new TypeError('Portée de fini invalide.');
+      array(entry.usages, 'Usages du fini');
+      if (!entry.usages.length || entry.usages.length > usages.size || new Set(entry.usages).size !== entry.usages.length || entry.usages.some(usage => !usages.has(usage))) {
+        throw new TypeError('Usage de fini invalide.');
+      }
+      const result = {
+        id, code, label: string(entry.label, 'Libellé du fini', 2000), family: entry.family, scope: entry.scope, usages: [...entry.usages],
+        manufacturer: string(entry.manufacturer, 'Fabricant du fini', 1000, true), model: string(entry.model, 'Modèle du fini', 2000, true),
+        color: string(entry.color, 'Couleur du fini', 1000, true), formatText: string(entry.formatText, 'Format du fini', 512, true), source: source(entry.source),
+      };
+      chars += result.label.length + result.manufacturer.length + result.model.length + result.color.length + result.formatText.length + result.source.text.length;
+      if (chars > LIMITS.chars) throw new TypeError('Limite de textes des finis dépassée.');
+      return result;
+    });
+  }
+
+  function hash(text) {
+    let a = 2166136261, b = 3339675911;
+    for (let i = 0; i < text.length; i++) {
+      a = Math.imul(a ^ text.charCodeAt(i), 16777619);
+      b = Math.imul(b ^ text.charCodeAt(i), 2246822519);
+    }
+    return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+  }
+
+  function bounds(words) {
+    return { x: Math.min(...words.map(w => w.x)), y: Math.min(...words.map(w => w.y)),
+      right: Math.max(...words.map(w => w.right)), bottom: Math.max(...words.map(w => w.bottom)) };
+  }
+
+  function positionedWords(items) {
+    const words = [], seen = new Set();
+    let chars = 0;
+    for (const item of items) {
+      object(item, 'Texte positionné');
+      const text = string(item.text, 'Texte positionné', 12000, true);
+      for (const key of ['x', 'y', 'width', 'height']) coordinate(item[key], 'Texte positionné');
+      if (item.x + item.width > LIMITS.coordinate || item.y + item.height > LIMITS.coordinate) throw new TypeError('Texte positionné : coordonnées hors limite.');
+      if (item.cx !== undefined) coordinate(item.cx, 'Centre du texte');
+      if (item.cy !== undefined) coordinate(item.cy, 'Centre du texte');
+      chars += text.length;
+      if (chars > LIMITS.chars) return null;
+      if (!text.trim() || !item.width || !item.height) continue;
+      // Les spans PDF.js peuvent contenir plusieurs mots. L'interpolation ne sert
+      // qu'au regroupement en cellules ; aucun glyphe n'est reconnu ou inventé.
+      for (const match of text.matchAll(/\S+/g)) {
+        const x = item.x + item.width * match.index / text.length;
+        const width = item.width * match[0].length / text.length;
+        const token = { text: clean(match[0]), x, y: item.y, right: x + width, bottom: item.y + item.height, height: item.height,
+          cx: x + width / 2, cy: item.y + item.height / 2 };
+        const key = [token.text, x, token.y, token.right, token.bottom].join('\u0001');
+        if (!seen.has(key)) { words.push(token); seen.add(key); }
+        if (words.length > LIMITS.words) return null;
+      }
+    }
+    return words;
+  }
+
+  function makeLines(words) {
+    const lines = [];
+    words.sort((a, b) => a.cy - b.cy || a.x - b.x || a.text.localeCompare(b.text));
+    for (const word of words) {
+      let line = lines[lines.length - 1];
+      if (!line || Math.abs(line.cy - word.cy) > Math.min(line.height, word.height) * 0.46) {
+        line = { words: [], cy: word.cy, height: word.height, y: word.y, bottom: word.bottom };
+        lines.push(line);
+      }
+      line.words.push(word);
+      line.cy += (word.cy - line.cy) / line.words.length;
+      line.height = Math.min(line.height, word.height);
+      line.y = Math.min(line.y, word.y); line.bottom = Math.max(line.bottom, word.bottom);
+    }
+    for (const line of lines) line.words.sort((a, b) => a.x - b.x || a.text.localeCompare(b.text));
+    return lines;
+  }
+
+  function segments(line) {
+    const groups = [];
+    for (const word of line.words) {
+      let group = groups[groups.length - 1];
+      if (!group || word.x - group[group.length - 1].right > line.height * 3.5) { group = []; groups.push(group); }
+      group.push(word);
+    }
+    return groups;
+  }
+
+  function scopeOf(text) {
+    const s = norm(text);
+    if (/\b(COMMUNS?|COMMON)\b/.test(s)) return 'common';
+    if (/\b(UNITES?|LOGEMENTS?|UNITS?)\b/.test(s)) return 'units';
+    return 'unspecified';
+  }
+
+  function headings(lines) {
+    const result = [];
+    for (const line of lines) for (const group of segments(line)) {
+      const start = group.findIndex(word => norm(word.text) === 'TABLEAU' || norm(word.text) === 'NOTES');
+      if (start < 0) continue;
+      const words = group.slice(start), text = fieldText(words), s = norm(text);
+      if (!/^TABLEAU\b/.test(s) && !/^NOTES? GENERALES? FINIS\b/.test(s)) continue;
+      const rect = bounds(words);
+      const kind = /^NOTES/.test(s) ? 'notes' : /\bBOISERIES?\b/.test(s) ? 'woodwork' : /\bQUINCAILLERIE\b/.test(s) ? 'hardware' : /\bFINIS\b/.test(s) ? 'finishes' : 'other';
+      result.push({ ...rect, cx: (rect.x + rect.right) / 2, height: rect.bottom - rect.y, text, kind, scope: scopeOf(text) });
+    }
+    return result.sort((a, b) => a.y - b.y || a.x - b.x);
+  }
+
+  function headerName(text) {
+    const s = norm(text).replace(/[^A-Z]/g, '');
+    if (s === 'TYPE' || s === 'CODE') return 'code';
+    if (s === 'DESCRIPTION' || s === 'DESIGNATION') return 'label';
+    if (['COMPAGNIE', 'CIE', 'FABRICANT', 'MANUFACTURIER'].includes(s)) return 'manufacturer';
+    if (s === 'SERIE') return 'series';
+    if (s === 'MODELE') return 'model';
+    if (s === 'COULEUR') return 'color';
+    if (s === 'FINI') return 'finish';
+    if (s === 'DIMENSIONS' || s === 'DIMENSION' || s === 'FORMAT') return 'format';
+    if (s === 'CONTACT') return 'contact';
+    return '';
+  }
+
+  function findHeaders(lines) {
+    const result = [];
+    for (const line of lines) {
+      for (let i = 0; i < line.words.length; i++) {
+        const first = line.words[i];
+        if (headerName(first.text) !== 'code') continue;
+        const columns = [{ name: 'code', ...first }];
+        for (let j = i + 1; j < line.words.length; j++) {
+          const word = line.words[j], name = headerName(word.text);
+          if (name === 'code') break;
+          if (word.x - columns[columns.length - 1].right > line.height * 16) break;
+          if (name && !columns.some(column => column.name === name)) columns.push({ name, ...word });
+        }
+        if (!columns.some(column => column.name === 'label') || columns.length < 3) continue;
+        const last = columns[columns.length - 1], previous = columns[columns.length - 2];
+        result.push({ columns, y: line.y, bottom: line.bottom, height: line.height,
+          x: first.x - line.height * 1.5, right: last.right + Math.max(line.height * 2, (last.cx - previous.cx) * 0.8) });
+      }
+    }
+    return result;
+  }
+
+  function tablesFrom(heads, headers, bottom) {
+    const tables = [];
+    for (const head of heads) {
+      if (!['finishes', 'woodwork', 'hardware'].includes(head.kind)) continue;
+      const candidates = headers.filter(header => header.y >= head.bottom - head.height * 0.2 && header.y - head.bottom < head.height * 7 &&
+        head.cx > header.x && head.cx < header.right);
+      const header = candidates.sort((a, b) => a.y - b.y || Math.abs((a.x + a.right) / 2 - head.cx) - Math.abs((b.x + b.right) / 2 - head.cx))[0];
+      if (!header) continue;
+      const next = heads.find(other => other.y > header.bottom && other.cx > header.x && other.cx < header.right);
+      tables.push({ ...header, kind: head.kind, scope: head.scope, bottom: next ? next.y : bottom, title: head.text, titleY: head.y });
+    }
+    return tables.sort((a, b) => a.titleY - b.titleY || a.x - b.x);
+  }
+
+  function cellsFor(words, columns) {
+    const cells = {};
+    for (const column of columns) cells[column.name] = [];
+    const leadingCode=words[0]&&codePattern.test(words[0].text)&&words[0].cx<(columns[0].cx+columns[1].cx)/2?words[0]:null;
+    for (const word of words) {
+      let index = leadingCode&&word!==leadingCode?1:0;
+      while (index < columns.length - 1 && word.cx >= (columns[index].cx + columns[index + 1].cx) / 2) index++;
+      cells[columns[index].name].push(word);
+    }
+    return cells;
+  }
+
+  function categoryOf(text) {
+    const s = norm(text);
+    if (/^(CERAMIQUE|CARRELAGE|PORCELAINE)$/.test(s)) return 'ceramic';
+    if (/^(VINYLE|VINYL|LVT|LVP)$/.test(s)) return 'vinyl';
+    if (/^(BOIS|BOIS FRANC|PARQUET)$/.test(s)) return 'wood';
+    if (/^(LAMINE|STRATIFIE|LAMINATE)$/.test(s)) return 'laminate';
+    if (/^(TAPIS|MOQUETTE|CARPET)$/.test(s)) return 'carpet';
+    if (/^(PEINTURE|QUARTZ|MELAMINE|BETON|GRANIT|METAL|PAPIER PEINT|VERRE|LATTES DE MDF)$/.test(s)) return 'excluded';
+    return '';
+  }
+
+  function classify(label, category, kind) {
+    const s = norm(label);
+    if (/\b(ARMOIRES?|EBENISTERIE|COMPTOIRS?|CAISSONS?|VANITES?|LAVABOS?|ROBINETS?|EVIERS?|QUARTZ)\b/.test(s)) return null;
+    if (/\bSEUILS?\b/.test(s)) return { family: 'threshold', usages: ['threshold'] };
+    if (/\bPLINTHES?\b/.test(s)) return { family: 'baseboard', usages: ['baseboard'] };
+    if (/\bMOULURES?\b/.test(s)) return { family: 'moulding', usages: ['moulding'] };
+    if (kind !== 'finishes' || !families.has(category)) return null;
+    const result = [];
+    if (/\b(PLANCHERS?|SOL|FLOOR)\b/.test(s)) result.push('floor');
+    if (/\b(MURS?|MURALE?S?|WALLS?)\b/.test(s)) result.push('wall');
+    if (/\b(DOSSERETS?|DOSSERTS?|BACKSPLASH)\b/.test(s)) result.push('backsplash');
+    if (!result.length && ['ceramic', 'carpet'].includes(category) && /\b(LOBBY|CORRIDORS?|TAPIS|MOQUETTE)\b/.test(s)) result.push('floor');
+    if (!result.length) return null;
+    return { family: category, usages: result };
+  }
+
+  function analyze(input) {
+    object(input, 'Page de finis');
+    const documentKey = string(input.documentKey, 'Document de finis', 512);
+    if (!Number.isInteger(input.page) || input.page < 1 || input.page > 100000) throw new TypeError('Page de finis invalide.');
+    const metadata = { documentKey, page: input.page, sheetName: string(input.sheetName === undefined ? '' : input.sheetName, 'Feuille de finis', 256, true),
+      revision: string(input.revision === undefined ? '' : input.revision, 'Révision de finis', 128, true) };
+    for (const key of ['width', 'height']) if (input[key] !== undefined) coordinate(input[key], 'Dimension de page');
+    array(input.texts, 'Textes de page');
+    const stats = { inputTexts: input.texts.length, words: 0, tables: 0, skippedRows: 0 };
+    const budget = () => ({ entries: [], notes: [], issues: [{ code: 'input-budget', message: 'Limite de travail atteinte : page non analysée.' }], stats: { ...stats, budgetExceeded: true } });
+    if (input.texts.length > LIMITS.items) return budget();
+    const words = positionedWords(input.texts);
+    if (!words) return budget();
+    stats.words = words.length;
+    if (!words.length) return { entries: [], notes: [], issues: [], stats };
+    const lines = makeLines(words), heads = headings(lines), headers = findHeaders(lines);
+    const bottom = Math.max(input.height || 0, ...lines.map(line => line.bottom));
+    const tables = tablesFrom(heads, headers, bottom);
+    stats.tables = tables.length;
+    if (tables.length > LIMITS.tables) return budget();
+    const entries = [], notes = [], issues = [], occurrences = new Map();
+    const makeSource = rowWords => ({ ...metadata, rect: bounds(rowWords), text: fieldText(rowWords) });
+    const identifier = (prefix, data) => {
+      const key = JSON.stringify([metadata, data]);
+      const count = occurrences.get(key) || 0; occurrences.set(key, count + 1);
+      return prefix + hash(key + ':' + count);
+    };
+    const addNote = (text, rowWords, scope) => {
+      if (notes.length >= LIMITS.notes || text.length > 12000) return;
+      notes.push({ id: identifier('finish-note-', [scope, text]), text, scope, source: makeSource(rowWords) });
+    };
+    for (const table of tables) {
+      let category = '', scope = table.scope, current = null, lastBottom = table.y;
+      const flush = () => {
+        if (!current) return;
+        const label = fieldText(current.cells.label || []), type = classify(label, current.category, table.kind);
+        if (type && label && label.length <= 2000) {
+          const manufacturer = valueText(current.cells.manufacturer || []);
+          const model = clean([valueText(current.cells.series || []), valueText(current.cells.model || [])].filter(Boolean).join(' '));
+          const color = valueText(current.cells.color || []), rawFormat=valueText(current.cells.format || []),
+            // Les en-têtes centrés ne donnent pas toujours la limite d'une cellule.
+            // Garder la dimension reconnue, sa graphie et son unité, sans le contact.
+            dimension=rawFormat.match(/^(\d+(?:[.,]\d+)?(?:\s+\d+\/\d+)?\s*(?:cm|mm|m|po|in|["'″’]+)?\s*[x×]\s*\d+(?:[.,]\d+)?(?:\s+\d+\/\d+)?\s*(?:cm|mm|m|po|in|["'″’]+)?)/i),
+            formatText=dimension?dimension[1].trim():rawFormat;
+          const raw = fieldText(current.words);
+          if (raw.length <= 12000 && manufacturer.length <= 1000 && model.length <= 2000 && color.length <= 1000 && formatText.length <= 512) {
+            const data = { code: current.code, label, ...type, scope: current.scope, manufacturer, model, color, formatText };
+            entries.push({ id: identifier('finish-', data), ...data, source: makeSource(current.words) });
+            if (/\b(HAUTEUR|POSE|INSTALLATION)\b/.test(norm(raw))) addNote(raw, current.words, current.scope);
+          } else issues.push({ code: 'row-text-limit', message: 'Une ligne dépasse la limite de texte et reste à vérifier.' });
+        } else stats.skippedRows++;
+        current = null;
+      };
+      for (const line of lines) {
+        if (line.y <= table.y + table.height * 0.5 || line.y >= table.bottom) continue;
+        const local = line.words.filter(word => word.cx >= table.x && word.cx <= table.right &&
+          !heads.some(head=>word.cx>=head.x&&word.cx<=head.right&&word.cy>=head.y&&word.cy<=head.bottom));
+        if (!local.length) continue;
+        // Une longue zone blanche termine ce tableau. Un code isolé plus bas
+        // ne reprend jamais la dernière catégorie rencontrée dans ses colonnes.
+        if(line.y-lastBottom>Math.max(line.height,table.height)*4)break;
+        const cells = cellsFor(local, table.columns), codeWords = cells.code || [];
+        const code = codeWords.length === 1 && codePattern.test(codeWords[0].text) ? codeWords[0].text : '';
+        const text = fieldText(local), section = categoryOf(text);
+        if (section) { flush(); category = section; lastBottom = line.bottom; continue; }
+        if (/^(UNITES?|ESPACES? COMMUNS?)$/.test(norm(text))) { flush(); scope = scopeOf(text); lastBottom = line.bottom; continue; }
+        if (code) {
+          flush(); current = { code, cells, words: [...local], category, scope };
+        } else if (current && line.y - lastBottom < line.height * 1.6 && !codeWords.length) {
+          for (const key of Object.keys(cells)) current.cells[key].push(...cells[key]);
+          current.words.push(...local);
+        } else flush();
+        lastBottom = line.bottom;
+      }
+      flush();
+      if (entries.length > LIMITS.entries) return budget();
+    }
+    for (const head of heads.filter(heading => heading.kind === 'notes')) {
+      const laneWidth = Math.max((head.right - head.x) * 1.65, head.height * 12);
+      const left = head.cx - laneWidth / 2, right = head.cx + laneWidth / 2;
+      const next = heads.find(other => other.y > head.bottom && other.cx > left && other.cx < right);
+      let paragraph = [], last = null;
+      const flush = () => {
+        if (!paragraph.length) return;
+        const pieces=fieldText(paragraph).split(/\s+(?=\d{1,2}\.\s)/);
+        for(const text of pieces){const s=norm(text);
+          if (/\b(PLINTHES?|SEUILS?|JONCTION|POSE|CARREAU DE DEPART)\b/.test(s) && (!/\bPEINT/.test(s) || /\b(HAUTEUR|POSE|JONCTION)\b/.test(s))) {
+            const scope = /\bCORRIDORS?\b/.test(s) ? 'common' : scopeOf(text);
+            addNote(text, paragraph, scope);
+          }
+        }
+        paragraph = []; last = null;
+      };
+      for (const line of lines) {
+        if (line.y <= head.bottom || line.y >= (next ? next.y : bottom)) continue;
+        const local = line.words.filter(word => word.cx > left && word.cx < right);
+        if (!local.length) continue;
+        if (last && line.y - last.bottom > Math.min(last.height, line.height) * 0.6) flush();
+        paragraph.push(...local); last = line;
+      }
+      flush();
+    }
+    // Une dernière validation garantit aussi une copie JSON détachée des textes PDF.
+    return { entries: validateEntries(entries), notes, issues, stats };
+  }
+
+  return { version: 1, analyze, validateEntries };
+})();
+const specificationCatalog = (function createSpecificationCatalog(schedules) {
+  const version=1,limits={documents:200,entries:10000,notes:3000,characters:2000000};
+  const fields=['id','code','label','family','scope','usages','manufacturer','model','color','formatText','source'];
+  const editable=['code','label','family','scope','usages','manufacturer','model','color','formatText'];
+  const roles={floor:'plancher',wall:'céramique murale',backsplash:'dosseret',baseboard:'plinthe',moulding:'moulure',threshold:'seuil'};
+  const families={vinyl:'Vinyle',wood:'Bois',laminate:'Laminé',ceramic:'Céramique',carpet:'Tapis',baseboard:'Plinthe',moulding:'Moulure',threshold:'Seuil'};
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  const fail=message=>{throw new Error('Devis : '+message);};
+  const norm=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+  function plain(value,keys) {
+    if(!value||typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value)))fail('objet de données attendu.');
+    for(const key of Reflect.ownKeys(value))if(typeof key!=='string'||!keys.includes(key)||!('value' in Object.getOwnPropertyDescriptor(value,key)))fail('champ de données invalide.');
+  }
+  function text(value,max=512,empty=false) {if(typeof value!=='string'||value.length>max||!empty&&!value.trim()||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)||['__proto__','constructor','prototype'].includes(value))fail('texte invalide.');return value;}
+  function list(value,max) {if(!Array.isArray(value)||value.length>max)fail('liste trop grande ou invalide.');return value;}
+  function noteOf(value,key,pages) {
+    plain(value,['id','text','scope','source']);text(value.id,128);text(value.text,12000);
+    if(!['units','common','unspecified'].includes(value.scope))fail('localisation de note invalide.');
+    const source=value.source;plain(source,['documentKey','page','sheetName','revision','rect','text']);text(source.documentKey);text(source.sheetName,256,true);text(source.revision,128,true);text(source.text,12000);
+    if(source.documentKey!==key||!Number.isInteger(source.page)||source.page<1||source.page>pages)fail('source de note hors document.');
+    plain(source.rect,['x','y','right','bottom']);const r=source.rect;if(!Object.values(r).every(v=>Number.isFinite(v)&&v>=0&&v<=1e7)||r.right<=r.x||r.bottom<=r.y)fail('rectangle de note invalide.');return copy(value);
+  }
+  function documentOf(doc) {
+    plain(doc,['key','name','pages','scannedPages','engineVersion','status','entries','notes','issues']);text(doc.key);text(doc.name,1000);
+    if(!Number.isInteger(doc.pages)||doc.pages<1||doc.pages>100000||!Number.isInteger(doc.scannedPages)||doc.scannedPages<0||doc.scannedPages>doc.pages||!Number.isInteger(doc.engineVersion)||doc.engineVersion<1||!['ready','partial'].includes(doc.status))fail('index documentaire invalide.');
+    const entries=schedules.validateEntries(doc.entries);for(const e of entries)if(e.source.documentKey!==doc.key||e.source.page>doc.pages)fail('fini hors document.');
+    const notes=list(doc.notes,limits.notes).map(note=>noteOf(note,doc.key,doc.pages));
+    const issues=list(doc.issues,1000).map(issue=>text(issue,1000));return {...doc,entries,notes,issues};
+  }
+  function validate(value) {
+    if(value===undefined||value===null)return {version,documents:[],overrides:[],ignored:[]};
+    plain(value,['version','documents','overrides','ignored']);if(value.version!==version)fail('version du catalogue incompatible.');
+    const documents=list(value.documents,limits.documents).map(documentOf),keys=new Set(),ids=new Set();let count=0;
+    for(const doc of documents){if(keys.has(doc.key))fail('document dupliqué.');keys.add(doc.key);for(const e of doc.entries){if(ids.has(e.id))fail('identité de fini dupliquée.');ids.add(e.id);count++;}}
+    if(count>limits.entries||documents.reduce((n,doc)=>n+doc.notes.length,0)>limits.notes)fail('trop de finis ou de notes.');
+    const overrides=list(value.overrides,limits.entries).map(row=>{plain(row,['entryId','entry']);text(row.entryId,128);const entry=schedules.validateEntries([row.entry])[0];if(entry.id!==row.entryId)fail('correction sur une autre identité.');const doc=documents.find(doc=>doc.key===entry.source.documentKey),original=doc?.entries.find(e=>e.id===row.entryId);if(!doc||entry.source.page>doc.pages||original&&JSON.stringify(original.source)!==JSON.stringify(entry.source))fail('provenance de correction invalide.');return {entryId:row.entryId,entry};});
+    if(new Set(overrides.map(o=>o.entryId)).size!==overrides.length)fail('correction dupliquée.');
+    const ignored=list(value.ignored,limits.entries).map(id=>text(id,128));if(new Set(ignored).size!==ignored.length)fail('refus dupliqué.');
+    const result={version,documents,overrides,ignored};if(JSON.stringify(result).length>limits.characters)fail('catalogue trop volumineux.');return result;
+  }
+  function replaceDocument(raw,doc) {const state=validate(raw),next=documentOf(doc);return validate({...state,documents:[...state.documents.filter(row=>row.key!==doc.key),next]});}
+  function reusable(raw,key,pages) {const doc=validate(raw).documents.find(row=>row.key===key);return !!doc&&doc.engineVersion===schedules.version&&doc.pages===pages&&doc.scannedPages===pages&&['ready','partial'].includes(doc.status);}
+  function identity(e) {return JSON.stringify([norm(e.code),e.scope,e.family,[...e.usages].sort(),norm(e.label),norm(e.manufacturer),norm(e.model),norm(e.color),norm(e.formatText)]);}
+  function entries(raw,options={}) {
+    const state=validate(raw),ignored=new Set(state.ignored),overrides=new Map(state.overrides.map(o=>[o.entryId,o.entry])),groups=new Map();
+    for(const doc of state.documents) {
+      if(options.documentKeys&&!options.documentKeys.includes(doc.key))continue;
+      for(const original of doc.entries){const e=overrides.get(original.id)||original,isIgnored=ignored.has(e.id);if(isIgnored&&!options.includeIgnored)continue;
+        const workingDraft=/\b(?:EN COURS|PAS A JOUR|OBSOLETE)\b/.test(norm(e.source.revision)),key=identity(e)+':'+workingDraft+':'+isIgnored;
+        if(!groups.has(key))groups.set(key,{...copy(e),sources:[],aliases:[],ignored:isIgnored,manual:overrides.has(e.id),workingDraft,conflict:false});
+        const group=groups.get(key);group.sources.push(copy(e.source));group.aliases.push(e.id);group.manual ||=overrides.has(e.id);
+      }
+    }
+    const result=[...groups.values()],byCode=new Map();
+    for(const e of result){if(e.workingDraft||e.ignored)continue;const key=norm(e.code)+':'+e.scope;if(!byCode.has(key))byCode.set(key,[]);byCode.get(key).push(e);}
+    for(const rows of byCode.values())if(rows.length>1)rows.forEach(row=>row.conflict=true);
+    return result.sort((a,b)=>a.scope.localeCompare(b.scope)||a.code.localeCompare(b.code,undefined,{numeric:true}));
+  }
+  function getEntry(raw,id) {return entries(raw,{includeIgnored:true}).find(e=>e.aliases.includes(id))||null;}
+  function override(raw,id,patch) {
+    plain(patch,editable);const state=validate(raw),original=getEntry(state,id);if(!original)fail('référence absente.');
+    const clean=Object.fromEntries(fields.map(field=>[field,original[field]]));clean.id=id;
+    const updates=original.aliases.map(entryId=>{const source=state.documents.flatMap(doc=>doc.entries).find(entry=>entry.id===entryId).source;return {entryId,entry:schedules.validateEntries([{...clean,...copy(patch),id:entryId,source}])[0]};});return validate({...state,overrides:[...state.overrides.filter(o=>!original.aliases.includes(o.entryId)),...updates]});
+  }
+  function ignore(raw,id,ignored=true) {const state=validate(raw),entry=getEntry(state,id);if(typeof ignored!=='boolean'||!entry)fail('référence absente.');return validate({...state,ignored:[...state.ignored.filter(key=>!entry.aliases.includes(key)),...(ignored?entry.aliases:[])]});}
+  function match(raw,context={}) {
+    if(!roles[context.usage]||!['units','common'].includes(context.scope))return null;
+    let rows=entries(raw,context).filter(e=>!e.conflict&&!e.workingDraft&&e.scope===context.scope&&e.usages.includes(context.usage)&&(!context.family||e.family===context.family));
+    if(context.codes?.length){const codes=new Set(context.codes.map(norm));rows=rows.filter(e=>codes.has(norm(e.code)));}
+    return rows.length===1?rows[0]:null;
+  }
+  function displayLabel(e,usage) {const scope=e.scope==='units'?'unités':e.scope==='common'?'espaces communs':'localisation à préciser';let name=usage==='floor'?families[e.family]:roles[usage];if(e.family==='ceramic'&&usage==='floor')name='Céramique plancher';return e.code+' — '+(name||e.label)+' '+scope;}
+  function profileKey(id,usage,unit) {if(!roles[usage])fail('usage invalide.');return 'spec:'+id+':'+usage+':'+(unit==='u'?'u':unit==='pi'?'pi':usage==='floor'||usage==='wall'||usage==='backsplash'?'sqft':'pi');}
+  function profile(raw,key) {
+    if(typeof key!=='string')return null;const m=/^spec:([^:]{1,128}):(floor|wall|backsplash|baseboard|moulding|threshold):(sqft|pi|u)$/.exec(key);if(!m)return null;
+    const e=getEntry(raw,m[1]);if(!e||!e.usages.includes(m[2]))return null;
+    return {name:displayLabel(e,m[2]),unit:m[3]==='sqft'?'pi²':m[3]==='pi'?'pi':'u',pack:'à préciser',coverage:null,price:null,labor:null,components:[],format:e.formatText,color:e.color,reference:e.code,source:e.source};
+  }
+  return {version,limits,validate,replaceDocument,reusable,entries,getEntry,override,ignore,match,profileKey,profile,displayLabel};
+})(finishSchedules);
+const specificationPanelFactory = (function createSpecificationPanel(options) {
+  const {host,getState,getView,getQuantityView,onApply,onActivate,onEdit,onIgnore,onSource,onRescan,onImport,onSelectItems,onLayoutChange}=options;
+  const document=host.ownerDocument;
+  const labels={floor:'Sol',wall:'Mural',backsplash:'Dosseret',baseboard:'Plinthe',moulding:'Moulure',threshold:'Seuil'};
+  let installed=false,active='devis',filter='all',search='',quantityScope='auto',lastSelection='',lastEntries='',lastQuantities='';
+  const find=id=>document.getElementById(id);
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const count=value=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:1}).format(value);
+  function install() {
+    if(installed)return;installed=true;host.classList.add('specification-inspector');
+    let properties=find('inspectorProperties');
+    if(!properties){properties=document.createElement('div');properties.id='inspectorProperties';while(host.firstChild)properties.append(host.firstChild);host.append(properties);}
+    properties.className='specification-pane';properties.setAttribute('role','tabpanel');properties.setAttribute('aria-labelledby','specTabProperties');
+    const header=document.createElement('div');header.className='specification-tabs-header';header.innerHTML=`<div class="specification-tabs" role="tablist" aria-label="Panneau du relevé"><button type="button" id="specTabProperties" role="tab" data-spec-tab="properties" aria-controls="inspectorProperties">Propriétés</button><button type="button" id="specTabDevis" role="tab" data-spec-tab="devis" aria-controls="specDevisPane">Devis & finis</button><button type="button" id="specTabQuantities" role="tab" data-spec-tab="quantities" aria-controls="specQuantitiesPane">Quantités</button></div><button type="button" id="closeInspector" aria-label="Fermer le panneau" title="Fermer le panneau">×</button>`;host.prepend(header);
+    const devis=document.createElement('section');devis.id='specDevisPane';devis.className='specification-pane';devis.setAttribute('role','tabpanel');devis.setAttribute('aria-labelledby','specTabDevis');devis.innerHTML=`<div class="specification-intro"><h2>Devis & finis</h2><p id="specificationAnalysisStatus" role="status" aria-live="polite">Ajoutez les plans pour repérer leurs finis.</p><progress id="specificationProgress" hidden></progress></div><div class="specification-source-actions"><button type="button" id="specAddArchitecture">+ Architecture</button><button type="button" id="specAddDesign">+ Design</button><button type="button" id="specRescan">Relancer</button></div><details id="specSources"><summary id="specSourcesTitle">Sources du projet</summary><div id="specSourcesList"></div></details><label class="specification-search-label" for="specFinishSearch">Rechercher un fini<input id="specFinishSearch" type="search" placeholder="Code, produit, format…" autocomplete="off"></label><div class="specification-filters" aria-label="Localisation des finis"><button type="button" data-spec-filter="all">Tous</button><button type="button" data-spec-filter="units">Unités</button><button type="button" data-spec-filter="common">Espaces communs</button></div><p id="specFinishCount" class="specification-count"></p><div id="specFinishList"></div><details id="specNotes"><summary id="specNotesTitle">Notes de pose</summary><div id="specNotesList"></div></details><p class="specification-help">Les références proviennent des documents. Les quantités viennent des contours et des lignes mesurés.</p>`;host.append(devis);
+    const quantities=document.createElement('section');quantities.id='specQuantitiesPane';quantities.className='specification-pane';quantities.setAttribute('role','tabpanel');quantities.setAttribute('aria-labelledby','specTabQuantities');quantities.innerHTML=`<div class="specification-intro"><h2>Quantités par fini</h2><label for="specQuantityScope">Afficher<select id="specQuantityScope"><option value="auto">Sélection, sinon feuille</option><option value="page">Feuille entière</option></select></label><p id="specQuantityContext"></p></div><div id="specQuantityList"></div><p class="specification-help">Mesures nettes uniques · brouillons inclus. Les pertes et les répétitions sont présentées dans l’estimation.</p>`;host.append(quantities);
+    host.addEventListener('click',event=>{
+      const tab=event.target.closest('[data-spec-tab]');if(tab){setTab(tab.dataset.specTab,true);return;}
+      const scope=event.target.closest('[data-spec-filter]');if(scope){filter=scope.dataset.specFilter;lastEntries='';render();return;}
+      const button=event.target.closest('[data-spec-action]');if(button){const id=button.dataset.specId;({apply:onApply,activate:onActivate,edit:onEdit,ignore:onIgnore,source:onSource})[button.dataset.specAction]?.(id);return;}
+      const row=event.target.closest('[data-spec-quantity]');if(row){const data=getQuantityView({scope:quantityScope}).rows.find(r=>r.key===row.dataset.specQuantity);if(data)onSelectItems(data.ids);}
+    });
+    header.addEventListener('keydown',event=>{const tabs=[...header.querySelectorAll('[role="tab"]')],index=tabs.indexOf(document.activeElement);if(index<0)return;if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();event.stopPropagation();const next=event.key==='Home'?0:event.key==='End'?2:(index+(event.key==='ArrowRight'?1:2))%3;setTab(tabs[next].dataset.specTab,true);}});
+    find('closeInspector').onclick=()=>{host.hidden=true;onLayoutChange?.();const reopen=find('reopen');if(reopen)reopen.hidden=false;find('devisToolBtn')?.focus({preventScroll:true});};
+    find('specFinishSearch').oninput=event=>{search=event.target.value;lastEntries='';render();};
+    find('specQuantityScope').onchange=event=>{quantityScope=event.target.value;lastQuantities='';render();};
+    find('specRescan').onclick=onRescan;find('specAddArchitecture').onclick=()=>onImport('architecture');find('specAddDesign').onclick=()=>onImport('design');
+    setTab(active);render();
+  }
+  function setTab(tab,focus=false) {
+    if(!['properties','devis','quantities'].includes(tab))return;active=tab;
+    for(const button of host.querySelectorAll('[data-spec-tab]')){const selected=button.dataset.specTab===tab;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;if(selected&&focus)button.focus();}
+    for(const [id,key] of [['inspectorProperties','properties'],['specDevisPane','devis'],['specQuantitiesPane','quantities']])find(id).hidden=key!==tab;
+    render();
+  }
+  function open(tab='devis') {if(!installed)install();host.hidden=false;const reopen=find('reopen');if(reopen)reopen.hidden=true;setTab(tab,true);onLayoutChange?.();}
+  function render() {
+    if(!installed)return;
+    const state=getState(),selection=[...(state.selection||[])].join('|');
+    if(selection&&selection!==lastSelection&&active!=='properties')setTab('properties');lastSelection=selection;
+    if(active==='devis') {
+      const view=getView();find('specificationAnalysisStatus').textContent=view.status;
+      const progress=find('specificationProgress');progress.hidden=!view.job;progress.max=view.job?.total||1;progress.value=view.job?.done||0;find('specRescan').disabled=!state.pdf||!!view.job;
+      find('specSourcesTitle').textContent='Sources analysées · '+view.documents.length;find('specSourcesList').innerHTML=view.documents.length?view.documents.map(doc=>`<p><b>${esc(doc.name)}</b><small>${doc.scannedPages}/${doc.pages} feuilles · ${doc.status==='ready'?'analyse enregistrée':'à compléter'}</small>${doc.issues.length?'<small>'+doc.issues.map(esc).join(' · ')+'</small>':''}</p>`).join(''):'<p>Aucune analyse enregistrée. Ajoutez un plan Architecture ou Design.</p>';
+      for(const button of host.querySelectorAll('[data-spec-filter]'))button.setAttribute('aria-pressed',String(button.dataset.specFilter===filter));
+      const normal=search.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),entries=view.entries.filter(e=>(filter==='all'||e.scope===filter)&&[e.code,e.label,e.model,e.manufacturer,e.color,e.formatText].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normal));
+      const signature=JSON.stringify([entries,state.selection?.size||0]);
+      find('specFinishCount').textContent=entries.length+' référence'+(entries.length>1?'s':'')+' pertinente'+(entries.length>1?'s':'');
+      if(signature!==lastEntries){lastEntries=signature;find('specFinishList').innerHTML=entries.length?entries.map(e=>`<article class="specification-card ${e.conflict?'has-conflict':''}" data-spec-entry="${esc(e.id)}"><div class="specification-card-title"><b class="specification-code">${esc(e.code)}</b><strong>${esc(e.model||e.label)}</strong></div><p class="specification-card-meta">${esc(e.scope==='units'?'Unités':e.scope==='common'?'Espaces communs':'Localisation à préciser')} · ${e.usages.map(u=>esc(labels[u])).join(' / ')}${e.formatText?' · '+esc(e.formatText.replace(/''/g,'″')):''}</p><p class="specification-product-detail">${esc([e.manufacturer,e.color].filter(Boolean).join(' · '))}</p>${e.conflict?'<p class="specification-review">Sources contradictoires · à départager</p>':e.workingDraft?'<p class="specification-review">Source marquée en cours · à vérifier</p>':e.manual?'<p class="specification-reviewed">Corrigé par vous</p>':''}<button type="button" class="specification-source-link" data-spec-action="source" data-spec-id="${esc(e.id)}">${esc(e.source.sheetName||'Source')} · p. ${e.source.page}${e.sources.length>1?' · '+e.sources.length+' sources':''} ↗</button><div class="specification-card-actions"><button type="button" data-spec-action="activate" data-spec-id="${esc(e.id)}">Choisir ce fini</button><button type="button" data-spec-action="apply" data-spec-id="${esc(e.id)}" ${state.selection?.size?'':'disabled title="Sélectionnez une mesure sur le plan"'}>Appliquer</button><button type="button" data-spec-action="edit" data-spec-id="${esc(e.id)}" aria-label="Modifier ${esc(e.code)}">Modifier</button><button type="button" data-spec-action="ignore" data-spec-id="${esc(e.id)}" aria-label="Ignorer ${esc(e.code)}">×</button></div></article>`).join(''):`<div class="specification-empty"><b>${view.job?'Lecture des documents…':search?'Aucun fini correspondant':'Aucun fini pertinent repéré'}</b><p>${view.job?'Les références apparaîtront à la fin de la lecture.':'Les tableaux de finis, plinthes, moulures et seuils sont recherchés dans les documents.'}</p></div>`;}
+      find('specNotes').hidden=!view.notes.length;find('specNotesTitle').textContent='Notes utiles · '+view.notes.length;find('specNotesList').innerHTML=view.notes.map(note=>`<p>${esc(note.text)}<small>${esc(note.source.sheetName||'Document')} · p. ${note.source.page}</small></p>`).join('');
+    }
+    if(active==='quantities') {
+      const view=getQuantityView({scope:quantityScope}),signature=JSON.stringify(view);if(signature===lastQuantities)return;lastQuantities=signature;
+      find('specQuantityContext').textContent=view.label;
+      find('specQuantityList').innerHTML=view.rows.length?view.rows.map(row=>`<button type="button" class="specification-quantity-row" data-spec-quantity="${esc(row.key)}"><span><b>${esc(row.code)}</b><strong>${esc(row.label)}</strong><small>${esc(row.usageLabel)} · ${esc(row.scopeLabel)}${row.pending?' · à valider':''}</small></span><span class="specification-quantity-number">${row.net===null?count(row.knownNet)+' + ?':count(row.net)} <small>${esc(row.unit)}</small></span></button>`).join(''):'<div class="specification-empty"><b>Aucune quantité sur cette portée</b><p>Tracez une surface, une ligne ou lancez le takeoff. Choisissez ensuite un fini du devis.</p></div>';
+    }
+  }
+  return {install,render,open,setTab,getActiveTab:()=>active};
+});
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -11750,6 +12392,8 @@ $('#root').innerHTML=`<div class="app">
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+'<small>Mesurer et naviguer</small>';
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 const canvas=$('#planCanvas'), ctx=canvas.getContext('2d');
+let specificationUI=null;
+const specificationEntryIndexes=new WeakMap();
 
 function demoPlan(){const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780"><rect width="1200" height="780" fill="#f8f7f3"/><g stroke="#2d3431" fill="none" stroke-width="8"><rect x="96" y="86" width="996" height="590"/><path d="M96 350h390V86M486 350v326M486 350h334M820 86v264M820 350h272M820 350v326M486 520h334"/></g><g stroke="#f8f7f3" stroke-width="13"><path d="M260 350h70M486 230v75M640 350h80M820 220v72M820 460v70"/></g><g fill="#1f2723" font-family="Arial" text-anchor="middle"><text x="290" y="200" font-size="26">BUREAU 101</text><text x="290" y="235" font-size="18">VP-01</text><text x="650" y="200" font-size="26">RÉCEPTION 102</text><text x="650" y="235" font-size="18">CER-01</text><text x="950" y="200" font-size="26">CHAMBRE 103</text><text x="950" y="235" font-size="18">TAP-01</text><text x="290" y="500" font-size="26">BUREAU 104</text><text x="290" y="535" font-size="18">VP-01</text><text x="650" y="440" font-size="26">CORRIDOR</text><text x="650" y="475" font-size="18">CER-01</text><text x="650" y="600" font-size="24">SALLE DE BAIN</text><text x="650" y="635" font-size="18">CER-12X24</text><text x="950" y="510" font-size="26">CUISINE 106</text><text x="950" y="545" font-size="18">CER-01</text></g><g stroke="#b6beb8" stroke-width="2"><path d="M96 725h996M96 711v28M1092 711v28"/></g><text x="594" y="755" font-family="Arial" font-size="18" text-anchor="middle" fill="#444">50'-0&quot;</text></svg>`;return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`}
 function toast(t){const e=$('#toast');e.innerHTML=`<i data-lucide="check"></i>${esc(t)}`;e.hidden=false;lucide.createIcons();clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2600)}
@@ -11793,12 +12437,12 @@ function itemQuantityText(item,withWaste=false) {
 }
 function displayQuantityForItem(item) {return isWallTakeoff(item)?wallTakeoffQuantity(item):item.qty;}
 function displayWasteForItem(item) {return isWallTakeoff(item)?workOf(item).wall.waste:item.waste;}
-function displayCodeForItem(item) {return item.work?.productId?S.estimation?.workspace?.products.find(product=>product.id===item.work.productId)?.reference||'Produit à réaffecter':isWallTakeoff(item)?'MUR-01':item.material;}
+function displayCodeForItem(item) {const entry=specificationEntry(item);if(!item.work?.productId&&entry)return entry.code;return item.work?.productId?S.estimation?.workspace?.products.find(product=>product.id===item.work.productId)?.reference||'Produit à réaffecter':isWallTakeoff(item)?'MUR-01':item.material;}
 function confirmedWallTotal() {return S.items.filter(item=>isWallTakeoff(item)&&isConfirmed(item)).reduce((sum,item)=>sum+(wallTakeoffQuantity(item)||0)*(1+displayWasteForItem(item)/100),0);}
-function totals(){const groups=new Map();for(const item of S.items.filter(item=>item.kind==='area'&&workOf(item).included&&isConfirmed(item))){const code=item.work?.productId||item.material,p=profile(code);if(!groups.has(code))groups.set(code,{...mat(item.material),code:displayCodeForItem(item),name:p.name,count:0,net:0,total:0});const group=groups.get(code);group.count++;group.net+=item.qty;group.total+=item.qty*(1+item.waste/100);}return [...groups.values()];}
+function totals(){const groups=new Map();for(const item of S.items.filter(item=>item.kind==='area'&&workOf(item).included&&isConfirmed(item))){const code=item.work?.productId||specificationKeyForItem(item,'floor')||item.material,p=profile(code);if(!groups.has(code))groups.set(code,{...mat(item.material),code:displayCodeForItem(item),name:p.name,count:0,net:0,total:0});const group=groups.get(code);group.count++;group.net+=item.qty;group.total+=item.qty*(1+item.waste/100);}return [...groups.values()];}
 
 function renderInspectorBase() {
-  const host=$('#inspector');if(S.selection.size>1)return renderMultipleInspector(host);
+  const host=inspectorPropertiesHost();if(S.selection.size>1)return renderMultipleInspector(host);
   const item=S.items.find(item=>item.id===S.selected);
   if(item) {
     host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div></div>
@@ -11818,7 +12462,7 @@ function renderInspectorBase() {
   } else {
     const ts=totals(),lin=S.items.filter(item=>item.kind==='linear'&&!item.measureOnly&&!isWallTakeoff(item)&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty*(1+item.waste/100),0),count=S.items.filter(item=>item.kind==='count'&&isConfirmed(item)).reduce((sum,item)=>sum+item.qty,0);
     host.innerHTML=`<div class="panel-head"><div><span>BIBLIOTHÈQUE</span><h2>Finis et assemblages</h2></div></div><div class="panel-section"><span>MATÉRIAU ACTIF</span><div class="library-list">${MATERIALS.map(material=>`<div class="library-item ${material.code===S.material?'active':''}" data-material="${material.code}" role="button" tabindex="0"><i style="background:${material.color}"></i><span><b>${material.code}</b><small>${esc(material.name)}</small></span><em>${material.waste}%</em></div>`).join('')}</div></div><div class="panel-section"><span>RELEVÉ CONFIRMÉ</span>${ts.map(total=>`<div class="mini-total"><i style="background:${total.color}"></i><div><b>${total.code}</b><small>${total.count} zone(s)</small></div><strong>${fmt(total.total)} pi²</strong></div>`).join('')}${lin?`<p>Plinthes : <b>${fmt(lin)} pi</b></p>`:''}${count?`<p>Comptage : <b>${fmt(count,0)} u</b></p>`:''}${confirmedWallTotal()?`<p>Murs et dosserets : <b>${fmt(confirmedWallTotal())} pi²</b></p>`:''}${!ts.length&&!lin&&!count&&!confirmedWallTotal()?'<p class="empty-copy">Tracez une surface, une ligne ou comptez les éléments avec le ruban manuel.</p>':''}</div>${!S.scale?'<div class="warning"><i data-lucide="triangle-alert"></i><div><b>Échelle à régler pour les mesures</b><span>Le comptage reste utilisable sans calibration.</span></div></div>':''}`;
-    $$('.library-item',host).forEach(button=>{button.onclick=()=>{S.material=button.dataset.material;renderInspector();};button.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();button.click();}};});
+    $$('.library-item',host).forEach(button=>{button.onclick=()=>{S.activeSpecification=null;S.material=button.dataset.material;renderInspector();};button.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();button.click();}};});
   }
   $$('.closePanel',host).forEach(button=>button.onclick=()=>{host.hidden=true;$('#reopen').hidden=false;});lucide.createIcons({attrs:{width:17,height:17}});
 }
@@ -11832,7 +12476,7 @@ function takeoffDrawer() {
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 function sheetXml(rows){return`<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.map((r,ri)=>`<row r="${ri+1}">${r.map((v,ci)=>{let col='',n=ci+1;while(n){col=String.fromCharCode(65+(n-1)%26)+col;n=Math.floor((n-1)/26);}return typeof v==='number'?`<c r="${col}${ri+1}"><v>${v}</v></c>`:`<c r="${col}${ri+1}" t="inlineStr"><is><t>${esc(v)}</t></is></c>`}).join('')}</row>`).join('')}</sheetData></worksheet>`}
-async function exportExcel(){const rows=S.items.map(i=>[pageName(i.page),i.name,displayCodeForItem(i),labelForItem(i),hasPendingFixtures(i)?'À délimiter':displayQuantityForItem(i)===null?'À compléter':+displayQuantityForItem(i).toFixed(2),displayWasteForItem(i),hasPendingFixtures(i)?'À délimiter':displayQuantityForItem(i)===null?'À compléter':+(displayQuantityForItem(i)*(1+displayWasteForItem(i)/100)).toFixed(2),unitForItem(i),i.page,i.method,i.status,i.measureOnly?'Référence · exclue des commandes':i.kind==='count'?'Comptage · échelle non requise':S.scaleMeta[i.page]?.verified?'Échelle vérifiée':'Échelle à vérifier']),summary=[['Type','Code','Quantité nette','Quantité totale','Unité'],...totals().map(t=>[t.name,t.code,+t.net.toFixed(2),+t.total.toFixed(2),'pi²'])],detail=[['Niveau','Pièce / zone','Code de fini','Type','Quantité nette','Perte (%)','Quantité totale','Unité','Page source','Méthode','Statut','Note'],...rows],controls=[['Contrôle','Valeur'],['Échelle',S.scale?`1 px = ${S.scale.toFixed(5)} pi`:'À calibrer'],['Plan',S.fileName],['Bains/douches à délimiter',S.items.filter(hasPendingFixtures).map(i=>'Page '+i.page+' · '+i.name).join(' / ')||'Aucun équipement signalé en attente'],['Pages analysées',[...new Set(S.items.map(i=>i.page))].join(', ')||'Aucune'],...Object.entries(S.scales).map(([page,scale])=>['Échelle page '+page,(S.scaleMeta[page]?.label||'Cote manuelle')+' · '+(S.scaleMeta[page]?.verified?'vérifiée':'à vérifier')+' · 1 px = '+scale.toFixed(7)+' pi'])],sheets=[['Résumé',summary],['Détail par pièce',detail],['Plinthes et moulures',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='linear'&&!S.items[index].measureOnly&&!isWallTakeoff(S.items[index]))]],['Comptages',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='count')]],['Cotes de référence',[detail[0],...rows.filter((row,index)=>S.items[index].measureOnly)]],['Contrôles',controls],['Calepinage',[['Feuille','Pièce','Format','Angle (degrés)','Joint (po)','Départ X depuis bord gauche (pi)','Départ Y depuis bord haut (pi)','Minimum avec perte (hors réemploi)'],...S.items.filter(i=>i.kind==='area'&&i.material.startsWith('CER')).map(i=>{const f=tileLayout(i),scale=S.scales[i.page];return [pageName(i.page),i.name,mat(i.material).name,f.angle,f.joint,+(f.origin.x*scale).toFixed(4),+(f.origin.y*scale).toFixed(4),hasPendingFixtures(i)?'À délimiter':Math.ceil(i.qty*(1+i.waste/100)/(i.material==='CER-12X24'?2:4))];})]],...estimationSheets(),...fixtureExportSheets(),...wallTakeoffExportSheets()],zip=new JSZip();zip.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);zip.folder('_rels').file('.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);const xl=zip.folder('xl');xl.file('workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${esc(s[0])}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`);xl.folder('_rels').file('workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`);const ws=xl.folder('worksheets');sheets.forEach((s,i)=>ws.file(`sheet${i+1}.xml`,sheetXml(s[1])));const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${S.project.replace(/[^a-z0-9]/gi,'_')}_takeoff.xlsx`;a.click();toast('Classeur Excel exporté.')}
+async function exportExcel(){const rows=S.items.map(i=>[pageName(i.page),i.name,displayCodeForItem(i),labelForItem(i),hasPendingFixtures(i)?'À délimiter':displayQuantityForItem(i)===null?'À compléter':+displayQuantityForItem(i).toFixed(2),displayWasteForItem(i),hasPendingFixtures(i)?'À délimiter':displayQuantityForItem(i)===null?'À compléter':+(displayQuantityForItem(i)*(1+displayWasteForItem(i)/100)).toFixed(2),unitForItem(i),i.page,i.method,i.status,i.measureOnly?'Référence · exclue des commandes':i.kind==='count'?'Comptage · échelle non requise':S.scaleMeta[i.page]?.verified?'Échelle vérifiée':'Échelle à vérifier']),summary=[['Type','Code','Quantité nette','Quantité totale','Unité'],...totals().map(t=>[t.name,t.code,+t.net.toFixed(2),+t.total.toFixed(2),'pi²'])],detail=[['Niveau','Pièce / zone','Code de fini','Type','Quantité nette','Perte (%)','Quantité totale','Unité','Page source','Méthode','Statut','Note'],...rows],controls=[['Contrôle','Valeur'],['Échelle',S.scale?`1 px = ${S.scale.toFixed(5)} pi`:'À calibrer'],['Plan',S.fileName],['Bains/douches à délimiter',S.items.filter(hasPendingFixtures).map(i=>'Page '+i.page+' · '+i.name).join(' / ')||'Aucun équipement signalé en attente'],['Pages analysées',[...new Set(S.items.map(i=>i.page))].join(', ')||'Aucune'],...Object.entries(S.scales).map(([page,scale])=>['Échelle page '+page,(S.scaleMeta[page]?.label||'Cote manuelle')+' · '+(S.scaleMeta[page]?.verified?'vérifiée':'à vérifier')+' · 1 px = '+scale.toFixed(7)+' pi'])],sheets=[['Résumé',summary],['Détail par pièce',detail],['Plinthes et moulures',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='linear'&&!S.items[index].measureOnly&&!isWallTakeoff(S.items[index]))]],['Comptages',[detail[0],...rows.filter((row,index)=>S.items[index].kind==='count')]],['Cotes de référence',[detail[0],...rows.filter((row,index)=>S.items[index].measureOnly)]],['Contrôles',controls],['Calepinage',[['Feuille','Pièce','Format','Angle (degrés)','Joint (po)','Départ X depuis bord gauche (pi)','Départ Y depuis bord haut (pi)','Minimum avec perte (hors réemploi)'],...S.items.filter(i=>i.kind==='area'&&i.material.startsWith('CER')).map(i=>{const f=tileLayout(i),scale=S.scales[i.page];return [pageName(i.page),i.name,mat(i.material).name,f.angle,f.joint,+(f.origin.x*scale).toFixed(4),+(f.origin.y*scale).toFixed(4),hasPendingFixtures(i)?'À délimiter':Math.ceil(i.qty*(1+i.waste/100)/(i.material==='CER-12X24'?2:4))];})]],...estimationSheets(),...fixtureExportSheets(),...wallTakeoffExportSheets(),...specificationExportSheets()],zip=new JSZip();zip.file('[Content_Types].xml',`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`);zip.folder('_rels').file('.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);const xl=zip.folder('xl');xl.file('workbook.xml',`<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${esc(s[0])}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`);xl.folder('_rels').file('workbook.xml.rels',`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}</Relationships>`);const ws=xl.folder('worksheets');sheets.forEach((s,i)=>ws.file(`sheet${i+1}.xml`,sheetXml(s[1])));const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${S.project.replace(/[^a-z0-9]/gi,'_')}_takeoff.xlsx`;a.click();toast('Classeur Excel exporté.')}
 
 
 /* Calibration and selection: all coordinates remain in the rendered plan. */
@@ -11879,7 +12523,7 @@ function redoChange() {
   if (!S.redo.length) return;
   S.history.push(snapshot()); restoreSnapshot(S.redo.pop());
 }
-function pushItems(items) { remember(); S.items = items; save(); refresh(); }
+function pushItems(items) { remember();const oldIds=new Set(S.items.map(item=>item.id));applyActiveSpecification(items.filter(item=>!oldIds.has(item.id))); S.items = items; save(); refresh(); }
 function setSelection(ids) {
   S.selection = new Set(ids); S.selected = [...S.selection].at(-1) || null;
 }
@@ -11978,7 +12622,7 @@ function openDocument(key,name,pdf,pages) {
   save();
   const record = readSaved('quantif-document-v3:'+key,{});validateDetectionOptions(record.settings,pages);
   if(S.detectJob)S.detectJob.cancelled=true;S.reviewByPage={};S.reviewOpen=false;S.detectionNotes=[];S.detectJob=null;if($('#reviewPanel')){$('#reviewPanel').hidden=true;$('.app').classList.remove('review-open');}
-  S.documentKey = key; S.fileName = name; S.pdf = pdf; S.pages = pages; S.page = 1;S.libraryEmpty=false;
+  S.specificationJob=null;S.activeSpecification=null;S.documentKey = key; S.fileName = name; S.pdf = pdf; S.pages = pages; S.page = 1;S.libraryEmpty=false;
   S.items = Array.isArray(record.items) ? record.items : [];S.folders=Array.isArray(record.folders)?record.folders:[];
   S.scales=record.scales||{};S.scaleMeta=record.scaleMeta||{};S.pageInfo={};S.sheetNames=record.sheetNames||{};S.settings={doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'materials',surfaceLabels:true,...record.settings};S.dividers=record.dividers||{};S.detectBounds=record.detectBounds||{};S.estimation=record.estimation||{catalog:{},group:'project'};S.detectorCache=null;S.preview=null;S.indexedPages=0;S.indexing=false;++S.indexToken;
   S.estimation=projectSession.attach(record)||S.estimation;
@@ -12259,7 +12903,7 @@ function rememberSheet(number,info) {
   S.sheetNames[number]={...prior,code:info.code||prior.code||'',title:info.title||prior.title||''};
 }
 async function indexDocument(pdf) {
-  const token=++S.indexToken,key=S.documentKey;S.indexing=true;renderPages();
+  const token=++S.indexToken,key=S.documentKey;S.indexing=true;const specificationJob=specificationBegin(pdf,key);renderPages();
   let labels=[];try{labels=await pdf.getPageLabels()||[];}catch{}
   try {
     for(let n=1;n<=pdf.numPages;n++) {
@@ -12270,7 +12914,7 @@ async function indexDocument(pdf) {
       // Conserver la version la plus récente, notamment ses tracés vectoriels.
       const info=S.pageInfo[n]||readInfo;
       if(!info.code&&labels[n-1]&&/^[A-Z]/.test(labels[n-1]))info.code=labels[n-1];
-      S.pageInfo[n]=info;rememberSheet(n,info);
+      S.pageInfo[n]=info;rememberSheet(n,info);if(specificationJob)specificationReadPage(specificationJob,info,n);
       if(!S.scales[n]&&info.candidates.length===1&&!info.ambiguous) {
         const candidate=info.candidates[0];S.scales[n]=candidate.feetPerInch/PDF_DPI;
         S.scaleMeta[n]={...candidate,source:'automatic',verified:false};recalculatePage(n);
@@ -12280,7 +12924,7 @@ async function indexDocument(pdf) {
       await new Promise(resolve=>setTimeout(resolve,0));
     }
   }finally {
-    if(token===S.indexToken&&S.pdf===pdf&&S.documentKey===key){S.indexing=false;save();refresh();}
+    if(token===S.indexToken&&S.pdf===pdf&&S.documentKey===key){S.indexing=false;specificationFinish(specificationJob);save();refresh();}
   }
 }
 function renderPages() {
@@ -12471,7 +13115,7 @@ function finishArea(points,method='Tracé polygonal') {
   }
   const material=mat(S.material),item={id:uid(),kind:'area',name:'Zone '+(S.items.filter(i=>i.kind==='area').length+1),material:material.code,
     points:structuredClone(points),holes:[],qty:area(points)*S.scale*S.scale,waste:0,wasteConfirmed:false,work:{layer:S.settings.activeLayer||'finish'},page:S.page,status:'à valider',method:S.tool==='split'?'Sous-zone retranchée':method};
-  item.work=workOf(item);
+  item.work=workOf(item);applyActiveSpecification([item]);
   const items=structuredClone(S.items),result=integrateCandidate(items,item);
   if(!result.ok)return toast(result.reason+'. Modifiez la surface avant de l’ajouter.');
   remember();S.items=[...items,item];setSelection([item.id]);S.draft=[];S.tool='select';save();refresh();
@@ -12516,7 +13160,7 @@ function updateItem(id,patch) {
   if((item.kind==='count'||item.measureOnly)&&'waste'in patch)patch={...patch,waste:0};
   if('waste'in patch)patch={...patch,wasteConfirmed:true};
   if('waste'in patch&&(!Number.isFinite(patch.waste)||patch.waste<0||patch.waste>1000))return toast('Entrez une perte entre 0 et 1 000 %.');
-  if('material'in patch)patch={...patch,materialNeedsReview:false,...(item.work?.productId&&patch.material!==item.material?{work:{...workOf(item),productId:'',productSignature:''}}:{})};
+  if('material'in patch)patch={...patch,materialNeedsReview:false,...((item.work?.productId||item.work?.specificationId)&&patch.material!==item.material?{work:{...workOf(item),productId:'',productSignature:'',specificationId:'',specificationUsage:'',specificationOrigin:''}}:{})};
   const changed=['material','waste','bathroom','points','holes'].some(key=>key in patch&&patch[key]!==item[key]);
   const future={...item,...patch};
   if(patch.status==='confirmée'&&confirmationIssues(future).length)return toast('Confirmation impossible : '+confirmationIssues(future).join(' · ')+'.');
@@ -12817,7 +13461,7 @@ function selectSurfaceAt(point,event) {
 }
 
 function renderInspector() {
-  renderInspectorBase();const host=$('#inspector'),item=S.items.find(i=>i.id===S.selected);
+  renderInspectorBase();const host=inspectorPropertiesHost(),item=S.items.find(i=>i.id===S.selected);
   if(S.selection.size===1&&item?.kind==='area') {
     host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><label class="check-label"><input id="bathroomFlag" type="checkbox" ${item.bathroom?'checked':''}>Salle de bains · équipements</label><button type="button" id="editVertices" class="selection-action">Modifier les coins · E</button><button type="button" id="excludeInside" class="selection-action">Exclure une surface intérieure · X</button>${item.material.startsWith('CER')?`<h3>Départ de céramique</h3><p>Croix orange sur le plan · angle ${fmt(tileLayout(item).angle,0)}° · joint ${fmt(tileLayout(item).joint,3)} po</p><button type="button" id="placeTileOrigin" class="selection-action">Choisir le point de départ · T</button><button type="button" id="openTileSettings" class="selection-action">Format, angle et décalages</button><button type="button" id="rotateTiles" class="selection-action">Tourner de 90° · O</button><p>Dans l’outil T : flèches = 1 po, Maj + flèches = 12 po. La superficie mesurée reste identique.</p>`:''}${getHoles(item).length?`<p>${getHoles(item).length} exclusion(s) déjà retranchée(s) du net.</p>`:''}</section>`);
     if(item.bathroom)host.insertAdjacentHTML('beforeend','<p class="selection-help">Excluez le bain, la douche ou les meubles fixes avec X si leur surface ne reçoit pas le revêtement prévu.</p>');
@@ -12832,8 +13476,7 @@ function renderInspector() {
   }
   if(item?.wasteConfirmed===false){host.insertAdjacentHTML('beforeend','<section class="v4-properties"><p>Le taux de perte est provisoire. Saisissez votre taux ou confirmez explicitement 0 %.</p><button id="confirmZeroWaste" type="button">Confirmer 0 % de perte</button></section>');$('#confirmZeroWaste').onclick=()=>updateItem(item.id,{waste:0});}
   estimateInspector(host,item);appendSurfaceInspector(host,item);appendWallTakeoffInspector(host,item);renderFolderInspector(item);
-  host.insertAdjacentHTML('afterbegin','<button type="button" class="inspector-close" id="closeInspector">Fermer les propriétés ×</button>');
-  $('#closeInspector').onclick=()=>{host.hidden=true;$('#reopen').hidden=false;};
+  specificationUI?.render();
 }
 function refresh() {
   refreshBase();renderPages();$('#stageFile').textContent=S.plan?pageName(S.page):S.fileName;
@@ -12885,7 +13528,7 @@ function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
     if((item.kind==='count'||item.measureOnly)&&item.waste!==0)throw new Error('Les comptages et les cotes ne portent pas de perte.');
     if(item.kind==='count'&&(item.holes?.length||Object.keys(item.subzones||{}).length||item.layout||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId))throw new Error('Un comptage ne porte pas d’exclusion ou de calepinage.');
     if(item.wasteConfirmed!==undefined&&typeof item.wasteConfirmed!=='boolean')throw new Error('Statut du taux de perte invalide.');
-    validateAutomaticMetadata(item,documentKey);if(item.work)validateWork(item.work,item.kind);validateFixtureData(item);if(item.sanitaryEvidence!==undefined)validateSanitaryData(item);if(item.floorEvidence!==undefined||item.detectedUnit!==undefined||item.unitGrouping!==undefined||item.bathroomGrouping!==undefined||item.laundry!==undefined)validateFloorEvidence(item);validateWallTakeoffData(item);ids.add(item.id);
+    validateAutomaticMetadata(item,documentKey);if(item.work)validateWork(item.work,item.kind);if(item.work?.specificationId&&!specificationCatalog.getEntry(data.estimation?.specifications,item.work.specificationId))throw new Error('Référence de fini du devis absente.');validateFixtureData(item);if(item.sanitaryEvidence!==undefined)validateSanitaryData(item);if(item.floorEvidence!==undefined||item.detectedUnit!==undefined||item.unitGrouping!==undefined||item.bathroomGrouping!==undefined||item.laundry!==undefined)validateFloorEvidence(item);validateWallTakeoffData(item);ids.add(item.id);
     if((item.holes&&!Array.isArray(item.holes))||!getHoles(item).every(ring=>points(ring,3)))throw new Error('Une exclusion est invalide.');
     if(item.layout&&(!points([item.layout.origin,item.layout.origin])||!Number.isFinite(item.layout.angle)||!Number.isFinite(item.layout.joint)||item.layout.joint<0||item.layout.joint>1))throw new Error('Un départ de céramique est invalide.');
   }
@@ -13270,6 +13913,7 @@ function catalogDefaults() {
   return defs;
 }
 function profile(code) {
+  const specificationProfile=specificationCatalog.profile(specificationData(),code);if(specificationProfile)return specificationProfile;
   const product=S.estimation?.workspace?.products.find(product=>product.id===code);
   if(product)return {name:product.name,unit:product.saleUnit==='count'?'u':'pi²',pack:product.packaging||(product.saleUnit==='box'?'boîte':product.saleUnit==='area'?'pi²':product.saleUnit==='roll'?'rouleau':'pi lin.'),coverage:product.saleUnit==='box'?product.coverage:product.saleUnit==='area'||product.saleUnit==='count'?1:null,price:product.price,labor:product.laborPrice??null,components:[],format:product.format,color:product.color};
   const result={...catalogDefaults()[code],...(S.estimation?.catalog?.[code]||{})};
@@ -13287,7 +13931,7 @@ function setRoomBoundary(roomId,id) {
 function setMeasurementProduct(id,product) {
   const item=S.items.find(item=>item.id===id&&item.kind==='area');if(!item)throw new Error('Sélectionnez une surface.');
   if(product.saleUnit==='count')throw new Error('Un produit compté ne peut pas être affecté à une surface.');
-  remember();item.work={...workOf(item),productId:product.id,productSignature:JSON.stringify([product.id,product.saleUnit,product.coverage,product.rollWidth,product.format,product.color,product.packaging,product.wastePercent])};
+  remember();item.work={...workOf(item),specificationId:'',specificationUsage:'',specificationOrigin:'',productId:product.id,productSignature:JSON.stringify([product.id,product.saleUnit,product.coverage,product.rollWidth,product.format,product.color,product.packaging,product.wastePercent])};
   item.waste=product.wastePercent??0;item.wasteConfirmed=product.wastePercent!==null;item.status='à valider';save();refresh();
 }
 function workOf(item,state=S) {
@@ -13299,14 +13943,16 @@ function workOf(item,state=S) {
   if(!floor&&workspace&&w.level){const matches=workspace.floors.filter(candidate=>candidate.name===w.level&&(!w.block||workspace.blocks.find(block=>block.id===candidate.blockId)?.name===w.block));if(matches.length===1)floor=matches[0];}
   let block=workspace?.blocks.find(block=>block.id===(floor?.blockId||w.blockId));
   if(!block&&workspace&&w.block){const matches=workspace.blocks.filter(candidate=>candidate.name===w.block);if(matches.length===1)block=matches[0];}
-  return {included:!item.measureOnly&&!w.roomBoundary&&w.included!==false,roomBoundary:!!w.roomBoundary,layer:w.layer||'finish',revisionMatchId:w.revisionMatchId||'',roomId:w.roomId||'',unitId:unit?.id||w.unitId||'',projectId:w.projectId||workspace?.project.id||'',blockId:block?.id||'',floorId:floor?.id||'',productId:w.productId||'',productSignature:w.productSignature||'',block:block?.name||w.block||'',level:floor?.name||w.level||'',unit:room?(unit?.code||''):(unit?.code||w.unit||''),type:room?(unit?.type||''):(unit?.type||w.type||''),repeat:w.repeat||1,
+  return {included:!item.measureOnly&&!w.roomBoundary&&w.included!==false,roomBoundary:!!w.roomBoundary,layer:w.layer||'finish',revisionMatchId:w.revisionMatchId||'',roomId:w.roomId||'',unitId:unit?.id||w.unitId||'',projectId:w.projectId||workspace?.project.id||'',blockId:block?.id||'',floorId:floor?.id||'',productId:w.productId||'',productSignature:w.productSignature||'',specificationId:w.specificationId||'',specificationUsage:w.specificationUsage||'',specificationOrigin:w.specificationOrigin||'',specificationSignature:w.specificationSignature||'',block:block?.name||w.block||'',level:floor?.name||w.level||'',unit:room?(unit?.code||''):(unit?.code||w.unit||''),type:room?(unit?.type||''):(unit?.type||w.type||''),repeat:w.repeat||1,
     lineRole:w.lineRole||'baseboard',baseboard:{enabled:false,code:item.kind==='area'?'PL-'+item.material:'PL-01',deductions:0,waste:5,...w.baseboard},
     wall:{height:48,openings:0,waste:10,...w.wall}};
 }
 function finiteRange(n,min,max) { return typeof n==='number'&&Number.isFinite(n)&&n>=min&&n<=max; }
 function validateWork(w,kind) {
   if(!w||typeof w!=='object'||Array.isArray(w)||typeof w.included!=='boolean'||!Number.isInteger(w.repeat)||w.repeat<1||w.repeat>999)throw new Error('Répétitions : entrez un entier de 1 à 999.');
-  for(const key of ['roomId','unitId','projectId','productId','layer','revisionMatchId'])if(w[key]!==undefined&&(typeof w[key]!=='string'||w[key].length>200))throw new Error('Rattachement ou couche invalide.');
+  for(const key of ['roomId','unitId','projectId','productId','specificationId','specificationUsage','specificationOrigin','layer','revisionMatchId'])if(w[key]!==undefined&&(typeof w[key]!=='string'||w[key].length>200))throw new Error('Rattachement ou couche invalide.');
+  if(w.specificationSignature!==undefined&&(typeof w.specificationSignature!=='string'||w.specificationSignature.length>8000))throw new Error('Signature de fini invalide.');
+  if(w.specificationUsage&&!['floor','wall','backsplash','baseboard','moulding','threshold'].includes(w.specificationUsage)||w.specificationOrigin&&!['manual','auto'].includes(w.specificationOrigin))throw new Error('Affectation de fini documentaire invalide.');
   if(w.roomBoundary!==undefined&&typeof w.roomBoundary!=='boolean')throw new Error('Type de contour de pièce invalide.');
   for(const k of ['block','level','unit','type'])if(typeof w[k]!=='string'||w[k].length>80)throw new Error('Bloc, étage, unité et type : 80 caractères maximum.');
   if(!['baseboard','wall'].includes(w.lineRole))throw new Error('Type de ligne invalide.');
@@ -13318,6 +13964,7 @@ function validateWork(w,kind) {
 function validateEstimation(value) {
   if(!value||typeof value!=='object'||Array.isArray(value)||!['project','floor','unit','zone'].includes(value.group)||!value.catalog||typeof value.catalog!=='object'||Array.isArray(value.catalog))throw new Error('Catalogue d’assemblages invalide.');
   if(value.workspace)projects.validate(value.workspace);
+  if(value.specifications!==undefined)specificationCatalog.validate(value.specifications);
   if(value.offcuts!==undefined)offcuts.available(value.offcuts,'import-validation');
   if(value.manualCosts!==undefined)orders.validateManualCosts(value.manualCosts);
   if(value.rollPlans)for(const saved of Object.values(value.rollPlans)){if(!saved||!saved.plan)throw new Error('Calepinage de rouleau invalide.');rolls.evaluate(saved.plan);if(saved.manualReference!==undefined)rolls.manualReference(saved.manualReference);}
@@ -13367,7 +14014,7 @@ function estimateLines(state=S) {
       projectId:w.projectId,blockId:w.blockId,floorId:w.floorId,unitId:w.unitId,block:w.block,level:w.level,unit:w.unit,type:w.type,repeat:w.repeat,measured:base,net:base===null?null:base*w.repeat,
       waste,demand:base===null?null:base*w.repeat*(1+waste/100),issues:[...issues,...extra]});
     if(item.kind==='area') {
-      emit(w.layer==='finish'?'Sol':'Couche '+w.layer,w.productId||item.material,measured,item.waste);
+      emit(w.layer==='finish'?'Sol':'Couche '+w.layer,w.productId||specificationKeyForItem(item,'floor',state)||item.material,measured,item.waste);
       if(w.baseboard.enabled) {
         const outer=measured===null?null:perimeter(item.points)*scale,extra=[];
         if(outer!==null&&w.baseboard.deductions>outer+1e-7)extra.push('Exclusions de plinthe supérieures au périmètre');
@@ -13375,12 +14022,12 @@ function estimateLines(state=S) {
         if(state.items.some(i=>i.kind==='linear'&&i.page===item.page&&i.name.trim().toLowerCase()===item.name.trim().toLowerCase()&&workOf(i,state).lineRole!=='wall'&&workOf(i,state).included))extra.push('Ligne manuelle de même nom : doublon possible');
         emit('Plinthe liée',w.baseboard.code,outer===null||w.baseboard.deductions>outer+1e-7?null:Math.max(0,outer-w.baseboard.deductions),w.baseboard.waste,extra);
       }
-    } else if(item.kind==='count')emit('Comptage','QT-01',measured,0);
+    } else if(item.kind==='count')emit('Comptage',specificationKeyForItem(item,'threshold',state)||'QT-01',measured,0);
     else if(w.lineRole==='wall') {
       const gross=isKitchenElevation(item)?kitchenElevationGross(item,state):measured===null||!finiteRange(w.wall.height,.01,1200)?null:measured*w.wall.height/12;
-      emit('Mur / dosseret',isKitchenElevation(item)&&w.productId?w.productId:'MUR-01',gross===null||w.wall.openings>gross+1e-7?null:Math.max(0,gross-w.wall.openings),w.wall.waste,
+      emit('Mur / dosseret',w.productId||specificationKeyForItem(item,specificationUsage(item),state)||'MUR-01',gross===null||w.wall.openings>gross+1e-7?null:Math.max(0,gross-w.wall.openings),w.wall.waste,
         gross!==null&&w.wall.openings>gross+1e-7?['Ouvertures supérieures à la surface brute']:[]);
-    } else emit('Plinthe manuelle','PL-01',measured,item.waste);
+    } else emit('Plinthe manuelle',specificationKeyForItem(item,specificationUsage(item),state)||'PL-01',measured,item.waste);
   }
   return result;
 }
@@ -13422,12 +14069,16 @@ function calculateProjectOrders(manualCosts) {
 }
 function purchaseRows(lines) { return lines===undefined?calculateProjectOrders().rows:purchasing.purchaseRows(lines,profile,orderGroup); }
 function estimateTotals(rows=purchaseRows(),lines=estimateProjectLines()) { return purchasing.estimateTotals(rows,lines); }
+function specificationExportSheets() {
+  const rows=specificationCatalog.entries(specificationData(),{includeIgnored:true});if(!rows.length)return [];
+  return [['Devis et finis',[['Code du devis','Description','Localisation','Usages','Fabricant','Modèle','Couleur','Format','Document','Feuille','Page','Révision','Extrait source','Contrôle'],...rows.flatMap(entry=>entry.sources.map(source=>[entry.code,entry.label,entry.scope==='units'?'Unités':entry.scope==='common'?'Espaces communs':'À préciser',entry.usages.join(' / '),entry.manufacturer,entry.model,entry.color,entry.formatText,specificationData().documents.find(doc=>doc.key===source.documentKey)?.name||source.documentKey,source.sheetName,source.page,source.revision,source.text,entry.ignored?'Masqué des propositions':entry.conflict?'Sources contradictoires':entry.workingDraft?'En cours : à vérifier':entry.manual?'Corrigé manuellement':'Extrait du document']))]]];
+}
 function estimationSheets() {
   const lines=estimateProjectLines(),rows=purchaseRows(),v=n=>n===null?'À saisir / vérifier':Math.round(n*10000)/10000;
   const orders=[['Groupe de commande','Référence','Poste','Description','Net prévu','Unité de besoin','Besoin avec perte','Rendement / emballage','Emballage','Nombre entier','Quantité achetée','Prix / emballage','Coût matière','Pose / unité nette','Coût pose','Contrôles'],
-    ...rows.map(r=>[orderGroupLabel(r.group),r.code,r.category,r.name,v(r.net),r.unit,v(r.demand),v(r.coverage),r.pack,v(r.packs),v(r.purchased),v(r.price),v(r.materialCost),r.category==='Consommable'?'Sans pose séparée':v(r.laborRate),v(r.laborCost),r.issues.join(' · ')])];
+    ...rows.map(r=>[orderGroupLabel(r.group),visibleEstimateCode(r.code),r.category,r.name,v(r.net),r.unit,v(r.demand),v(r.coverage),r.pack,v(r.packs),v(r.purchased),v(r.price),v(r.materialCost),r.category==='Consommable'?'Sans pose séparée':v(r.laborRate),v(r.laborCost),r.issues.join(' · ')])];
   const detail=[['Page','Feuille','Zone source','Poste','Référence','Bloc','Étage','Unité / modèle','Type','Mesure unique','Répétitions','Net prévu','Perte (%)','Besoin avec perte','Unité','Contrôles'],
-    ...lines.map(l=>[l.page,pageName(l.page),l.name,l.category,l.code,l.block,l.level,l.unit,l.type,v(l.measured),l.repeat,v(l.net),l.waste,v(l.demand),profile(l.code).unit,l.issues.join(' · ')])];
+    ...lines.map(l=>[l.page,pageName(l.page),l.name,l.category,visibleEstimateCode(l.code),l.block,l.level,l.unit,l.type,v(l.measured),l.repeat,v(l.net),l.waste,v(l.demand),profile(l.code).unit,l.issues.join(' · ')])];
   const cat=[['Référence','Description','Unité de besoin','Rendement / emballage','Emballage','Prix / emballage','Pose / unité nette','Consommable 1','Rendement 1','Perte 1 (%)','Prix 1','Consommable 2','Rendement 2','Perte 2 (%)','Prix 2','Consommable 3','Rendement 3','Perte 3 (%)','Prix 3'],
     ...Object.keys(catalogDefaults()).map(code=>{const p=profile(code);return [code,p.name,p.unit,v(p.coverage),p.pack,v(p.price),v(p.labor),...[0,1,2].flatMap(i=>p.components[i]?[p.components[i].name,v(p.components[i].coverage),p.components[i].waste,v(p.components[i].price)]:['','','',''])];})];
   const units=new Map();
@@ -13512,7 +14163,7 @@ function estimateDialog() {
     <div class="v5-toolbar"><label>Regrouper avant d’arrondir<select id="purchaseGroup">${purchaseComparison.modes.map(mode=>`<option value="${esc(mode.id)}" ${S.estimation.group===mode.id?'selected':''}>${esc(mode.label)}</option>`).join('')}</select></label><button type="button" id="orderCatalog">Configurer les assemblages</button><button type="button" id="orderExport" class="primary">Exporter Excel</button></div>
     <details id="purchaseComparison" class="v5-sources"><summary>Comparer les quatre regroupements avant de choisir</summary><div id="purchaseComparisonResult" aria-live="polite"></div></details>
     <p>Commander = arrondi supérieur du besoin regroupé ÷ couverture par emballage. Coût matière = emballages entiers × prix ; pose = net prévu × tarif. Les rouleaux utilisent les longueurs de coupe et le conditionnement vérifiés. Les postes manuels conservent la quantité et le prix saisis, sans arrondi d’emballage. Montants en $, hors taxes. ${t.checks?`${t.checks} poste(s) présentent des données ou contrôles à compléter.`:''}</p>
-    <div class="v5-order-table"><table><thead><tr><th>Groupe / référence</th><th>Poste</th><th>Net prévu</th><th>Besoin avec perte</th><th>Couverture</th><th>Commander</th><th>Matière / poste</th><th>Pose</th><th>Contrôles</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td><small>${esc(orderGroupLabel(r.group))}</small><b>${esc(r.code)}</b><small>${esc(r.name)}</small></td><td>${esc(r.category)}</td><td>${quantityOrUnknown(r.net,r.unit)}</td><td>${quantityOrUnknown(r.demand,r.unit)}</td><td>${r.coverage===null?'À saisir':fmt(r.coverage,3)+' '+r.unit+' / '+esc(r.pack)}</td><td><b>${r.packs===null?'À compléter':Number(r.packs).toLocaleString('fr-CA',{maximumFractionDigits:4})+' '+esc(r.pack)+(r.packs>1?'(s)':'')}</b></td><td>${moneyOrUnknown(r.materialCost)}</td><td>${r.category==='Consommable'?'Incluse dans la pose du fini':moneyOrUnknown(r.laborCost)}</td><td>${r.issues.length?esc(r.issues.join(' · ')):'Paramètres renseignés'}</td></tr>`).join(''):'<tr><td colspan="9">Aucune mesure confirmée incluse. Révisez puis confirmez les surfaces dans le tableau du plan.</td></tr>'}</tbody></table></div>
+    <div class="v5-order-table"><table><thead><tr><th>Groupe / référence</th><th>Poste</th><th>Net prévu</th><th>Besoin avec perte</th><th>Couverture</th><th>Commander</th><th>Matière / poste</th><th>Pose</th><th>Contrôles</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td><small>${esc(orderGroupLabel(r.group))}</small><b>${esc(visibleEstimateCode(r.code))}</b><small>${esc(r.name)}</small></td><td>${esc(r.category)}</td><td>${quantityOrUnknown(r.net,r.unit)}</td><td>${quantityOrUnknown(r.demand,r.unit)}</td><td>${r.coverage===null?'À saisir':fmt(r.coverage,3)+' '+r.unit+' / '+esc(r.pack)}</td><td><b>${r.packs===null?'À compléter':Number(r.packs).toLocaleString('fr-CA',{maximumFractionDigits:4})+' '+esc(r.pack)+(r.packs>1?'(s)':'')}</b></td><td>${moneyOrUnknown(r.materialCost)}</td><td>${r.category==='Consommable'?'Incluse dans la pose du fini':moneyOrUnknown(r.laborCost)}</td><td>${r.issues.length?esc(r.issues.join(' · ')):'Paramètres renseignés'}</td></tr>`).join(''):'<tr><td colspan="9">Aucune mesure confirmée incluse. Révisez puis confirmez les surfaces dans le tableau du plan.</td></tr>'}</tbody></table></div>
     <details id="orderSources" class="v5-sources"><summary>Sources et répétitions · ${lines.length} poste(s) dérivé(s)</summary><div class="v5-order-table"><table><thead><tr><th>Page</th><th>Zone</th><th>Localisation</th><th>Poste</th><th>Mesure unique</th><th>Répétitions</th><th>Net prévu</th><th>Contrôles</th></tr></thead><tbody>${lines.map(l=>`<tr><td>${l.page}</td><td>${esc(l.name)}</td><td>${esc([l.block,l.level,l.unit,l.type].filter(Boolean).join(' / ')||'Non renseignée')}</td><td>${esc(l.category)}</td><td>${quantityOrUnknown(l.measured,profile(l.code).unit)}</td><td>×${l.repeat}</td><td>${quantityOrUnknown(l.net,profile(l.code).unit)}</td><td>${esc(l.issues.join(' · '))}</td></tr>`).join('')}</tbody></table></div></details>
     <p>Les plinthes liées sont ajoutées uniquement après activation dans chaque fiche. Déduisez les portes et vérifiez les changements de fini. Un calepinage de carreaux ne remplace pas l’arrondi des boîtes ni un plan de coupe.</p>`,'v5-wide');
   $('#purchaseGroup').onchange=event=>{remember();S.estimation.group=event.target.value;save();estimateDialog();};
@@ -13658,7 +14309,7 @@ $('#prevPage').onclick=()=>showPage(S.page-1);$('#nextPage').onclick=()=>showPag
 $('#undo').onclick=undoChange;$('#redo').onclick=redoChange;$('#deleteSelection').onclick=deleteSelection;
 $('#scaleStatus').onclick=()=>calibrationModal();
 $('#scaleStatus').onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();event.stopPropagation();calibrationModal();}};
-$('#reopen').onclick=$('#showProperties').onclick=()=>{if(S.reviewOpen)closeReview();$('#inspector').hidden=false;$('#reopen').hidden=true;};
+$('#reopen').onclick=$('#showProperties').onclick=()=>{if(S.reviewOpen)closeReview();specificationUI.open('properties');};
 $('#togglePages').onclick=()=>$('.app').classList.toggle('pages-folded');
 $('.sidebar .pane-title button').onclick=()=>$('.app').classList.add('pages-folded');
 $('#collapseGrid').onclick=()=>{const grid=$('.quantity-grid');grid.classList.toggle('collapsed');const h=grid.classList.contains('collapsed')?'32px':'176px';grid.style.height=h;grid.style.flexBasis=h;};
@@ -13668,6 +14319,9 @@ window.onblur=()=>{S.spaceHeld=false;if(S.dragging){const before=S.dragging.befo
 $('#toggleTileGrid').onclick=()=>{S.tileGrid=!S.tileGrid;refresh();};$('#tileSettings').onclick=tileModal;$('#tileOriginBtn').onclick=activateOrigin;
 $('#helpBtn').onclick=helpDialog;$('#saveProjectBtn').onclick=exportProject;
 $('#projectInput').onchange=event=>{importProject(event.target.files[0]);event.target.value='';};
+specificationUI=specificationPanelFactory({host:$('#inspector'),getState:()=>S,onLayoutChange:()=>draw(),getView:specificationView,getQuantityView:specificationQuantities,onApply:assignSpecificationSelection,onActivate:chooseSpecification,onEdit:editSpecification,onIgnore:ignoreSpecification,onSource:showSpecificationSource,onRescan:rescanSpecifications,onImport:type=>$(type==='design'?'#designPlanInput':'#architecturePlanInput')?.click(),onSelectItems:ids=>{setSelection(ids);refresh();}});
+specificationUI.install();
+$('.canvas-wrap').after($('#takeoffSummary'));
 initEstimationUI();initV7();initManualUI();initFoldersUI();
 const workspaceUI=workspaceUIFactory({getState:()=>S,remember,save,refresh,openDialog,closeDialog,toast,esc,uid,
   planLibrary,planLibraryUIFactory,projectSession,openComparison:openPlanComparison,closeCurrentPlan,renamePage:renameSheet,pageName,
@@ -13690,6 +14344,8 @@ const revisionUI=revisionUIFactory({revisions,documents,getState:()=>S,save,reme
 revisionUI.install();
 const legendUI=legendUIFactory({legends,getState:()=>S,remember,save,openDialog,toast,esc,uid});
 legendUI.install();
+$('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="devisToolBtn" title="Analyser et consulter les finis des plans"><span aria-hidden="true">▤</span> Devis.AI</button>');
+$('#devisToolBtn').onclick=()=>{if(S.reviewOpen)closeReview();specificationUI.open('devis');};
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="projectArchiveBtn">Sauvegarde</button>');
 $('#projectArchiveBtn').onclick=projectArchiveDialog;
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="rotatePlan">Tourner 90°</button>');
