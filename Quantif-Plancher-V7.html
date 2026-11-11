@@ -1613,7 +1613,7 @@ function specificationReadPage(job,info,page) {
 function specificationFinish(job) {
   if(!job||S.specificationJob!==job||S.documentKey!==job.key||S.pdf!==job.pdf||S.indexToken!==job.indexToken)return;
   const pages=[...job.pages.values()],issues=[...new Set(pages.flatMap(page=>page.issues.map(issue=>issue.message||issue.code||'Lecture à vérifier')))];if(job.unreadable)issues.push(job.unreadable+' feuille(s) sans texte lisible.');if(job.done<job.total)issues.push('Lecture interrompue : '+job.done+'/'+job.total+' feuilles.');
-  try{S.estimation.specifications=specificationCatalog.replaceDocument(specificationData(),{key:job.key,name:S.fileName,pages:job.total,scannedPages:job.done,engineVersion:finishSchedules.version,status:job.done===job.total&&!job.unreadable&&!issues.length?'ready':'partial',entries:pages.flatMap(page=>page.entries),notes:pages.flatMap(page=>page.notes),issues});S.specificationJob=null;S.specificationCacheReused=false;applySpecificationSuggestions(S.items);save();refresh();}catch(error){S.specificationJob=null;S.specificationError=error.message;refresh();toast('Analyse des finis à compléter : '+error.message);}
+  try{S.estimation.specifications=specificationCatalog.replaceDocument(specificationData(),{key:job.key,name:S.fileName,pages:job.total,scannedPages:job.done,engineVersion:finishSchedules.version,status:job.done===job.total&&!job.unreadable&&!issues.length?'ready':'partial',entries:pages.flatMap(page=>page.entries),notes:pages.flatMap(page=>page.notes),issues});S.specificationJob=null;S.specificationCacheReused=false;if(!job.readOnly)applySpecificationSuggestions(S.items);save();refresh();}catch(error){S.specificationJob=null;S.specificationError=error.message;refresh();toast('Analyse des finis à compléter : '+error.message);}
 }
 async function rescanSpecifications() {
   if(!S.pdf||S.specificationJob)return;const pdf=S.pdf,key=S.documentKey,token=S.indexToken,job=specificationBegin(pdf,key,true);
@@ -2159,7 +2159,7 @@ function initManualUI() {
     manualButton('manualRedo','redo-2','Rétablir','Rétablir la modification · Ctrl+Y')
   ].join('');
   const workflow=$('#workflow'),legacy=$('.ribbon');
-  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group" role="group" aria-label="Projet"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet</span></div><div class="manual-group" role="group" aria-label="Navigation"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group" role="group" aria-label="Mesurer"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group" role="group" aria-label="Relevé manuel"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group" role="group" aria-label="Détection des surfaces"><div id="ribbonDetection" class="manual-group-buttons"></div><span class="manual-group-label">Détection</span></div><div class="manual-group" role="group" aria-label="Corriger"><div id="ribbonCorrection" class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group" role="group" aria-label="Calepinage"><div id="ribbonLayout" class="manual-group-buttons"></div><span class="manual-group-label">Calepinage</span></div><div class="manual-group" role="group" aria-label="Commandes et aide"><div id="ribbonManagement" class="manual-group-buttons"></div><span class="manual-group-label">Commandes et aide</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group" role="group" aria-label="Projet"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet</span></div><div class="manual-group" role="group" aria-label="Navigation"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group" role="group" aria-label="Mesurer"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group" role="group" aria-label="Relevé manuel"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group" role="group" aria-label="Détection des surfaces"><div id="ribbonDetection" class="manual-group-buttons"></div><span class="manual-group-label">Détection</span></div><div class="manual-group" role="group" aria-label="Corriger"><div id="ribbonCorrection" class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group" role="group" aria-label="Calepinage"><div id="ribbonLayout" class="manual-group-buttons"></div><span class="manual-group-label">Calepinage</span></div><div class="manual-group" role="group" aria-label="Analyse des plans"><div id="ribbonPdfIntelligence" class="manual-group-buttons">${manualButton('pdfFinishSearchBtn','search','Finis','Rechercher un fini dans tous les PDF du projet')}${manualButton('pdfSheetLinksBtn','link-2','Liens','Aperçus des repères et détails')}</div><span class="manual-group-label">Plans</span></div><div class="manual-group" role="group" aria-label="Commandes et aide"><div id="ribbonManagement" class="manual-group-buttons"></div><span class="manual-group-label">Commandes et aide</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
   const moveButton=(selector,host,icon,label,title)=>{
     const button=$(selector);if(!button)return;
     button.type='button';button.className='manual-button';
@@ -4120,7 +4120,10 @@ const planComparison = (function createPlanComparison() {
     function change(factor,x=view.clientWidth/2,y=view.clientHeight/2){const next=clamp(zoom*factor),ratio=next/zoom,cx=x-view.clientWidth/2,cy=y-view.clientHeight/2;pan={x:cx-(cx-pan.x)*ratio,y:cy-(cy-pan.y)*ratio};zoom=next;paint();}
     document.querySelector('#comparisonPlus').onclick=()=>change(1.2);document.querySelector('#comparisonMinus').onclick=()=>change(1/1.2);document.querySelector('#comparisonFit').onclick=fit;
     document.querySelector('#comparisonRotate').onclick=()=>{angle=(angle+90)%360;fit();};document.querySelector('#comparisonClose').onclick=()=>window.close();
-    image.onload=()=>{status.hidden=true;view.setAttribute('aria-busy','false');fit();view.focus({preventScroll:true});};
+    image.onload=()=>{status.hidden=true;view.setAttribute('aria-busy','false');fit();
+      let r;try{r=JSON.parse(document.body.dataset.target||'null');}catch{}
+      if(r&&[r.x,r.y,r.right,r.bottom].every(Number.isFinite)&&r.right>r.x&&r.bottom>r.y){const x=(r.x+r.right-image.naturalWidth)/2,y=(r.y+r.bottom-image.naturalHeight)/2,a=angle*Math.PI/180;zoom=clamp(Math.max(zoom,Math.min(1.5,view.clientWidth/(r.right-r.x+200),view.clientHeight/(r.bottom-r.y+200))));pan={x:-(x*Math.cos(a)-y*Math.sin(a))*zoom,y:-(x*Math.sin(a)+y*Math.cos(a))*zoom};paint();}
+      view.focus({preventScroll:true});};
     image.onerror=()=>{status.textContent='La feuille ne peut pas être affichée. Fermez cette fenêtre puis rouvrez-la depuis le plan.';view.setAttribute('aria-busy','false');};
     view.onwheel=event=>{event.preventDefault();const box=view.getBoundingClientRect();change(event.deltaY<0?1.1:1/1.1,event.clientX-box.x,event.clientY-box.y);};
     view.onpointerdown=event=>{if(event.button!==0||!image.naturalWidth)return;drag={x:event.clientX,y:event.clientY,before:{...pan},pointer:event.pointerId};view.setPointerCapture(event.pointerId);view.style.cursor='grabbing';event.preventDefault();};
@@ -4142,6 +4145,7 @@ const planComparison = (function createPlanComparison() {
       child.document.querySelector('#comparisonTitle').textContent=metadata.title||'Feuille';
       child.document.querySelector('#comparisonSource').textContent=(metadata.fileName||'Plan')+' · Page '+metadata.page+' / '+metadata.pages;
       child.document.body.dataset.rotation=String([0,90,180,270].includes(metadata.rotation)?metadata.rotation:0);
+      if(metadata.rect&&['x','y','right','bottom'].every(k=>Number.isFinite(metadata.rect[k])))child.document.body.dataset.target=JSON.stringify(metadata.rect);
       const script=child.document.createElement('script');script.textContent='('+bootViewer.toString()+')();';child.document.body.append(script);
       const result=await readImage();
       if(child.closed)return {opened:true,reason:'closed'};
@@ -10516,6 +10520,218 @@ const specificationPanelFactory = (function createSpecificationPanel(options) {
   }
   return {install,render,open,setTab,getActiveTab:()=>active};
 });
+const pdfTextIndex = (function createPdfTextIndex() {
+  const version=2;
+  const norm=text=>String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\u2010-\u2014]/g,'-').toUpperCase();
+  const compact=text=>norm(text).replace(/[-.]/g,'');
+  const finite=value=>typeof value==='number'&&Number.isFinite(value);
+  function identity(input){if(typeof input?.documentKey!=='string'||!input.documentKey.trim()||input.documentKey.length>4096||!Number.isSafeInteger(input.page)||input.page<1)throw new Error('Identité de feuille PDF invalide.');}
+  function page(input){
+    identity(input);if(!finite(input.width)||!finite(input.height)||input.width<=0||input.height<=0||!Array.isArray(input.texts)||input.texts.length>200000)throw new Error('Contenu de feuille PDF invalide.');
+    const texts=[];let rejected=0;
+    for(const row of input.texts){if(typeof row?.text!=='string'||row.text.length>100000||![row.x,row.y,row.width,row.height].every(finite)||row.width<=0||row.height<=0){rejected++;continue;}
+      const text=row.text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'').trim();if(!text)continue;
+      texts.push({text,x:row.x,y:row.y,width:row.width,height:row.height,cx:row.x+row.width/2,cy:row.y+row.height/2});
+    }
+    const fallbackTitle=texts.filter(row=>row.x>input.width*.65&&row.y>input.height*.5&&/^(?:D[ÉE]TAILS?|COUPES?|[ÉE]L[ÉE]VATIONS?)\b/i.test(row.text)).sort((a,b)=>b.y-a.y)[0]?.text||'';
+    const title=String(input.title||fallbackTitle).slice(0,1000),heading=norm([title,...texts.filter(row=>row.y<input.height*.25).map(row=>row.text)].join(' '));
+    const code=String(input.code||'').slice(0,100),codeStatus=code&&texts.some(row=>norm(row.text)===norm(code)&&row.cx>input.width*.8&&row.cy>input.height*.88)?'verified':'unverified';
+    const kind=['plan','schedule','specification'].includes(input.kind)?input.kind:/TABLEAU.{0,50}FINIS|LEGENDE.{0,25}FINIS/.test(heading)?'schedule':/\bDEVIS\b|CAHIER DES CHARGES/.test(heading)?'specification':/^PLAN\b/.test(norm(input.title||''))?'plan':undefined;
+    return {version,documentKey:input.documentKey,page:input.page,code,codeStatus,title,width:input.width,height:input.height,texts,hasText:texts.length>0,readError:!!input.readError,status:!texts.length?'unreadable':input.readError||rejected?'partial':'indexed',...(kind?{kind}:{})};
+  }
+  function search(pages,query,options={}){
+    query=String(query||'').trim();if(query.length>200)throw new Error('Recherche limitée à 200 caractères.');
+    const exact=[],variants=[];if(!query)return {exact,variants};
+    const limit=options.maxResults??10000;if(!Number.isSafeInteger(limit)||limit<1||limit>10000)throw new Error('Limite de résultats invalide.');
+    const wanted=norm(query),code=/^[A-Z]{1,6}[-.]?\d+[A-Z]?(?:[-.]\d+)?$/.test(wanted),allowed=options.documentKeys?new Set(options.documentKeys):null;
+    const escaped=wanted.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),pattern=new RegExp('(?<![\\p{L}\\p{N}.-])'+escaped+'(?![\\p{L}\\p{N}.-])','gu');
+    for(const source of pages){identity(source);if(allowed&&!allowed.has(source.documentKey))continue;
+      for(const box of source.texts||[]){const text=norm(box.text),matches=code?[...text.matchAll(/[\p{L}\p{N}]+(?:[-.][\p{L}\p{N}]+)*/gu)]:[...text.matchAll(pattern)];
+        for(const match of matches){const same=match[0]===wanted,variant=code&&!same&&compact(match[0])===compact(wanted);if(!same&&(!variant||options.includeVariants===false))continue;
+          if(exact.length+variants.length>=limit)throw new Error('Plus de '+limit+' occurrences : précisez la recherche.');
+          const hit={id:JSON.stringify([source.documentKey,source.page,box.x,box.y,match.index]),documentKey:source.documentKey,page:source.page,sheetName:source.code||'',rect:{x:box.x,y:box.y,right:box.x+box.width,bottom:box.y+box.height},text:box.text,matchedText:box.text.slice(match.index,match.index+match[0].length),kind:source.kind||'unknown'};
+          (same?exact:variants).push(hit);
+        }
+      }
+    }return {exact,variants};
+  }
+  function coverage(documents,pages){
+    const known=new Map(pages.map(row=>[JSON.stringify([row.documentKey,row.page]),row.status])),keys=new Set(),result={total:0,indexed:0,partial:0,unreadable:0,pending:0,complete:false};
+    for(const doc of documents){if(typeof doc.key!=='string'||!Number.isSafeInteger(doc.pages)||doc.pages<1)throw new Error('Document de couverture invalide.');if(keys.has(doc.key))continue;keys.add(doc.key);
+      for(let n=1;n<=doc.pages;n++){result.total++;const status=known.get(JSON.stringify([doc.key,n]));result[['indexed','partial','unreadable'].includes(status)?status:'pending']++;}}
+    result.complete=result.total>0&&result.indexed===result.total;return result;
+  }
+  return {version,page,search,coverage};
+})();
+const sheetGraph = (function createSheetGraph() {
+  const norm=value=>String(value||'').toUpperCase().replace(/[\s.\-\u2010-\u2014]/g,'');
+  const code='[A-Z]{1,4}[-.]?\\d{2,4}(?:[.-]\\d{1,2})?';
+  const fullCode=new RegExp('^'+code+'$','i');
+  const detailCache=new WeakMap();
+  function validPage(p){return p&&typeof p.documentKey==='string'&&p.documentKey.length>0&&Number.isSafeInteger(p.page)&&p.page>0&&!p.excluded;}
+  function rect(row){return {x:row.x,y:row.y,right:row.x+row.width,bottom:row.y+row.height};}
+  function boxes(p){return (Array.isArray(p.texts)?p.texts:[]).filter(t=>typeof t.text==='string'&&[t.x,t.y,t.width,t.height].every(Number.isFinite)&&t.width>0&&t.height>0);}
+  function references(p){
+    if(!validPage(p))return [];const texts=boxes(p),result=[];
+    const add=(detail,sheetCode,b,text)=>{const id=JSON.stringify([p.documentKey,p.page,detail,norm(sheetCode),Math.round(b.x*10)/10,Math.round(b.y*10)/10]);if(!result.some(r=>r.id===id))result.push({id,documentKey:p.documentKey,page:p.page,detail,sheetCode,rect:b,text});};
+    for(const row of texts){
+      const regex=new RegExp('(?<![A-Z0-9])([0-9]{1,3}|[A-Z]{1,2})\\s*[/／]\\s*('+code+')(?![A-Z0-9.-])','gi');
+      for(const m of row.text.matchAll(regex)){const b=rect(row);if(m[0].length<row.text.length){b.x=row.x+row.width*m.index/row.text.length;b.right=row.x+row.width*(m.index+m[0].length)/row.text.length;}add(m[1],m[2],b,m[0]);}
+      if(!fullCode.test(row.text.trim())||(row.x>p.width*.65&&row.y>p.height*.58))continue;
+      const nearby=texts.filter(top=>/^([0-9]{1,3}|[A-Z]{1,2})$/.test(top.text.trim())&&top.y<row.y&&row.y-top.y<=Math.max(row.height,top.height)*4&&Math.abs(top.x+top.width/2-row.x-row.width/2)<=Math.max(row.width,top.width)*.65);
+      if(nearby.length!==1)continue;const top=nearby[0],b=rect(row);b.x=Math.min(b.x,top.x);b.y=top.y;b.right=Math.max(b.right,top.x+top.width);add(top.text.trim(),row.text.trim(),b,top.text.trim()+'/'+row.text.trim());
+    }return result;
+  }
+  function detailRect(p,detail){
+    let cached=detailCache.get(p);if(!cached||cached.texts!==p.texts){cached={texts:p.texts,details:new Map()};detailCache.set(p,cached);}if(cached.details.has(detail))return cached.details.get(detail);
+    const texts=boxes(p),titles=texts.filter(t=>/(?:^|[\s:–—-])(?:D[ÉE]TAIL|COUPE|[ÉE]L[ÉE]VATION)/i.test(t.text)&&t.y<p.height*.82),found=[];
+    for(const title of titles){if(new RegExp('^'+detail+'\\s+[—–:.-]?\\s*(?:D[ÉE]TAIL|COUPE|[ÉE]L[ÉE]VATION)','i').test(title.text))found.push(rect(title));
+      else {const numbers=texts.filter(t=>t.text.trim().toUpperCase()===detail.toUpperCase()&&Math.abs(t.y-title.y)<Math.max(t.height,title.height)*1.5&&title.x>=t.x&&title.x-t.x-t.width<Math.max(title.height,t.height)*5);if(numbers.length===1){const b=rect(title);b.x=numbers[0].x;b.y=Math.min(b.y,numbers[0].y);b.bottom=Math.max(b.bottom,numbers[0].y+numbers[0].height);found.push(b);}}}
+    const result=found.length===1?found[0]:undefined;cached.details.set(detail,result);return result;
+  }
+  function candidate(p,detail){return {documentKey:p.documentKey,page:p.page,sheetCode:p.code||'',title:p.title||'',...(detailRect(p,detail)?{rect:detailRect(p,detail)}:{})};}
+  function resolve(reference,pages,overrides={}){
+    const available=pages.filter(validPage),candidates=available.filter(p=>p.codeStatus!=='unverified'&&norm(p.code)===norm(reference.sheetCode)).map(p=>candidate(p,reference.detail));
+    const saved=Object.hasOwn(overrides||{},reference.id)?overrides[reference.id]:null;
+    if(saved){const p=available.find(p=>p.documentKey===saved.documentKey&&p.page===saved.page);if(p)return {status:'corrected',candidates,target:candidate(p,reference.detail)};}
+    return candidates.length===1?{status:'resolved',candidates,target:candidates[0]}:{status:candidates.length?'ambiguous':'missing',candidates};
+  }
+  function assign(overrides,reference,target,pages){
+    if(!reference||typeof reference.id!=='string'||!validPage(reference)||!validPage(target)||!Array.isArray(pages)||!pages.some(p=>validPage(p)&&p.documentKey===target.documentKey&&p.page===target.page)||!pages.some(p=>p.documentKey===reference.documentKey&&p.page===reference.page&&references(p).some(r=>r.id===reference.id)))throw new Error('Association de repère invalide : choisissez une feuille importée du projet.');
+    const next=Object.create(null);for(const [id,value]of Object.entries(overrides||{}))if(value&&typeof value.documentKey==='string'&&Number.isSafeInteger(value.page)&&value.page>0)next[id]={documentKey:value.documentKey,page:value.page};
+    next[reference.id]={documentKey:target.documentKey,page:target.page};return next;
+  }
+  return {version:1,references,resolve,assign};
+})();
+const pdfIntelligenceStore = (function createPdfIntelligenceStore(getIndexedDB){
+ let opening;
+ function database(){
+  if(opening)return opening;
+  opening=new Promise((resolve,reject)=>{let request;try{request=getIndexedDB().open('aite-pdf-text-v1',1);}catch(e){reject(e);return;}
+   let blocked=false;request.onupgradeneeded=()=>request.result.createObjectStore('pages',{keyPath:['documentKey','page']});
+   request.onerror=()=>reject(request.error||new Error('Index PDF indisponible.'));request.onblocked=()=>{blocked=true;reject(new Error('Index PDF bloqué par un autre onglet.'));};
+   request.onsuccess=()=>{const db=request.result;if(blocked){db.close();return;}db.onversionchange=()=>{db.close();opening=null;};resolve(db);};
+  });opening.catch(()=>{opening=null;});return opening;
+ }
+ async function put(page){const db=await database();return new Promise((resolve,reject)=>{const tx=db.transaction('pages','readwrite');tx.objectStore('pages').put(page);tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error||new Error('Index PDF non enregistré.'));});}
+ async function list(keys){const allowed=new Set(keys),db=await database();return new Promise((resolve,reject)=>{const result=[],tx=db.transaction('pages','readonly'),request=tx.objectStore('pages').openCursor();request.onsuccess=()=>{const c=request.result;if(c){if(allowed.has(c.value.documentKey))result.push(c.value);c.continue();}};tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error||new Error('Index PDF illisible.'));});}
+ return {put,list};
+})(() => indexedDB);
+const pdfIntelligenceUIFactory = (function createPdfIntelligenceUI(options){
+ const {index,graph,store,getState,getDocuments,readPdf,inspectPage,navigate,returnToPlan,hasReturn,preview,detach,getOverrides,setOverrides,toScreen,openPanel,toast}=options;
+ const doc=options.host.ownerDocument,find=id=>doc.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const pages=new Map(),hydrated=new Set(),writes=new Set(),referenceCache=new WeakMap();let job=null,warning='',query='',mode='search',enabled=true,activeReference=null,activeResolution='',cardContext=null,previewToken=0,markerSignature='',resultSignature='',highlight=null,version=0,lastPaint='';
+ const pageKey=(key,page)=>JSON.stringify([key,page]);
+ const projectId=()=>getState().estimation?.workspace?.project?.id||'legacy';
+ const projectSignature=()=>JSON.stringify([projectId(),getDocuments().map(d=>[d.key,d.pages])]);
+ const available=()=>{const docs=new Map(getDocuments().map(d=>[d.key,d]));return [...pages.values()].filter(p=>docs.has(p.documentKey)&&p.page<=docs.get(p.documentKey).pages);};
+ const coverage=()=>index.coverage(getDocuments(),available());
+ function capture(documentKey,number,info){
+  let row;try{row=index.page({...info,documentKey,page:number,texts:info.texts||[],width:info.width||1,height:info.height||1});}catch(e){warning=e.message;render();return;}
+  pages.set(pageKey(documentKey,number),row);version++;
+  const write=store.put(row).catch(e=>{warning='Index disponible pour cette session · '+e.message;}).finally(()=>writes.delete(write));writes.add(write);render();
+ }
+ async function hydrate(){
+  const keys=getDocuments().map(d=>d.key).filter(k=>!hydrated.has(k));if(!keys.length)return;
+  for(const key of keys)hydrated.add(key);
+  try{for(const raw of await store.list(keys)){if(raw.version!==index.version||pages.has(pageKey(raw.documentKey,raw.page)))continue;const p=index.page({...raw,readError:raw.readError||raw.status==='partial'});pages.set(pageKey(p.documentKey,p.page),p);version++;}}
+  catch(e){warning='Cache à reconstruire · '+e.message;for(const key of keys)hydrated.delete(key);}render();
+ }
+ async function scan(force=false){
+  if(job){if(job.signature!==projectSignature()){job.cancelled=true;await job.promise;return scan(force);}return job.promise;}
+  const current={signature:projectSignature(),cancelled:false};job=current;warning='';render();
+  current.promise=(async()=>{await hydrate();
+   for(const document of getDocuments()){
+    if(current.cancelled||projectSignature()!==current.signature)break;
+    let source;
+    try{
+     const missing=Array.from({length:document.pages},(_,i)=>i+1).filter(n=>force||!pages.has(pageKey(document.key,n)));if(!missing.length)continue;
+     source=await readPdf(document.key);
+     for(const n of missing){if(current.cancelled||projectSignature()!==current.signature)break;
+      // The active viewer's indexing stream is the authority when present.
+      if(!force&&pages.has(pageKey(document.key,n)))continue;
+      let info;try{info=source.info?.(n)||await inspectPage(await source.pdf.getPage(n));}catch(e){info={texts:[],width:1,height:1,hasText:false,readError:true};warning=document.name+' · p. '+n+' : '+e.message;}
+      if(current.cancelled||projectSignature()!==current.signature)break;capture(document.key,n,info);await new Promise(r=>setTimeout(r,0));
+     }
+    }catch(e){warning=document.name+' : '+e.message;}
+    finally{await source?.release?.();}
+   }
+   await Promise.allSettled([...writes]);
+  })().catch(e=>{warning=e.message;}).finally(()=>{if(job===current){job=null;render();}});return current.promise;
+ }
+ function references(p){if(!referenceCache.has(p))referenceCache.set(p,graph.references(p));return referenceCache.get(p);}
+ function listReferences(){return available().flatMap(references);}
+ function sourceLabel(source){const d=getDocuments().find(d=>d.key===source.documentKey),p=pages.get(pageKey(source.documentKey,source.page)),code=source.detail?p?.code:source.sheetCode||source.sheetName;return (code||'Feuille '+source.page)+(code&&p?.codeStatus==='unverified'?' (code à vérifier)':'')+' · '+(source.title?source.title+' · ':'')+(d?.name||'Document')+' · p. '+source.page;}
+ function resolutionLabel(r){return {resolved:'Feuille liée',corrected:'Association corrigée',ambiguous:'Plusieurs feuilles possibles',missing:'Feuille à associer'}[r.status];}
+ function install(){
+  const style=doc.createElement('style');style.textContent=`
+   .pdf-intelligence{margin:8px 0 12px;padding:10px;border:1px solid #b4d7ef;background:#f7fbff;border-radius:8px}.pdf-intelligence h3{margin:0 0 8px;font-size:13px}.pdf-intelligence p{margin:6px 0;font-size:11px;color:#4c6375}.pdf-intelligence button,.pdf-intelligence input,.pdf-intelligence select{font:inherit}.pdf-intelligence-actions{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}.pdf-intelligence-actions button{border:1px solid #99bdd8;background:white;color:#145987;border-radius:5px;padding:5px 7px;cursor:pointer}.pdf-intelligence input{width:100%;min-height:30px;border:1px solid #96b7cc;border-radius:5px;padding:5px}.pdf-intelligence [data-pdf-hit],.pdf-intelligence [data-pdf-variant],.pdf-intelligence [data-pdf-reference]{display:block;width:100%;text-align:left;border:0;border-top:1px solid #d4e4f0;background:transparent;padding:8px 2px;cursor:pointer;color:#173f5c}.pdf-intelligence small{display:block;color:#536b7d;font-size:10px}.pdf-intelligence-results{max-height:290px;overflow:auto}.pdf-intelligence button:focus-visible,.pdf-reference-marker:focus-visible{outline:2px solid #006fbd;outline-offset:2px}
+   #pdfMarkers{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4}.pdf-reference-marker{position:absolute;background:transparent;border:1px solid #167fc05c;border-radius:5px;padding:0;color:transparent;cursor:pointer;pointer-events:auto;min-width:14px;min-height:14px;overflow:hidden}.pdf-reference-marker:hover,.pdf-reference-marker:focus-visible{border:2px solid #087bc3;background:#d5f0ff4d}#pdfSourceHighlight{position:absolute;border:2px solid #e0920b;background:#ffdb5952;pointer-events:none;border-radius:3px}
+   #pdfReferenceCard{position:absolute;width:276px;max-width:calc(100% - 16px);z-index:12;background:white;border:1px solid #c4dcec;border-radius:10px;box-shadow:0 8px 26px #173b5b30;padding:10px;font:12px 'Segoe UI',sans-serif;color:#173f5c}#pdfReferenceCard[hidden],#pdfMarkers[hidden],#pdfSourceHighlight[hidden]{display:none}#pdfReferenceCard header{display:flex;align-items:center;gap:6px;margin-bottom:6px}#pdfReferenceCard header strong{flex:1}#pdfReferenceCard button{cursor:pointer;border:1px solid #adcadf;border-radius:5px;background:#f5faff;color:#175580;padding:5px 7px}#pdfReferenceOpen{width:100%;padding:2px!important;background:white!important;display:block}#pdfReferencePreview{width:100%;height:142px;object-fit:contain;background:#f2f6f8;display:block}#pdfReferenceCard p{margin:6px 0;font-size:11px}#pdfLinkTarget{max-width:100%;width:100%;margin:6px 0;padding:5px}#pdfReturnToPlan{position:absolute;right:14px;bottom:12px;z-index:5;border:1px solid #9bbcd5;border-radius:6px;background:#f5fbffed;color:#175580;padding:7px;cursor:pointer}
+  `;doc.head.append(style);
+  const host=doc.createElement('section');host.id='pdfIntelligence';host.className='pdf-intelligence';host.innerHTML=`<h3>Recherche dans les plans</h3><div class="pdf-intelligence-actions"><button type="button" id="pdfModeSearch">Finis</button><button type="button" id="pdfModeLinks">Repères & détails</button></div><p id="pdfIndexStatus" role="status" aria-live="polite"></p><details><summary>État des feuilles</summary><div id="pdfPageCoverage"></div></details><div class="pdf-intelligence-actions"><button type="button" id="pdfIndexScan">Compléter l’index</button><button type="button" id="pdfIndexCancel" hidden>Arrêter</button></div><p id="pdfIndexWarning" role="status"></p><div id="pdfSearchPane"><label for="pdfGlobalQuery">Code exact ou texte · tous les PDF</label><input type="search" id="pdfGlobalQuery" maxlength="200" placeholder="C1, Vi50, seuil…"><div class="pdf-intelligence-actions"><button type="button" id="pdfGlobalSearch">Rechercher</button></div><p id="pdfSearchCount"></p><div id="pdfSearchResults" class="pdf-intelligence-results"></div><details id="pdfVariants" hidden><summary>Variantes à vérifier</summary><div id="pdfSearchVariants"></div></details><p>Une occurrence est une référence à vérifier. Elle n’ajoute aucune surface au relevé.</p></div><div id="pdfLinksPane" hidden><label><input type="checkbox" id="pdfShowLinks" checked style="width:auto;min-height:0"> Repères interactifs sur le plan</label><div id="pdfSheetLinkList" class="pdf-intelligence-results"></div></div>`;
+  host.hidden=true;options.host.querySelector('.specification-intro').after(host);
+  const markers=doc.createElement('div');markers.id='pdfMarkers';markers.innerHTML='<div id="pdfSourceHighlight" hidden></div>';options.canvas.parentElement.append(markers);
+  const card=doc.createElement('section');card.id='pdfReferenceCard';card.hidden=true;card.setAttribute('aria-label','Aperçu du détail');card.innerHTML=`<header><strong id="pdfReferenceTitle"></strong><button type="button" id="pdfReferenceDetach" title="Ouvrir dans une fenêtre indépendante" aria-label="Ouvrir le détail dans une fenêtre indépendante"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H3v18h18v-7"/></svg></button><button type="button" id="pdfReferenceClose" aria-label="Fermer l’aperçu">×</button></header><p id="pdfReferenceStatus" role="status"></p><button type="button" id="pdfReferenceOpen"><img id="pdfReferencePreview" alt="Aperçu de la feuille cible"><span>Ouvrir la feuille</span></button><p id="pdfReferenceSource"></p><p id="pdfReferenceError" role="status"></p><button type="button" id="pdfReferenceCorrect">Corriger l’association</button><div id="pdfLinkEditor" hidden><label for="pdfLinkTarget">Feuille cible du projet</label><select id="pdfLinkTarget"></select><button type="button" id="pdfLinkSave">Associer</button></div>`;options.canvas.parentElement.append(card);
+  const back=doc.createElement('button');back.type='button';back.id='pdfReturnToPlan';back.textContent='← Retour au plan';back.hidden=true;back.onclick=()=>run(returnToPlan());options.canvas.parentElement.append(back);
+  host.onclick=e=>{const hit=e.target.closest('[data-pdf-hit],[data-pdf-variant]');if(hit){const all=index.search(available(),query),result=hit.hasAttribute('data-pdf-hit')?all.exact[+hit.dataset.pdfHit]:all.variants[+hit.dataset.pdfVariant];if(result)run(openSource(result));return;}
+   const ref=e.target.closest('[data-pdf-reference]');if(ref){const value=listReferences().find(r=>r.id===ref.dataset.pdfReference);if(value)run(showReference(value));}};
+  find('pdfGlobalSearch').onclick=()=>{query=find('pdfGlobalQuery').value.trim();resultSignature='';render();run(scan());};find('pdfGlobalQuery').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();find('pdfGlobalSearch').click();}};
+  find('pdfModeSearch').onclick=()=>setMode('search');find('pdfModeLinks').onclick=()=>setMode('links');find('pdfShowLinks').onchange=e=>{enabled=e.target.checked;markerSignature='';paint();};
+  find('pdfIndexScan').onclick=()=>run(scan());find('pdfIndexCancel').onclick=()=>{if(job)job.cancelled=true;};
+  find('pdfReferenceClose').onclick=closeCard;find('pdfReferenceCorrect').onclick=editLink;
+  find('pdfReferenceOpen').onclick=()=>{const r=graph.resolve(activeReference,available(),getOverrides());if(r.target)run(openSource(r.target));};
+  find('pdfReferenceDetach').onclick=()=>{const r=graph.resolve(activeReference,available(),getOverrides());if(r.target)run(detach(r.target));};
+  find('pdfLinkSave').onclick=()=>{try{const reference=activeReference,[key,page]=JSON.parse(find('pdfLinkTarget').value||'[]'),target=available().find(p=>p.documentKey===key&&p.page===page);setOverrides(graph.assign(getOverrides(),reference,target,available()));run(showReference(reference));render();}catch(e){find('pdfReferenceError').textContent=e.message;}};
+  card.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();closeCard();}});
+  for(const [id,icon,label,handler]of [['pdfFinishSearchBtn','search','Rechercher un fini',()=>open('search')],['pdfSheetLinksBtn','link-2','Liens des plans',()=>open('links')]]){
+   let b=find(id);if(!b){b=doc.createElement('button');b.type='button';b.id=id;b.title=label;b.innerHTML='<i data-lucide="'+icon+'"></i><span>'+esc(label)+'</span>';options.commands.append(b);}b.onclick=handler;
+  }
+  render();
+ }
+ function run(promise){Promise.resolve(promise).catch(e=>toast(e.message));}
+ function setMode(value){mode=value;find('pdfSearchPane').hidden=mode!=='search';find('pdfLinksPane').hidden=mode!=='links';find('pdfModeSearch').setAttribute('aria-pressed',String(mode==='search'));find('pdfModeLinks').setAttribute('aria-pressed',String(mode==='links'));render();}
+ async function open(value){openPanel();find('pdfIntelligence').hidden=false;setMode(value);render();await scan();}
+ async function openSource(source){closeCard();await navigate(source);highlight={...source};lastPaint='';paint();render();}
+ function closeCard(){previewToken++;activeReference=null;find('pdfReferenceCard').hidden=true;}
+ function editLink(){find('pdfLinkEditor').hidden=false;find('pdfLinkTarget').innerHTML=available().map(p=>'<option value="'+esc(JSON.stringify([p.documentKey,p.page]))+'">'+esc(sourceLabel({...p,sheetCode:p.code}))+'</option>').join('');const r=activeReference&&graph.resolve(activeReference,available(),getOverrides());if(r?.target)find('pdfLinkTarget').value=JSON.stringify([r.target.documentKey,r.target.page]);find('pdfLinkTarget').focus();}
+ async function showReference(reference){
+  activeReference=reference;cardContext=JSON.stringify([projectId(),getState().documentKey,getState().page]);const token=++previewToken,r=graph.resolve(reference,available(),getOverrides()),card=find('pdfReferenceCard');activeResolution=JSON.stringify(r);card.hidden=false;
+  find('pdfReferenceTitle').textContent=r.target?[r.target.sheetCode,r.target.title||'Détail '+reference.detail].join(' · '):reference.text;find('pdfReferenceStatus').textContent=resolutionLabel(r);find('pdfReferenceError').textContent='';find('pdfLinkEditor').hidden=true;
+  find('pdfReferenceOpen').hidden=!r.target;find('pdfReferenceDetach').disabled=!r.target;find('pdfReferenceSource').textContent=r.target?sourceLabel(r.target)+(r.target.rect?' · Repère du détail localisé':' · Feuille entière'):'Choisissez la feuille cible parmi les documents importés.';
+  find('pdfReferencePreview').removeAttribute('src');positionCard(reference);if(!r.target){editLink();return;}
+  try{const image=await preview(r.target);if(token===previewToken&&!card.hidden)find('pdfReferencePreview').src=image.url;}
+  catch(e){if(token===previewToken)find('pdfReferenceError').textContent='Aperçu indisponible : '+e.message;}
+ }
+ function positionCard(reference){const wrap=options.canvas.parentElement,b=reference.documentKey===getState().documentKey&&reference.page===getState().page?screenRect(reference.rect):null;const x=b?b.right+12:wrap.clientWidth-292,y=b?b.y:28;const card=find('pdfReferenceCard');card.style.left=Math.max(8,Math.min(x,wrap.clientWidth-292))+'px';card.style.top=Math.max(8,Math.min(y,wrap.clientHeight-card.offsetHeight-12))+'px';}
+ function screenRect(rect){const points=[toScreen({x:rect.x,y:rect.y}),toScreen({x:rect.right,y:rect.y}),toScreen({x:rect.right,y:rect.bottom}),toScreen({x:rect.x,y:rect.bottom})];return {x:Math.min(...points.map(p=>p.x)),y:Math.min(...points.map(p=>p.y)),right:Math.max(...points.map(p=>p.x)),bottom:Math.max(...points.map(p=>p.y))};}
+ function place(node,b){node.style.left=(b.x-3)+'px';node.style.top=(b.y-3)+'px';node.style.width=Math.max(14,b.right-b.x+6)+'px';node.style.height=Math.max(14,b.bottom-b.y+6)+'px';}
+ function paint(){
+  if(!find('pdfMarkers'))return;const state=getState(),visible=!!state.plan&&!state.loading,interactive=visible&&enabled&&['select','hand'].includes(state.tool)&&!state.dragging&&!state.reviewOpen;
+  if(activeReference&&(!['select','hand'].includes(state.tool)||state.loading||state.reviewOpen||cardContext!==JSON.stringify([projectId(),state.documentKey,state.page])))closeCard();
+  find('pdfMarkers').hidden=!visible;find('pdfReturnToPlan').hidden=!hasReturn();
+  const current=available().find(p=>p.documentKey===state.documentKey&&p.page===state.page),refs=interactive&&current?references(current):[],signature=JSON.stringify([state.documentKey,state.page,refs.map(r=>r.id)]);
+  if(signature!==markerSignature){markerSignature=signature;for(const node of find('pdfMarkers').querySelectorAll('button'))node.remove();for(const ref of refs){const b=doc.createElement('button');b.className='pdf-reference-marker';b.type='button';b.textContent=ref.text;b.title=ref.text+' · Aperçu du détail';b.setAttribute('aria-label','Détail '+ref.text);b.onmouseenter=()=>{if(!activeReference||activeReference.id!==ref.id)run(showReference(ref));};b.onfocus=()=>{if(!activeReference||activeReference.id!==ref.id)run(showReference(ref));};b.onclick=e=>{e.stopPropagation();run(showReference(ref));};b.dataset.ref=ref.id;find('pdfMarkers').append(b);}}
+  const paintKey=JSON.stringify([signature,state.zoom,state.pan,state.settings?.pageRotations?.[state.page],state.plan?.width,state.plan?.height,highlight?.id,highlight?.rect,options.canvas.clientWidth,options.canvas.clientHeight]);if(paintKey===lastPaint)return;lastPaint=paintKey;
+  for(const b of find('pdfMarkers').querySelectorAll('button')){const ref=refs.find(r=>r.id===b.dataset.ref);if(ref)place(b,screenRect(ref.rect));}
+  const mark=find('pdfSourceHighlight');mark.hidden=!(visible&&highlight?.documentKey===state.documentKey&&highlight.page===state.page&&highlight.rect);if(!mark.hidden)place(mark,screenRect(highlight.rect));
+  if(activeReference)positionCard(activeReference);
+ }
+ function render(){
+  if(!find('pdfIndexStatus'))return;if(activeReference&&activeResolution!==JSON.stringify(graph.resolve(activeReference,available(),getOverrides())))closeCard();if(find('pdfIntelligence').hidden){paint();return;}const all=available(),c=coverage(),read=c.indexed+c.partial+c.unreadable;
+  find('pdfIndexStatus').textContent=read+'/'+c.total+' feuilles lues · '+c.indexed+' indexées'+(c.partial?' · '+c.partial+' partielles':'')+(c.unreadable?' · '+c.unreadable+' sans texte lisible':'')+(c.pending?' · '+c.pending+' à lire':'');
+  find('pdfPageCoverage').innerHTML=getDocuments().map(d=>'<p><b>'+esc(d.name)+'</b><small>'+Array.from({length:d.pages},(_,i)=>{const p=pages.get(pageKey(d.key,i+1));return 'p. '+(i+1)+' : '+({indexed:'indexée',partial:'partielle',unreadable:'sans texte'}[p?.status]||'à lire');}).join(' · ')+'</small></p>').join('');
+  find('pdfIndexWarning').textContent=warning;find('pdfIndexScan').disabled=!!job;find('pdfIndexCancel').hidden=!job;
+  const signature=JSON.stringify([mode,query,version,projectSignature(),getOverrides()]);if(signature!==resultSignature){resultSignature=signature;
+   try{const results=index.search(all,query),html=(r,variant,i)=>'<button type="button" '+(variant?'data-pdf-variant':'data-pdf-hit')+'="'+i+'"><b>'+esc(r.matchedText)+'</b> · '+esc(r.sheetName||'Feuille '+r.page)+'<small>'+esc(sourceLabel(r))+'</small><small>'+esc(({plan:'Référence sur plan',schedule:'Tableau / légende · référence seulement',specification:'Devis · référence seulement',unknown:'Contexte à vérifier'})[r.kind])+'</small></button>';
+    find('pdfSearchCount').textContent=query?results.exact.length+' occurrence(s) exacte(s)'+(!c.complete?' · lecture incomplète, absence non concluante':''):'';
+    find('pdfSearchResults').innerHTML=results.exact.map((r,i)=>html(r,false,i)).join('');find('pdfVariants').hidden=!results.variants.length;find('pdfSearchVariants').innerHTML=results.variants.map((r,i)=>html(r,true,i)).join('');
+   }catch(e){find('pdfSearchCount').textContent=e.message;find('pdfSearchResults').innerHTML='';find('pdfSearchVariants').innerHTML='';find('pdfVariants').hidden=true;}
+   if(mode==='links')find('pdfSheetLinkList').innerHTML=listReferences().map(ref=>'<button type="button" data-pdf-reference="'+esc(ref.id)+'"><b>'+esc(ref.text)+'</b><small>'+esc(sourceLabel(ref))+'</small><small>'+resolutionLabel(graph.resolve(ref,all,getOverrides()))+'</small></button>').join('')||'<p>Aucun repère textuel reconnu. Vous pouvez toujours ouvrir une feuille depuis la bibliothèque.</p>';
+  }paint();
+ }
+ return {install,capture,hydrate,scan,open,render,paint,available,coverage,closeCard};
+});
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -13934,7 +14150,8 @@ $('#root').innerHTML=`<div class="app">
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+'<small>Mesurer et naviguer</small>';
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 const canvas=$('#planCanvas'), ctx=canvas.getContext('2d');
-let specificationUI=null;
+let specificationUI=null,pdfIntelligenceUI=null;
+const pdfNavigationHistory=[];
 let workspaceAppearance=null;
 const specificationEntryIndexes=new WeakMap();
 
@@ -13969,6 +14186,7 @@ function draw() {
   drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>item.page===S.page&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));ctx.restore();
   drawSelectionBox(ctx);
   if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
+  pdfIntelligenceUI?.paint();
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
@@ -14215,7 +14433,7 @@ async function checkOriginalIdentity(key,bytes) {
     if(!confirmed)throw new Error('Association au relevé annulée : le document original doit être confirmé avant sa réutilisation.');
   }
 }
-async function loadFile(file) {
+async function loadFile(file,options={}) {
   if (!file) return;
   const token = ++S.loadVersion; ++S.renderVersion; S.loading = true; refresh();
   try {
@@ -14231,9 +14449,9 @@ async function loadFile(file) {
       const key = documentIdentity(file,pdf);
       try{await checkOriginalIdentity(key,data);}catch(error){await pdf.destroy();throw error;}
       if(token!==S.loadVersion){await pdf.destroy();return false;}
-      openDocument(key,file.name,pdf,pdf.numPages);await showPage(1);
+      openDocument(key,file.name,pdf,pdf.numPages);await showPage(1,options);
       if(token===S.loadVersion&&S.pdf===pdf) {
-        const task=indexDocument(pdf),indexToken=S.indexToken;
+        const task=indexDocument(pdf,options),indexToken=S.indexToken;
         S.indexTask=task.catch(()=>{if(token===S.loadVersion&&S.pdf===pdf&&S.documentKey===key&&S.indexToken===indexToken){S.indexing=false;refresh();}});
       }
     } else {
@@ -14267,7 +14485,7 @@ async function showPage(number,options={}) {
     const [,info] = await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise, inspectPdfScale(page,true)]);
     const image = await decodeImage(offscreen.toDataURL());
     if (token !== S.renderVersion || document !== S.pdf) return;
-    S.page=number;S.plan=image;S.pageInfo[number]=info;rememberSheet(number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
+    S.page=number;S.plan=image;S.pageInfo[number]=info;rememberSheet(number,info);pdfIntelligenceUI?.capture(S.documentKey,number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
     if (!options.preserveQuantities && !S.scales[number] && info.candidates.length === 1 && !info.ambiguous) {
       const candidate = info.candidates[0]; S.scales[number] = candidate.feetPerInch / PDF_DPI;
       S.scaleMeta[number] = {...candidate,source:'automatic',verified:false}; recalculatePage(number);
@@ -14474,8 +14692,8 @@ function rememberSheet(number,info) {
   const ids=(S.items||[]).filter(item=>item.page===number&&(item.autoTakeoff||item.sanitarySource||item.takeoffFiling?.mode==='auto')).map(item=>item.id);
   if(ids.length)applyAutomaticFiling(ids);
 }
-async function indexDocument(pdf) {
-  const token=++S.indexToken,key=S.documentKey;S.indexing=true;const specificationJob=specificationBegin(pdf,key);renderPages();
+async function indexDocument(pdf,options={}) {
+  const token=++S.indexToken,key=S.documentKey;S.indexing=true;const specificationJob=specificationBegin(pdf,key);if(specificationJob)specificationJob.readOnly=!!options.readOnly;renderPages();
   let labels=[];try{labels=await pdf.getPageLabels()||[];}catch{}
   try {
     for(let n=1;n<=pdf.numPages;n++) {
@@ -14486,8 +14704,8 @@ async function indexDocument(pdf) {
       // Conserver la version la plus récente, notamment ses tracés vectoriels.
       const info=S.pageInfo[n]||readInfo;
       if(!info.code&&labels[n-1]&&/^[A-Z]/.test(labels[n-1]))info.code=labels[n-1];
-      S.pageInfo[n]=info;rememberSheet(n,info);if(specificationJob)specificationReadPage(specificationJob,info,n);
-      if(!S.scales[n]&&info.candidates.length===1&&!info.ambiguous) {
+      S.pageInfo[n]=info;rememberSheet(n,info);pdfIntelligenceUI?.capture(key,n,info);if(specificationJob)specificationReadPage(specificationJob,info,n);
+      if(!options.preserveQuantities&&!S.scales[n]&&info.candidates.length===1&&!info.ambiguous) {
         const candidate=info.candidates[0];S.scales[n]=candidate.feetPerInch/PDF_DPI;
         S.scaleMeta[n]={...candidate,source:'automatic',verified:false};recalculatePage(n);
       }
@@ -15119,7 +15337,7 @@ function refresh() {
   canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   $('#toggleTileGrid').setAttribute('aria-pressed',String(S.tileGrid));
   $('#hint').hidden=true;
-  refreshWorkflow();refreshManualUI();renderTakeoffSummary();
+  refreshWorkflow();refreshManualUI();renderTakeoffSummary();pdfIntelligenceUI?.render();
 }
 function downloadBlob(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
@@ -15668,24 +15886,45 @@ function closeCurrentPlan() {
   Object.assign(S,{libraryEmpty:true,estimation,project:estimation.workspace?.project.name||S.project,items:[],folders:[],scales:{},scaleMeta:{},scale:null,pageInfo:{},sheetNames:{},settings:{doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'materials',surfaceLabels:true},dividers:{},detectBounds:{},loading:false});
   previous?.destroy().catch(()=>{});refresh();
 }
+async function readPlanImage(request={},maximumWidth=null) {
+  const key=request.documentKey||S.documentKey,number=request.page||S.page,current=key===S.documentKey;
+  const visible=current&&number===S.page&&!S.loading?S.plan:null;
+  const imageData=image=>{const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height,ratio=maximumWidth?Math.min(1,maximumWidth/width):1,surface=document.createElement('canvas');surface.width=Math.ceil(width*ratio);surface.height=Math.ceil(height*ratio);surface.getContext('2d').drawImage(image,0,0,surface.width,surface.height);return {url:surface.toDataURL('image/png')};};
+  if(visible)return imageData(visible);
+  let pdf=current?S.pdf:null,temporary=false,original;
+  if(!pdf){original=await documents.get(key);if(!original)throw new Error('Copie locale absente. Réimportez le fichier original.');if(original.type==='application/pdf'){pdf=await pdfjsLib.getDocument({data:original.bytes.slice(0)}).promise;temporary=true;}}
+  if(pdf){try{const page=await pdf.getPage(number),base=page.getViewport({scale:1}),viewport=page.getViewport({scale:maximumWidth?Math.min(PDF_RENDER_SCALE,maximumWidth/base.width):PDF_RENDER_SCALE}),surface=document.createElement('canvas');surface.width=Math.ceil(viewport.width);surface.height=Math.ceil(viewport.height);await page.render({canvasContext:surface.getContext('2d'),viewport}).promise;return {url:surface.toDataURL('image/png')};}finally{if(temporary)await pdf.destroy();}}
+  const url=URL.createObjectURL(new Blob([original.bytes],{type:original.type}));try{return imageData(await decodeImage(url));}finally{URL.revokeObjectURL(url);}
+}
+function pdfProjectDocuments() {
+  const all=S.estimation.workspace?.documents||[],docs=all.filter(d=>!d.excluded&&d.fingerprint?.startsWith('pdf:')&&d.pageCount>0).map(d=>({key:d.fingerprint,name:d.fileName||d.name,pages:d.pageCount}));
+  if(S.pdf&&!all.some(d=>d.fingerprint===S.documentKey)&&!docs.some(d=>d.key===S.documentKey))docs.push({key:S.documentKey,name:S.fileName,pages:S.pages});return docs;
+}
+async function readProjectPdf(key) {
+  if(key===S.documentKey&&S.pdf){await S.indexTask;if(key===S.documentKey&&S.pdf){const pdf=S.pdf,pageInfo=S.pageInfo;return {pdf,info:n=>pageInfo[n],release:()=>{}};}}
+  const original=await documents.get(key);if(!original?.bytes||original.type!=='application/pdf')throw new Error('Original PDF absent. Réimportez-le depuis la bibliothèque.');
+  const pdf=await pdfjsLib.getDocument({data:original.bytes.slice(0)}).promise;return {pdf,release:()=>pdf.destroy()};
+}
+function pdfViewBookmark(){return {projectId:S.estimation.workspace?.project?.id,documentKey:S.documentKey,page:S.page,zoom:S.zoom,pan:{...S.pan},tool:S.tool,draft:structuredClone(S.draft),selection:[...S.selection],selected:S.selected};}
+async function openPdfSource(source,restore=null){
+  if(!pdfProjectDocuments().some(d=>d.key===source.documentKey&&source.page>=1&&source.page<=d.pages))throw new Error('Cette feuille ne fait plus partie des plans actifs du projet.');
+  const before=pdfViewBookmark();
+  if(source.documentKey!==S.documentKey){const original=await documents.get(source.documentKey);if(!original)throw new Error('Original local absent.');const ok=await loadFile(new File([original.bytes],original.name,{type:original.type,lastModified:original.lastModified}),{preserveQuantities:true,readOnly:true});if(!ok||S.documentKey!==source.documentKey)throw new Error('Ouverture de la source interrompue.');}
+  if(S.page!==source.page||!S.plan)await showPage(source.page,{preserveQuantities:true});
+  if(S.documentKey!==source.documentKey||S.page!==source.page||S.loading)throw new Error('La feuille source ne peut pas être affichée.');
+  if(restore){S.zoom=restore.zoom;S.pan={...restore.pan};S.tool=restore.tool;S.draft=structuredClone(restore.draft);setSelection(restore.selection);S.selected=restore.selected;}
+  else {pdfNavigationHistory.push(before);if(pdfNavigationHistory.length>20)pdfNavigationHistory.shift();if(source.rect){const r=source.rect,p=view.rotate({x:(r.x+r.right)/2,y:(r.y+r.bottom)/2},{width:S.plan.width,height:S.plan.height,rotation:viewRotation()});S.zoom=Math.min(2,Math.max(.65,S.zoom));S.pan={x:canvas.clientWidth/2-p.x*S.zoom,y:canvas.clientHeight/2-p.y*S.zoom};}}
+  refresh();
+}
 async function openPlanComparison(request={}) {
   const key=request.documentKey||S.documentKey,number=Number.isSafeInteger(request.page)?request.page:S.page;
   const reference=S.estimation.workspace?.documents.find(doc=>doc.fingerprint===key),current=key===S.documentKey;
   const count=current?S.pages:reference?.pageCount;
   if(!key||key==='legacy'||!count||number<1||number>count)return toast('Ouvrez ou sélectionnez une feuille à comparer.');
   const originalName=current?S.fileName:reference.fileName,record=current?null:readSaved('quantif-document-v3:'+key,{});
-  const title=current?pageName(number):record?.sheetNames?.[number]?.custom||reference.name+' · '+number;
-  const metadata={title,fileName:originalName,page:number,pages:count,rotation:(current?S.settings:record?.settings)?.pageRotations?.[number]||0};
-  const visible=current&&number===S.page&&!S.loading?S.plan:null,pdf=current?S.pdf:null;
-  const imageData=image=>{if(/^data:image\/(?:png|jpeg|webp);base64,/.test(image.src||''))return {url:image.src};const surface=document.createElement('canvas');surface.width=image.naturalWidth||image.width;surface.height=image.naturalHeight||image.height;surface.getContext('2d').drawImage(image,0,0);return {url:surface.toDataURL('image/png')};};
-  const readImage=async()=>{
-    if(visible)return imageData(visible);
-    let source=pdf,temporary=false,original;
-    if(!source){original=await documents.get(key);if(!original)throw new Error('Copie locale absente. Réimportez le fichier original.');if(original.type==='application/pdf'){source=await pdfjsLib.getDocument({data:original.bytes.slice(0)}).promise;temporary=true;}}
-    if(source){try{const page=await source.getPage(number),viewport=page.getViewport({scale:PDF_RENDER_SCALE}),surface=document.createElement('canvas');surface.width=Math.ceil(viewport.width);surface.height=Math.ceil(viewport.height);await page.render({canvasContext:surface.getContext('2d'),viewport}).promise;return {url:surface.toDataURL('image/png')};}finally{if(temporary)await source.destroy();}}
-    const url=URL.createObjectURL(new Blob([original.bytes],{type:original.type}));try{return imageData(await decodeImage(url));}finally{URL.revokeObjectURL(url);}
-  };
-  const result=await planComparison.open(metadata,readImage);
+  const title=request.sheetCode?[request.sheetCode,request.title].filter(Boolean).join(' · '):current?pageName(number):record?.sheetNames?.[number]?.custom||reference.name+' · '+number;
+  const metadata={title,fileName:originalName,page:number,pages:count,rotation:(current?S.settings:record?.settings)?.pageRotations?.[number]||0,rect:request.rect};
+  const result=await planComparison.open(metadata,()=>readPlanImage({documentKey:key,page:number}));
   if(result.reason==='blocked')toast('Autorisez les fenêtres pour ouvrir la feuille de comparaison.');
   else if(result.error)toast('Comparaison indisponible : '+result.error);
 }
@@ -15977,6 +16216,11 @@ const legendUI=legendUIFactory({legends,getState:()=>S,remember,save,openDialog,
 legendUI.install();
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="devisToolBtn" title="Analyser et consulter les finis des plans"><span aria-hidden="true">▤</span> Devis.AI</button>');
 $('#devisToolBtn').onclick=()=>{if(S.reviewOpen)closeReview();specificationUI.open('devis');};
+pdfIntelligenceUI=pdfIntelligenceUIFactory({host:$('#specDevisPane'),canvas,commands:$('#ribbonPdfIntelligence'),index:pdfTextIndex,graph:sheetGraph,store:pdfIntelligenceStore,getState:()=>S,getDocuments:pdfProjectDocuments,readPdf:readProjectPdf,inspectPage:inspectPdfScale,
+  navigate:source=>openPdfSource(source),returnToPlan:async()=>{const target=pdfNavigationHistory.at(-1);if(target&&target.projectId===S.estimation.workspace?.project?.id){await openPdfSource(target,target);pdfNavigationHistory.pop();refresh();}},hasReturn:()=>pdfNavigationHistory.at(-1)?.projectId===S.estimation.workspace?.project?.id&&pdfNavigationHistory.length>0,
+  preview:source=>readPlanImage(source,600),detach:openPlanComparison,getOverrides:()=>S.estimation.sheetLinks?.overrides||{},setOverrides:overrides=>{remember();S.estimation.sheetLinks={version:1,overrides};save();refresh();},
+  toScreen:point=>view.planToScreen(point,{width:S.plan?.width||1,height:S.plan?.height||1,rotation:viewRotation(),zoom:S.zoom,pan:S.pan}),openPanel:()=>specificationUI.open('devis'),toast});
+pdfIntelligenceUI.install();
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="projectArchiveBtn">Sauvegarde</button>');
 $('#projectArchiveBtn').onclick=projectArchiveDialog;
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="rotatePlan">Tourner 90°</button>');
