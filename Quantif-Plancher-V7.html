@@ -1461,13 +1461,14 @@ function changeSanitaryType(id,type) {
   const item=S.items.find(item=>item.id===id&&item.sanitarySource);if(!item||!['shower','bath-shower','bath','unknown'].includes(type))return;
   remember();const choices=(S.settings.sanitaryCountChoices||[]).filter(choice=>choice.key!==item.sanitarySource.sourceKey);choices.push({key:item.sanitarySource.sourceKey,type});if(choices.length>5000)return toast('Limite de choix sanitaires atteinte : exportez le projet.');S.settings={...S.settings,sanitaryCountChoices:choices};item.sanitaryType=type;item.name=sanitaryTypeLabel(type);item.sanitarySource={...item.sanitarySource,classificationSource:'manual',typeNeedsReview:type==='unknown'};item.status='à valider';refreshSanitarySpecifications(item.page);save();refresh();
 }
-function refreshAutomaticContours(candidates) {
+function refreshAutomaticContours(candidates,modelsByPage=null) {
   const plan={updates:[],removeIds:[],links:[],refusals:[],deferred:[],warnings:[]};
   // Chaque feuille possède son propre budget ; un niveau complexe ne bloque
   // pas l'actualisation des autres niveaux et ne mélange jamais leurs indices.
   for(const page of new Set(candidates.map(source=>source.page))){
     const indices=candidates.map((source,index)=>source.page===page?index:-1).filter(index=>index>=0),subset=indices.map(index=>candidates[index]);
-    const part=automaticContourRefresh.plan({items:S.items,candidates:subset,choices:S.settings.detectionChoices||[],documentKey:S.documentKey,version:LOCAL_ROOM_ENGINE_VERSION});
+    const model=modelsByPage?.get(page),raster=model?{width:model.width,height:model.height,factor:model.factor,wallMask:model.wallMask,closedMask:model.mask,labels:model.labels}:null;
+    const part=automaticContourRefresh.plan({items:S.items,candidates:subset,choices:S.settings.detectionChoices||[],documentKey:S.documentKey,version:LOCAL_ROOM_ENGINE_VERSION,raster});
     for(const message of part.warnings)plan.warnings.push('Feuille '+page+' · '+message);
     if(part.aborted){for(const index of indices)if(candidates[index].spaceType==='dwelling'&&candidates[index].detectedUnit)plan.deferred.push(index);continue;}
     for(const update of part.updates)plan.updates.push({...update,index:indices[update.index]});
@@ -1997,7 +1998,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-15-interior-symbols';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-16-dimension-passages';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -2017,7 +2018,7 @@ function getLocalRoomEngine() {
   return localRoomEngine;
 }
 async function runDetectionPages(pages) {
-  const job={cancelled:false,key:S.documentKey,pdf:S.pdf,requestId:uid(),generation:S.detectionGeneration=(S.detectionGeneration||0)+1},notes=[];S.detectJob=job;S.detectionNotes=[];
+  const job={cancelled:false,key:S.documentKey,pdf:S.pdf,requestId:uid(),generation:S.detectionGeneration=(S.detectionGeneration||0)+1},notes=[],modelsByPage=new Map();S.detectJob=job;S.detectionNotes=[];
   S.reviewMode='area';S.reviewBatchPages=[...pages];S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.reviewOffset=0;S.reviewFilter='all';
   for(const page of pages)delete S.reviewByPage[page];
   openDialog('Analyse des feuilles',`<p id="detectionProgress" role="status" aria-live="polite">Préparation…</p><progress id="detectionProgressBar" max="${pages.length}" value="0"></progress><p>L’arrêt prend effet entre deux feuilles. Les résultats déjà obtenus sont conservés.</p><button type="button" id="stopDetection">Arrêter après cette feuille</button>`);
@@ -2040,6 +2041,8 @@ async function runDetectionPages(pages) {
       const detected=await engine.run({context:contextFor(false),input:{image,info,settings,material,dividers,bounds}},
         {isCurrent:context=>S.detectJob===job&&!job.cancelled&&S.pdf===job.pdf&&Number.isFinite(S.scales[page])&&S.scales[page]>0&&engine.matchesContext(context,contextFor(true))});
       const model=detected.diagnostics.model;
+      if(S.items.some(item=>item.page===page&&item.autoTakeoff?.documentKey===job.key&&item.autoTakeoff.provenance?.engineVersion!==LOCAL_ROOM_ENGINE_VERSION))
+        modelsByPage.set(page,{width:model.width,height:model.height,factor:model.factor,wallMask:model.wallMask,mask:model.mask,labels:model.labels});
       let candidates=detected.proposals;
       const sanitary=applySanitaryProposals(candidates,info,scale,model,job.key,page,S.detectBounds[page]);
       const hasNames=candidates.some(item=>!item.unnamed);
@@ -2070,7 +2073,7 @@ async function runDetectionPages(pages) {
   if(first&&(!pages.includes(S.page)||!S.reviewByPage[S.page]))await showPage(first);
   remember();
   for(const entry of kitchen.scales)if(!S.scales[entry.page]){S.scales[entry.page]=entry.scale;S.scaleMeta[entry.page]=entry.meta;}
-  const batch=reviewBatchCandidates(),refreshed=refreshAutomaticContours(batch);
+  const batch=reviewBatchCandidates(),refreshed=refreshAutomaticContours(batch,modelsByPage);
   if(refreshed.updates.length)notes.push({page:S.page,message:refreshed.updates.length+' ancien(s) contour(s) automatique(s) actualisé(s) · brouillons à valider'});
   for(const message of refreshed.warnings)notes.push({page:S.page,message});
   synchronizeDetected(batch);if(kitchen.items.length)addKitchenItems(kitchen.items);S.reviewOpen=true;renderDetectionPanel();refresh();save();
@@ -4259,6 +4262,83 @@ const planAnnotations = (function createPlanAnnotations() {
     }
 
     const words = texts.filter(validText).slice(0, 4096);
+    // A metric number has no quote/unit suffix. It is a dimension only with
+    // two complete drafting slashes bracketing that number on a thin line.
+    // In particular, a collinear dimension extension must not complete a
+    // bedroom wall across the unit's open hall. A nearby number alone proves
+    // nothing about the wall, and physical unit labels are never dimensions.
+    const axes = { h: new Map(), v: new Map() }, slashCells = new Map(), cell = 64;
+    for (const l of lines) {
+      if (l.orientation) {
+        const pos = l.orientation === 'h' ? l.minY : l.minX, key = Math.floor(pos / cell), map = axes[l.orientation];
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(l);
+      } else if (l.maxX - l.minX < cell * 4 && l.maxY - l.minY < cell * 4) {
+        for (let x = Math.floor(l.minX / cell); x <= Math.floor(l.maxX / cell); x++)
+          for (let y = Math.floor(l.minY / cell); y <= Math.floor(l.maxY / cell); y++) {
+            const key = x + ',' + y;
+            if (!slashCells.has(key)) slashCells.set(key, []);
+            slashCells.get(key).push(l);
+          }
+      }
+    }
+    const unitBounds = labels.map(l => l?.physicalUnit?.numberBounds).filter(b => b &&
+      ['x', 'y', 'width', 'height'].every(k => Number.isFinite(b[k])) && b.width > 0 && b.height > 0);
+    for (const t of words.filter(t => /^\d{3,5}(?:[.,]\d+)?(?:\s*mm)?$/i.test(t.text.trim()))) {
+      if (unitBounds.some(b => t.cx >= b.x && t.cx <= b.x + b.width && t.cy >= b.y && t.cy <= b.y + b.height)) continue;
+      const orientation = t.height > t.width * 1.8 ? 'v' : t.width > t.height * 1.1 ? 'h' : null;
+      if (!orientation) continue;
+      const vertical = orientation === 'v', font = vertical ? t.width : t.height;
+      if (font > 256) continue;
+      const pos = vertical ? t.cx : t.cy, center = vertical ? t.cy : t.cx,
+        textSpan = vertical ? t.height : t.width, nearby = [];
+      for (let key = Math.floor((pos - font * 1.7) / cell); key <= Math.floor((pos + font * 1.7) / cell); key++)
+        for (const line of axes[orientation].get(key) || []) nearby.push(line);
+      if (!reserve(nearby.length)) break;
+      const candidates = nearby.filter(l => l.width <= font * .06 && Math.abs(l.brightness) <= 60 &&
+        Math.abs((vertical ? l.minX : l.minY) - pos) >= font * .3 &&
+        Math.abs((vertical ? l.minX : l.minY) - pos) <= font * 1.7 &&
+        (vertical ? l.minY : l.minX) < center - textSpan * .3 &&
+        (vertical ? l.maxY : l.maxX) > center + textSpan * .3);
+      if (candidates.length > 16) continue;
+      const matches = [];
+      for (const dimension of candidates) {
+        const low = vertical ? dimension.minY : dimension.minX, high = vertical ? dimension.maxY : dimension.maxX,
+          cross = vertical ? dimension.minX : dimension.minY, nearbySlashes = new Set();
+        for (const end of [dimension.a, dimension.b])
+          for (let x = Math.floor((end.x - font * 1.3) / cell); x <= Math.floor((end.x + font * 1.3) / cell); x++)
+            for (let y = Math.floor((end.y - font * 1.3) / cell); y <= Math.floor((end.y + font * 1.3) / cell); y++)
+              for (const line of slashCells.get(x + ',' + y) || []) nearbySlashes.add(line);
+        if (nearbySlashes.size > 512 || !reserve(nearbySlashes.size * 4)) continue;
+        const marks = [];
+        for (const slash of nearbySlashes) {
+          const length = distance(slash.a, slash.b), dx = slash.b.x - slash.a.x, dy = slash.b.y - slash.a.y;
+          if (length < font * .2 || length > font * 1.5 || slash.width < dimension.width * 1.5 ||
+              slash.width > font * .18 || Math.abs(slash.brightness - dimension.brightness) > 2 ||
+              Math.min(Math.abs(dx), Math.abs(dy)) / length < .35) continue;
+          const ca = (vertical ? slash.a.x : slash.a.y) - cross, cb = (vertical ? slash.b.x : slash.b.y) - cross,
+            eps = font * .02, fraction = -ca / (cb - ca);
+          if (fraction < -eps / length || fraction > 1 + eps / length) continue;
+          const at = (vertical ? slash.a.y : slash.a.x) + fraction * (vertical ? dy : dx);
+          if (!(at <= center - textSpan * .3 && Math.abs(at - low) <= font * 1.2 ||
+                at >= center + textSpan * .3 && Math.abs(at - high) <= font * 1.2)) continue;
+          let mark = marks.find(m => Math.abs(m.at - at) <= eps);
+          if (!mark) marks.push(mark = { at, lines: [] });
+          mark.lines.push({ slash, ca, cb, dx, dy, length });
+        }
+        const complete = marks.filter(mark => {
+          const positive = mark.lines.filter(s => Math.max(s.ca, s.cb) >= font * .15),
+            negative = mark.lines.filter(s => Math.min(s.ca, s.cb) <= -font * .15);
+          return positive.length === 1 && negative.length === 1 &&
+            sameStyle(positive[0].slash, negative[0].slash) &&
+            Math.abs(positive[0].dx * negative[0].dx + positive[0].dy * negative[0].dy) /
+              (positive[0].length * negative[0].length) > .995;
+        });
+        if (complete.length !== 2 || !complete.some(m => m.at < center) || !complete.some(m => m.at > center)) continue;
+        matches.push([dimension, ...complete.flatMap(m => m.lines.map(s => s.slash))]);
+      }
+      if (matches.length === 1) mark('dimension-line', matches[0], t.text);
+    }
     // A section leader needs a stacked detail number/sheet reference AND its
     // triangle and dividing bar. Width or proximity alone never identifies it.
     for (const ref of words.filter(t => /^[A-Z]{1,3}[-.]\d{2,4}[A-Z]?$/.test(norm(t.text))).slice(0, 128)) {
@@ -4268,6 +4348,65 @@ const planAnnotations = (function createPlanAnnotations() {
         t.height / h > .8 && t.height / h < 1.2);
       if (candidates.length !== 1) continue;
       const number = candidates[0], center = { x: (ref.cx + number.cx) / 2, y: (ref.cy + number.cy) / 2 }, eps = h * .04;
+      // A circular section reference can be drawn over an unrelated room.
+      // Require its two semicircles, divider, complete triangular pointer and
+      // matching filled sectors. Never erase a wall merely inside its box.
+      const localPolys = [];
+      if (reserve(paths.length)) for (let id = 0; id < paths.length; id++) {
+        const e = paths[id], packed = e?.path;
+        if (!Array.isArray(packed) || packed.length < 6 || packed.length > 256 || packed[0] !== 0 ||
+            e.width > h * .12 || e.brightness > 60 || e.fill && e.fillBrightness > 60 ||
+            Math.hypot(packed[1] - center.x, packed[2] - center.y) > h * 4) continue;
+        const points = []; let valid = true;
+        for (let at = 0; at < packed.length;) {
+          const op = packed[at++]; if (op === 4) { if (points.length) points.push(points[0]); continue; }
+          if (op !== 0 && op !== 1 || op === 0 && points.length || at + 2 > packed.length) { valid = false; break; }
+          const p = { x: packed[at++], y: packed[at++] };
+          if (!finite(p)) { valid = false; break; } points.push(p);
+        }
+        if (valid && points.length >= 2) localPolys.push({ ...e, id, points });
+      }
+      if (localPolys.length <= 256 && reserve(localPolys.length ** 2)) {
+        const arcs = [];
+        for (const p of localPolys.filter(p => p.stroke && !p.fill && p.points.length >= 9)) {
+          const a = p.points[0], b = p.points.at(-1), r = distance(a, b) / 2,
+            c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          if (Math.abs(a.y - b.y) > eps || r < h * 1.2 || r > h * 2.5 || distance(c, center) > h * .2 ||
+              p.points.some(q => Math.abs(distance(q, c) - r) > eps)) continue;
+          const above = p.points.every(q => q.y <= c.y + eps), below = p.points.every(q => q.y >= c.y - eps);
+          if (above !== below) arcs.push({ p, c, r, above });
+        }
+        const completeMarkers = [];
+        for (const top of arcs.filter(a => a.above)) for (const bottom of arcs.filter(a => !a.above)) {
+          if (distance(top.c, bottom.c) > eps || Math.abs(top.r - bottom.r) > eps || !sameStyle(top.p, bottom.p)) continue;
+          if (arcs.length > 16 || !reserve(lines.length * 6 + localPolys.length * 128)) continue;
+          const c = top.c, r = top.r, k = Math.SQRT2 * r,
+            left = { x: c.x - k, y: c.y }, right = { x: c.x + k, y: c.y }, tip = { x: c.x, y: c.y + k },
+            onEdge = (p, a, b) => {
+              const dx = b.x - a.x, dy = b.y - a.y, n = dx * dx + dy * dy,
+                t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / n));
+              return distance(p, { x: a.x + t * dx, y: a.y + t * dy }) <= eps;
+            },
+            stroke = (a, b) => lines.filter(l => sameStyle(l, top.p) &&
+              (distance(l.a, a) <= eps && distance(l.b, b) <= eps || distance(l.b, a) <= eps && distance(l.a, b) <= eps));
+          const required = [stroke({ x: c.x - r, y: c.y }, { x: c.x + r, y: c.y }), stroke(left, tip), stroke(right, tip),
+            stroke(left, { x: c.x - r, y: c.y }), stroke(right, { x: c.x + r, y: c.y })];
+          if (required.some(group => !group.length || group.length > 8)) continue;
+          const role = p => Math.abs(distance(p, c) - r) <= eps || onEdge(p, left, tip) || onEdge(p, right, tip) ||
+            onEdge(p, { x: c.x, y: c.y + r }, tip) || onEdge(p, left, { x: c.x - r, y: c.y }) || onEdge(p, right, { x: c.x + r, y: c.y });
+          const fills = localPolys.filter(p => p.fill && sameStyle(p, top.p) && distance(p.points[0], p.points.at(-1)) <= eps &&
+            p.points.every(q => q.y >= c.y - eps && q.y <= tip.y + eps && Math.abs(q.x - c.x) <= k - (q.y - c.y) + eps && role(q)));
+          const area = points => Math.abs(points.reduce((sum, p, i) => { const q = points[(i + 1) % points.length]; return sum + p.x * q.y - q.x * p.y; }, 0)) / 2,
+            expected = (2 - Math.PI / 2) * r * r, filled = fills.reduce((sum, p) => sum + area(p.points), 0);
+          if (!fills.length || Math.abs(filled - expected) > expected * .08) continue;
+          const trace = localPolys.filter(p => p.stroke && !p.fill && sameStyle(p, top.p) && p.points.every(role) &&
+            p.points.slice(1).every((b, i) => { const a = p.points[i]; return [.25, .5, .75].every(t => role({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })); }));
+          // A line starting beside this symbol can be a real room wall.
+          // Its proximity alone never proves an annotation leader.
+          completeMarkers.push([top.p, bottom.p, ...required.flat(), ...fills, ...trace]);
+        }
+        if (completeMarkers.length === 1) { mark('circular-section-marker', completeMarkers[0], number.text + '/' + ref.text); continue; }
+      }
       const bars = lines.filter(l => l.orientation === 'h' && Math.abs(l.minY - center.y) < h * .2 &&
         l.minX < center.x - h && l.maxX > center.x + h && l.maxX - l.minX < h * 4.5);
       if (bars.length > 16 || !reserve(bars.length * lines.length)) continue;
@@ -4354,9 +4493,9 @@ const planAnnotations = (function createPlanAnnotations() {
       .filter(r=>Array.isArray(r)&&r.length>=3&&r.length<=512&&r.every(finite));
     if(!rings.length)return result();
     let work=0;const limit={};const spend=(n=1)=>{if((work+=n)>8000000)throw limit;};
-    const inside=(p,ring)=>{let yes=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const inside=(p,ring,tolerance=.005)=>{let yes=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){
       spend();const a=ring[j],b=ring[i],dx=b.x-a.x,dy=b.y-a.y,n=dx*dx+dy*dy,t=n?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/n)):0;
-      if(Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy)*scale<=.005)return true;
+      if(Math.hypot(p.x-a.x-t*dx,p.y-a.y-t*dy)*scale<=tolerance)return true;
       if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)yes=!yes;
     }return yes;};
     const coherent=(a,b)=>Math.abs(a.width-b.width)<=Math.max(a.width,b.width)*.05&&Math.abs(a.brightness-b.brightness)<=2;
@@ -4380,7 +4519,8 @@ const planAnnotations = (function createPlanAnnotations() {
         points.pop();const x=Math.min(...points.map(q=>q.x)),right=Math.max(...points.map(q=>q.x)),y=Math.min(...points.map(q=>q.y)),bottom=Math.max(...points.map(q=>q.y)),
           center={x:(x+right)/2,y:(y+bottom)/2},radius=(right-x+bottom-y)/4;
         if(radius*scale<.15||radius*scale>1||Math.abs((right-x)/(bottom-y)-1)>.06||points.some(q=>Math.abs(distance(q,center)/radius-1)>.06))continue;
-        if(!rings.some(r=>points.every(q=>inside(q,r))))continue;
+        const strokeTolerance=Math.max(.005,Math.min(.05,e.width*scale/2));
+        if(!rings.some(r=>points.every(q=>inside(q,r,strokeTolerance))))continue;
         circles.push({id,center,radius,points,width:e.width,brightness:e.brightness});
       }
       for(const circle of circles){
@@ -4396,7 +4536,10 @@ const planAnnotations = (function createPlanAnnotations() {
           if(Math.abs(ux*bx+uy*by)<.9995||Math.abs(a.len-b.len)>a.len*.15)continue;
           const da=(a.a.x-center.x)*uy-(a.a.y-center.y)*ux,db=(b.a.x-center.x)*uy-(b.a.y-center.y)*ux,gap=Math.abs(da-db);
           if(da*db>=0||gap<radius*.25||gap>radius*1.5||Math.abs((da+db)/2)>radius*.1)continue;
-          if(!rings.some(r=>[...circle.points,a.a,a.b,b.a,b.b].every(q=>inside(q,r))))continue;
+          // A proven appliance symbol can overprint its cabinet border by
+          // half its pen width. This is not a buffer around arbitrary walls.
+          const strokeTolerance=Math.max(.005,Math.min(.05,Math.max(circle.width,a.width,b.width)*scale/2));
+          if(!rings.some(r=>[...circle.points,a.a,a.b,b.a,b.b].every(q=>inside(q,r,strokeTolerance))))continue;
           for(const id of [circle.id,a.id,b.id])excluded.add(id);
           evidence.push({kind:'equipment-marker',source:'circle-parallel-bars-in-proven-kitchen',center:{...center},radiusFeet:radius*scale,pathIndices:[circle.id,a.id,b.id]});
         }
@@ -5329,7 +5472,7 @@ const detectionDecisions = (function createDetectionDecisions() {
   return { key, validate, set, apply };
 })();
 const automaticContourRefresh = (function createAutomaticContourRefresh(geometry, decisions) {
-  const {getHoles, netArea, boundsOf} = geometry;
+  const {getHoles, netArea, boundsOf, inside} = geometry;
   const copy = value => JSON.parse(JSON.stringify(value));
   const shapeKey = (documentKey, item) => decisions.key(documentKey, item.page, {points:item.points, holes:getHoles(item)});
   const mainFloor = item => item.kind === 'area' && !item.bathroom && item.spaceType === 'dwelling' && typeof item.detectedUnit?.id === 'string';
@@ -5345,15 +5488,17 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
   }
   function absorbable(item, options) {
     const work = item.work || {};
-    return pristine(item,options) && !item.detectedUnit && !item.bathroom && item.spaceType === 'room' && !item.laundry &&
+    const inheritedLaundry=options.inheritedLaundry && item.laundry===true && item.laundryInBathroom===false &&
+      item.materialSource==='héritage du plancher principal' && /^(?:L\.?\s*S\.?|LAVAGE|LAUNDRY)$/i.test(item.name||'');
+    return pristine(item,options) && !item.detectedUnit && !item.bathroom && item.spaceType === 'room' && (!item.laundry||inheritedLaundry) &&
       !item.fixturePending?.length && !item.sanitaryEvidence?.length && !item.bathroomGrouping &&
-      item.unnamed === true && /^Pièce détectée(?: \d+)?$/.test(item.name) &&
+      (item.unnamed === true && /^Pièce détectée(?: \d+)?$/.test(item.name) || inheritedLaundry) &&
       item.materialNeedsReview !== false && !['choix estimateur','localisation choisie','code du plan'].includes(item.materialSource) && work.included !== false &&
       !work.productId && !work.specificationId && !work.roomId && !work.unitId && !work.unit && !work.block && !work.level &&
       !work.type && !(work.repeat>1) && !work.baseboard?.enabled && !item.tiling && !(item.waste>0) && item.wasteConfirmed!==true &&
       item.takeoffFiling?.mode === 'auto' && item.folderId === item.takeoffFiling.folderId;
   }
-  function plan({items=[],candidates=[],choices=[],documentKey,version}={}) {
+  function plan({items=[],candidates=[],choices=[],documentKey,version,raster=null}={}) {
     const output={updates:[],removeIds:[],links:[],refusals:[],deferred:[],warnings:[]};
     const warn=message=>{if(!output.warnings.includes(message))output.warnings.push(message);};
     if(!Array.isArray(items)||!Array.isArray(candidates)||!Array.isArray(choices)||items.length>3000||candidates.length>3000||choices.length>5000||typeof documentKey!=='string'||typeof version!=='string'){
@@ -5368,6 +5513,48 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       charge(points*points);
       // (A moins les exclusions de B) moins sa partie extérieure à B.
       return Math.max(0,netArea({points:a.points,holes})-netArea({points:a.points,holes:[...holes,b.points]}));
+    };
+    const rasterMatches=frame=>raster&&Number.isInteger(raster.width)&&Number.isInteger(raster.height)&&raster.width>0&&raster.height>0&&
+      Number.isSafeInteger(raster.width*raster.height)&&raster.width*raster.height<=100000000&&raster.wallMask?.length===raster.width*raster.height&&
+      Number.isFinite(raster.factor)&&raster.factor>0&&raster.factor<=1&&frame?.units==='plan-pixels'&&
+      Math.abs(frame.width*raster.factor-raster.width)<=.5&&Math.abs(frame.height*raster.factor-raster.height)<=.5;
+    const coveredByFreshFloorOrWall=(peer,source)=>{
+      const box=boundsOf(peer.points),frame=source.detectionProvenance?.context?.frame;
+      if(!rasterMatches(frame)||box.x<0||box.y<0||box.right>frame.width||box.bottom>frame.height)return false;
+      const {factor,width,height,wallMask,closedMask,labels}=raster,peerHoles=getHoles(peer),sourceHoles=getHoles(source),
+        x0=Math.max(0,Math.floor(box.x*factor)),y0=Math.max(0,Math.floor(box.y*factor)),
+        x1=Math.min(width,Math.ceil(box.right*factor)),y1=Math.min(height,Math.ceil(box.bottom*factor));
+      charge((x1-x0)*(y1-y0)*(peer.points.length+source.points.length+peerHoles.reduce((n,r)=>n+r.length,0)+sourceHoles.reduce((n,r)=>n+r.length,0)));
+      const members=new Set(source.unitGrouping?.source==='connected-wall-floors'?source.unitGrouping.sourceRoomIds:[]),closureOwners=new Map();
+      const ownClosure=start=>{
+        if(!members.size||closedMask?.length!==width*height||labels?.length!==width*height||!closedMask[start])return false;
+        if(closureOwners.has(start))return closureOwners.get(start);
+        const pending=[start],visited=new Set(pending);let contact=false,allowed=true;
+        for(let read=0;read<pending.length&&allowed;read++){
+          charge(5);const cell=pending[read],x=cell%width,y=(cell-x)/width;
+          if(!x||!y||x===width-1||y===height-1){allowed=false;break;}
+          for(const next of [cell-1,cell+1,cell-width,cell+width]){
+            if(wallMask[next])continue;
+            if(!closedMask[next]){contact=true;if(!members.has(labels[next])){allowed=false;break;}}
+            else if(!visited.has(next)){visited.add(next);pending.push(next);}
+          }
+        }
+        const owned=allowed&&contact;for(const cell of pending)closureOwners.set(cell,owned);return owned;
+      };
+      let seen=false;
+      for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+        const p={x:(x+.5)/factor,y:(y+.5)/factor};
+        if(!inside(p,peer.points)||peerHoles.some(h=>inside(p,h)))continue;
+        seen=true;
+        if(wallMask[y*width+x]||inside(p,source.points)&&!sourceHoles.some(h=>inside(p,h)))continue;
+        // Some previous fragments include a dead-end drafting closure. It
+        // belongs here only if the whole nonphysical component touches this
+        // freshly grouped unit alone. A bath, neighbor or outside vetoes it.
+        // No replacement contour or quantity is enlarged by this check.
+        if(ownClosure(y*width+x))continue;
+        return false;
+      }
+      return seen;
     };
     const options={documentKey,version,items},primary=candidates.map((item,index)=>({item,index})).filter(({item})=>mainFloor(item)),consumed=new Set();
     try {
@@ -5385,10 +5572,12 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         if(!source.selected||source.mixedBathroom||source.needsSeparation||!pristine(previous,options))continue;
         if(source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
         const area=netArea(source),tolerance=Math.max(1e-6,area*1e-8),absorbed=[];let blocked=false;
+        const absorptionOptions={...options,inheritedLaundry:rasterMatches(newFrame)};
         for(const peer of items){
           if(peer===previous||peer.kind!=='area'||peer.page!==source.page||peer.measureOnly||peer.work?.roomBoundary||(peer.work?.layer||'finish')!=='finish')continue;
           const shared=overlap(peer,source);if(shared<=tolerance)continue;
-          if(!consumed.has(peer.id)&&peer.material===previous.material&&absorbable(peer,options)&&frameKey(peer.autoTakeoff?.provenance?.context?.frame)===frameKey(newFrame)&&Math.abs(shared-netArea(peer))<=Math.max(1e-6,netArea(peer)*1e-8))absorbed.push(peer.id);
+          if(!consumed.has(peer.id)&&peer.material===previous.material&&absorbable(peer,absorptionOptions)&&frameKey(peer.autoTakeoff?.provenance?.context?.frame)===frameKey(newFrame)&&
+              (Math.abs(shared-netArea(peer))<=Math.max(1e-6,netArea(peer)*1e-8)||coveredByFreshFloorOrWall(peer,source)))absorbed.push(peer.id);
           else {blocked=true;break;}
         }
         if(!blocked)for(const other of primary)if(other.index!==index&&other.item.page===source.page&&overlap(source,other.item)>tolerance){blocked=true;break;}
