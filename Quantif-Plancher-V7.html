@@ -11440,7 +11440,7 @@ const quantityTransferUIFactory = (function createQuantityTransferUI({document,g
   }
   return {open};
 });
-const workspaceAppearanceFactory = (function createWorkspaceAppearance({document,window,getGroups,getItemMarkup,onSelect,onEdit,onOpenRight,onRefresh,parkNavigation,parkFocusTools,onAddSanitary,onEditLocation,icons}) {
+const workspaceAppearanceFactory = (function createWorkspaceAppearance({document,window,getGroups,getItemMarkup,onSelect,onEdit,onOpenRight,onRefresh,parkNavigation,parkPlanTools,onAddSanitary,onEditLocation,icons}) {
   const key='aite-workspace-appearance-v1',find=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=value=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:1}).format(value);
@@ -11458,6 +11458,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     toggle.querySelector('span').textContent=collapsed?'Afficher le ruban':'Replier le ruban';
     toggle.querySelector('svg').style.transform=collapsed?'rotate(180deg)':'';
     find('manualRibbon').classList.toggle('aite-ribbon-folded',collapsed);
+    parkPlanTools?.(find('floatingPlanNavigation'),collapsed);
     if(persist)save();positionNavigation();
   }
   function setView(view,persist=true){
@@ -11468,7 +11469,9 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   function positionNavigation(){
     const canvas=find('planCanvas'),nav=find('floatingPlanNavigation');if(!canvas||!nav)return;
     const r=canvas.getBoundingClientRect();nav.style.left=Math.round(r.left+10)+'px';nav.style.top=Math.round(r.top+10)+'px';
-    nav.style.maxWidth=focusSnapshot?'44px':Math.max(100,r.width-20)+'px';nav.style.maxHeight=focusSnapshot?Math.max(100,r.height-20)+'px':'';
+    const vertical=preferences.collapsed||!!focusSnapshot;nav.setAttribute('aria-orientation',vertical?'vertical':'horizontal');
+    document.querySelector('.app').style.setProperty('--aite-plan-tool-inset',vertical?'64px':'16px');
+    nav.style.maxWidth=vertical?'44px':Math.max(44,r.width-20)+'px';nav.style.maxHeight=vertical?Math.max(44,r.height-20)+'px':'';
     if(focusSnapshot){
       const drawer=find('focusMeasureDrawer'),panel=find('layoutPanel-measures');
       if(panel.parentElement!==find('focusMeasureBody'))find('focusMeasureBody').append(panel);
@@ -11487,7 +11490,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   function toggleFocus(){
     const app=document.querySelector('.app'),inspector=find('inspector');
     if(focusSnapshot){
-      setDrawer(false,false);parkFocusTools?.(find('floatingPlanNavigation'),false);
+      setDrawer(false,false);
       if(drawerAnchor?.parentNode)drawerAnchor.replaceWith(find('layoutPanel-measures'));drawerAnchor=null;
       const previous=focusSnapshot;focusSnapshot=null;app.classList.remove('aite-focus');
       app.classList.toggle('pages-folded',previous.left);inspector.hidden=previous.right;setRibbon(previous.collapsed,false);
@@ -11495,10 +11498,8 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
       focusSnapshot={left:app.classList.contains('pages-folded'),right:inspector.hidden,collapsed:preferences.collapsed};
       const panel=find('layoutPanel-measures');drawerAnchor=document.createComment('mesures ancrées');panel.before(drawerAnchor);find('focusMeasureBody').append(panel);
       app.classList.add('pages-folded','aite-focus');inspector.hidden=true;setRibbon(true,false);
-      parkFocusTools?.(find('floatingPlanNavigation'),true);
     }
     for(const button of document.querySelectorAll('[data-focus-only]'))button.hidden=!focusSnapshot;
-    find('floatingPlanNavigation').setAttribute('aria-orientation',focusSnapshot?'vertical':'horizontal');
     const focus=find('workspaceFocus');focus.setAttribute('aria-pressed',String(!!focusSnapshot));focus.querySelector('span').textContent=focusSnapshot?'Quitter Focus':'Focus';
     syncPanels();onRefresh();focus.focus({preventScroll:true});
   }
@@ -11583,11 +11584,13 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     const app=document.querySelector('.app'),ribbon=find('manualRibbon'),main=ribbon.querySelector('.manual-ribbon-main');app.classList.add('aite-workspace');main.id='aiteRibbonTools';
     for(const [id,label]of [['layoutPanel-plans','Projet et pages'],['layoutPanel-measures','Mesures du relevé']]){const title=find(id)?.querySelector('.pane-title>span');if(title&&!title.classList.contains('layout-panel-actions'))title.innerHTML=(icons?.svg(id==='layoutPanel-plans'?'folder':'area')||folderIcon)+esc(label);}
     const heading=document.createElement('div');heading.className='aite-ribbon-heading';heading.innerHTML='<strong>Relevé</strong><div><button type="button" id="workspaceFocus" aria-pressed="false" title="Agrandir le plan puis retrouver la disposition précédente"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg><span>Focus</span></button><button type="button" id="toggleAiteRibbon" aria-controls="aiteRibbonTools" aria-expanded="true"><span>Replier le ruban</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button></div>';ribbon.prepend(heading);
-    const nav=document.createElement('div');nav.id='floatingPlanNavigation';nav.className='floating-plan-navigation';nav.setAttribute('role','toolbar');nav.setAttribute('aria-label','Navigation du plan');ribbon.append(nav);
+    const nav=document.createElement('div');nav.id='floatingPlanNavigation';nav.className='floating-plan-navigation';nav.setAttribute('role','toolbar');nav.setAttribute('aria-label','Outils du plan');ribbon.append(nav);
     parkNavigation(nav);
-    const measures=document.createElement('button');measures.type='button';measures.id='focusMeasuresToggle';measures.className='manual-button focus-rail-action';measures.hidden=true;measures.dataset.focusOnly='true';measures.setAttribute('aria-label','Ouvrir les mesures du plan');measures.setAttribute('aria-controls','focusMeasureDrawer');measures.setAttribute('aria-expanded','false');measures.title='Mesures du plan · survol pour voir, clic pour garder ouvert';measures.innerHTML=folderIcon+'<span>Mesures</span>';nav.insertBefore(measures,nav.children[2]);
-    const properties=document.createElement('button');properties.type='button';properties.id='focusPropertiesToggle';properties.className='manual-button focus-rail-action';properties.hidden=true;properties.dataset.focusOnly='true';properties.title='Ouvrir les propriétés et finis';properties.setAttribute('aria-label',properties.title);properties.innerHTML=panelIcon+'<span>Propriétés</span>';nav.append(properties);
-    const sanitary=document.createElement('button');sanitary.type='button';sanitary.id='focusAddSanitary';sanitary.className='manual-button focus-rail-action';sanitary.hidden=true;sanitary.dataset.focusOnly='true';sanitary.title='Ajouter une douche, un bain-douche ou un bain';sanitary.setAttribute('aria-label',sanitary.title);sanitary.innerHTML=(icons?.svg('shower')||folderIcon)+'<span>Appareil</span>';sanitary.onclick=()=>onAddSanitary?.();nav.append(sanitary);
+    const navigationGroup=nav.querySelector('[data-plan-tool-group="navigation"]')||nav;
+    const measures=document.createElement('button');measures.type='button';measures.id='focusMeasuresToggle';measures.className='manual-button focus-rail-action';measures.hidden=true;measures.dataset.focusOnly='true';measures.setAttribute('aria-label','Ouvrir les mesures du plan');measures.setAttribute('aria-controls','focusMeasureDrawer');measures.setAttribute('aria-expanded','false');measures.title='Mesures du plan · survol pour voir, clic pour garder ouvert';measures.innerHTML=folderIcon+'<span>Mesures</span>';navigationGroup.insertBefore(measures,navigationGroup.children[2]||null);
+    const focusActions=document.createElement('div');focusActions.className='floating-plan-tools-group';focusActions.setAttribute('role','group');focusActions.setAttribute('aria-label','Actions Focus');focusActions.dataset.focusOnly='true';focusActions.hidden=true;nav.append(focusActions);
+    const properties=document.createElement('button');properties.type='button';properties.id='focusPropertiesToggle';properties.className='manual-button focus-rail-action';properties.hidden=true;properties.dataset.focusOnly='true';properties.title='Ouvrir les propriétés et finis';properties.setAttribute('aria-label',properties.title);properties.innerHTML=panelIcon+'<span>Propriétés</span>';focusActions.append(properties);
+    const sanitary=document.createElement('button');sanitary.type='button';sanitary.id='focusAddSanitary';sanitary.className='manual-button focus-rail-action';sanitary.hidden=true;sanitary.dataset.focusOnly='true';sanitary.title='Ajouter une douche, un bain-douche ou un bain';sanitary.setAttribute('aria-label',sanitary.title);sanitary.innerHTML=(icons?.svg('shower')||folderIcon)+'<span>Appareil</span>';sanitary.onclick=()=>onAddSanitary?.();focusActions.append(sanitary);
     const syncSanitaryAvailability=()=>{sanitary.disabled=find('manualCount').disabled;};syncSanitaryAvailability();new window.MutationObserver(syncSanitaryAvailability).observe(find('manualCount'),{attributes:true,attributeFilter:['disabled']});
     const drawer=document.createElement('aside');drawer.id='focusMeasureDrawer';drawer.className='focus-measure-drawer';drawer.hidden=true;drawer.setAttribute('aria-label','Mesures du plan en mode Focus');drawer.innerHTML='<div class="focus-drawer-heading"><span>Mesures du plan</span><button type="button" id="focusMeasuresPin" aria-pressed="false" aria-label="Épingler les mesures" title="Garder les mesures ouvertes"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 3 10 0-2 6 4 5H6l4-5zM13 14v8"/></svg></button><button type="button" id="focusMeasuresClose" aria-label="Replier les mesures" title="Replier les mesures">×</button></div><div id="focusMeasureBody"></div>';app.append(drawer);
     measures.onpointerenter=()=>setDrawer(true,drawerPinned);measures.onpointerleave=closeDrawerLater;measures.onclick=()=>setDrawer(!drawerPinned,!drawerPinned);
@@ -11595,7 +11598,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     drawer.addEventListener('pointerdown',event=>{if(event.target.closest('.layout-panel-header')&&!event.target.closest('button'))event.stopPropagation();},true);
     find('focusMeasuresPin').onclick=()=>setDrawer(true,!drawerPinned);find('focusMeasuresClose').onclick=()=>{setDrawer(false,false);measures.focus({preventScroll:true});};
     properties.onclick=()=>find('workspaceRightToggle').click();
-    nav.addEventListener('keydown',event=>{if(!focusSnapshot||!['ArrowUp','ArrowDown','Home','End'].includes(event.key)||!event.target.closest('button'))return;event.preventDefault();const buttons=[...nav.querySelectorAll('button')].filter(b=>!b.disabled&&b.getClientRects().length),at=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(at+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[next]?.focus();});
+    nav.addEventListener('keydown',event=>{const vertical=nav.getAttribute('aria-orientation')==='vertical',previous=vertical?'ArrowUp':'ArrowLeft',following=vertical?'ArrowDown':'ArrowRight';if(![previous,following,'Home','End'].includes(event.key)||!event.target.closest('button'))return;event.preventDefault();event.stopPropagation();const buttons=[...nav.querySelectorAll('button')].filter(b=>!b.disabled&&b.getClientRects().length),at=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(at+(event.key===following?1:-1)+buttons.length)%buttons.length;buttons[next]?.focus();});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!drawer.hidden&&!document.querySelector('#overlay [role=dialog]')&&(drawer.contains(event.target)||event.target===measures)){event.preventDefault();setDrawer(false,false);measures.focus({preventScroll:true});}});
     find('toggleAiteRibbon').onclick=()=>setRibbon(!preferences.collapsed);find('workspaceFocus').onclick=toggleFocus;
     const right=document.createElement('button');right.type='button';right.id='workspaceRightToggle';right.className='v4-small-button';right.innerHTML=panelIcon;right.setAttribute('aria-controls','inspector');find('togglePages').insertAdjacentElement('afterend',right);
@@ -11632,10 +11635,12 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace.layout-compact #manualRibbon .manual-button:hover:not(:disabled){background:#e3effd;border-color:var(--aite-border)}.aite-workspace.layout-compact #manualRibbon .manual-button[aria-pressed=true],.aite-workspace.layout-compact #manualRibbon #stepDetect{background:#d6eaff;border-color:var(--aite-border);color:#084c9a}.aite-workspace .manual-button:disabled{opacity:.45}
     .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:white;color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:10px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:white;border-radius:0 0 8px 8px;box-shadow:0 8px 24px #19364e22}.aite-workspace .aite-ribbon-folded .advanced-tools{display:none}
     .aite-workspace .floating-plan-navigation{position:fixed;z-index:4;display:flex;gap:2px;align-items:center;padding:3px;border:1px solid #c7dcef66;border-radius:7px;background:#ffffff88;transition:background-color .12s,border-color .12s;overflow:auto}
+    .aite-workspace .floating-plan-tools-group{display:flex;align-items:center;gap:2px;flex:none;min-width:0}.aite-workspace .floating-plan-tools-group+.floating-plan-tools-group{border-left:1px solid var(--aite-line);padding-left:6px;margin-left:3px}.aite-workspace .floating-plan-tools-group[hidden],.aite-workspace .floating-plan-tools-group:empty{display:none}
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button{display:flex;align-items:center;justify-content:center;min-width:30px;width:30px;min-height:30px;height:30px;padding:5px;border:1px solid transparent;border-radius:4px;background:transparent;color:#4c647a;gap:0}
     .aite-workspace .floating-plan-navigation .manual-button span{display:none}.aite-workspace .floating-plan-navigation svg{width:18px;height:18px}.aite-workspace .floating-plan-navigation:hover,.aite-workspace .floating-plan-navigation:focus-within{background:white;border-color:var(--aite-border);box-shadow:0 2px 8px #19364e14}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:hover,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{background:#e3effd;color:var(--aite-blue)}
+    .aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{border-color:var(--aite-blue)}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible{outline:2px solid var(--aite-blue);outline-offset:-2px}
     .aite-workspace .workspace{gap:0;background:var(--aite-sky);min-width:0}.aite-workspace .stage{background:#edf3f8;min-width:0}.aite-workspace.layout-compact .stagebar{height:36px;min-height:36px;flex-basis:36px;background:white;border-bottom:1px solid var(--aite-line);gap:4px;padding-inline:8px}.aite-workspace .stagebar .document{min-width:0;flex:1}.aite-workspace.layout-compact .stagebar .document strong{font-size:12px;max-width:370px}.aite-workspace .stagebar button{flex-shrink:0}.aite-workspace .stagebar .scale{font-size:10px}
-    .aite-workspace .colorbar{background:var(--aite-surface);border-color:var(--aite-line);font-size:10px}.aite-workspace .canvas-wrap{background:#edf3f8}.aite-workspace .zoom{box-shadow:0 2px 8px #19364e14;border-color:var(--aite-line);border-radius:5px}
+    .aite-workspace .colorbar{background:var(--aite-surface);border-color:var(--aite-line);font-size:10px}.aite-workspace .canvas-wrap{background:#edf3f8}.aite-workspace .zoom{left:var(--aite-plan-tool-inset,16px);box-shadow:0 2px 8px #19364e14;border-color:var(--aite-line);border-radius:5px}
     .aite-workspace .sidebar.layout-sidebar{background:var(--aite-surface);border-color:var(--aite-line)}.aite-workspace .layout-panel{background:var(--aite-surface);color:var(--aite-ink)}.aite-workspace .layout-panel .pane-title{min-height:32px;padding:6px 8px;font-size:13px;letter-spacing:0;background:var(--aite-sky);color:var(--aite-ink)}
     .aite-workspace .layout-panel-actions button{border-color:transparent;background:transparent;color:var(--aite-muted)}.aite-workspace .layout-panel-actions button:hover{background:#d6eaff;border-color:var(--aite-border)}.aite-workspace .layout-height-divider,.aite-workspace .layout-width-divider{background:var(--aite-line);flex-basis:4px}.aite-workspace .layout-height-divider{min-height:4px}.aite-workspace .layout-width-divider{width:4px}.aite-workspace .layout-floating{border-color:var(--aite-border);border-radius:7px}
     .aite-workspace .side-search input{border-color:var(--aite-border);border-radius:5px;background:white;height:29px}.aite-workspace .sheet-row{border-radius:4px;margin:1px 4px}.aite-workspace .sheet-row[aria-current=page],.aite-workspace .source-document.active{background:#d6eaff;border-left-color:var(--aite-blue)}.aite-workspace .source-folder{border-color:var(--aite-line)}.aite-workspace .source-folder summary{font-size:12px;min-height:32px;padding:6px 8px}.aite-workspace .source-document{font-size:12px;min-height:30px;padding:6px 10px}
@@ -11666,9 +11671,9 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace.aite-focus .project-command-bar,.aite-workspace.aite-focus .top-actions,.aite-workspace.aite-focus .surface-legend{display:none!important}
     .aite-workspace.aite-focus .sidebar,.aite-workspace.aite-focus #sidebarWidthDivider{display:none!important}
     .aite-workspace.aite-focus #togglePages,.aite-workspace.aite-focus #workspaceRightToggle,.aite-workspace.aite-focus #expandPlanView,.aite-workspace.aite-focus #toggleQuantityTable,.aite-workspace.aite-focus .quantity-grid{display:none!important}.aite-workspace.aite-focus #inspector.specification-inspector:not([hidden]){display:flex!important}
-    .aite-workspace.aite-focus .floating-plan-navigation{width:44px;flex-direction:column;align-items:center;gap:3px;padding:4px;overflow-x:hidden;overflow-y:auto;background:#ffffff55;border-color:#c7dcef55;box-shadow:none;scrollbar-width:thin}
-    .aite-workspace.aite-focus .floating-plan-navigation:hover,.aite-workspace.aite-focus .floating-plan-navigation:focus-within{background:#fffffff5;border-color:var(--aite-border);box-shadow:0 3px 14px #19364e1a}
-    .aite-workspace.aite-focus #manualRibbon .floating-plan-navigation .manual-button{width:34px;min-width:34px;max-width:34px;height:34px;min-height:34px;padding:7px;color:#345675;flex:none}.aite-workspace.aite-focus .floating-plan-navigation .manual-button svg{width:20px;height:20px}.aite-workspace.aite-focus #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true],.aite-workspace.aite-focus #manualRibbon .floating-plan-navigation #focusMeasuresToggle[aria-expanded=true]{border-color:var(--aite-border);background:#dcebff;color:#075da9}
+    .aite-workspace .floating-plan-navigation[aria-orientation=vertical]{width:44px;flex-direction:column;align-items:center;gap:0;padding:3px;overflow-x:hidden;overflow-y:auto;box-shadow:none;scrollbar-width:thin;overscroll-behavior:contain}
+    .aite-workspace .floating-plan-navigation[aria-orientation=vertical] .floating-plan-tools-group{width:100%;flex-direction:column;align-items:center;gap:0;padding:0;margin:0;border:0}.aite-workspace .floating-plan-navigation[aria-orientation=vertical] .floating-plan-tools-group+.floating-plan-tools-group{padding-top:4px;margin-top:4px;border-top:1px solid var(--aite-line)}
+    .aite-workspace #manualRibbon .floating-plan-navigation[aria-orientation=vertical] .manual-button{width:32px;min-width:32px;max-width:32px;height:32px;min-height:32px;padding:6px;flex:none}.aite-workspace.aite-focus #manualRibbon .floating-plan-navigation #focusMeasuresToggle[aria-expanded=true]{border-color:var(--aite-blue);background:#dcebff;color:#075da9}
     .aite-workspace.aite-focus .focus-rail-action{border-top-color:var(--aite-line)!important}.aite-workspace.aite-focus #inspector.specification-inspector{position:fixed;z-index:22;top:var(--aite-focus-top);right:8px;bottom:auto;height:var(--aite-focus-height);width:min(304px,calc(100% - 76px));max-width:none;box-shadow:0 5px 20px #19364e24;border:1px solid var(--aite-border);border-radius:6px}
     .aite-workspace .focus-measure-drawer{position:fixed;z-index:21;display:flex;flex-direction:column;border:1px solid var(--aite-border);border-radius:6px;background:#fbfdfffa;box-shadow:0 5px 20px #19364e24;overflow:hidden}.aite-workspace .focus-drawer-heading{display:flex;align-items:center;gap:4px;min-height:38px;padding:4px 7px 4px 12px;background:var(--aite-sky);border-bottom:1px solid var(--aite-line)}.aite-workspace .focus-drawer-heading>span{flex:1;font-size:13px;font-weight:600}.aite-workspace .focus-drawer-heading button{display:grid;place-items:center;width:28px;height:28px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--aite-muted)}.aite-workspace .focus-drawer-heading button:hover,.aite-workspace .focus-drawer-heading button[aria-pressed=true]{border-color:var(--aite-border);background:white;color:var(--aite-blue)}.aite-workspace #focusMeasuresClose{font-size:21px}
     .aite-workspace #focusMeasureBody{display:flex;flex:1;min-height:0;min-width:0}.aite-workspace #focusMeasureBody #layoutPanel-measures{position:relative;inset:auto;width:100%!important;height:100%!important;flex:1 1 0!important;min-height:0;max-height:none;background:transparent;border:0;resize:none}.aite-workspace #focusMeasureBody .layout-panel-header{display:none}.aite-workspace #focusMeasureBody #measureTree{display:block;min-height:0;overflow:auto;flex:1}
@@ -16298,7 +16303,12 @@ function installCompactProjectTools() {
 }
 installCompactProjectTools();
 workspaceLayout.install({fit:()=>{fitPlan();refresh();},compare:()=>openPlanComparison()});
-let focusToolParking=null;
+let floatingToolParking=null;
+function floatingPlanToolGroup(host,key,label){
+  let group=host.querySelector('[data-plan-tool-group="'+key+'"]');
+  if(!group){group=document.createElement('div');group.className='floating-plan-tools-group';group.dataset.planToolGroup=key;group.setAttribute('role','group');group.setAttribute('aria-label',label);host.append(group);}
+  return group;
+}
 workspaceAppearance=workspaceAppearanceFactory({document,window,
   getGroups:()=>{const byId=new Map(S.items.map(item=>[item.id,item])),levels=specificationQuantities({scope:'document',byLevel:true}).rows;
     return specificationQuantities({scope:'document'}).rows.map(row=>({...row,items:row.ids.map(id=>byId.get(id)).filter(Boolean),levels:levels.filter(level=>level.finishKey===row.key).map(level=>({...level,items:level.ids.map(id=>byId.get(id)).filter(Boolean)}))})).sort((a,b)=>{
@@ -16306,21 +16316,22 @@ workspaceAppearance=workspaceAppearanceFactory({document,window,
     return rank(a)-rank(b)||a.code.localeCompare(b.code,undefined,{numeric:true});
   });},getItemMarkup:folderMeasureRow,onRefresh:()=>refresh(),onSelect:selectFolderMeasure,onEdit:id=>selectFolderMeasure(id,{},true),
   icons:measureFolders,onAddSanitary:()=>sanitaryChoiceDialog(),onEditLocation:id=>workDialog(id),
-  parkFocusTools:(host,active)=>{
+  parkPlanTools:(host,active)=>{
     const state=ribbonOverflowState;if(!state)return;
-    if(active&&!focusToolParking){
-      const ids=new Set(['manualArea','manualRectangle','manualLinear','manualScale','manualUndo','manualRedo','manualExclude','deleteSelection']);
-      const entries=state.entries.filter(entry=>ids.has(entry.button.id)||entry.button.dataset.tool==='edit');
-      focusToolParking={entries:state.entries.slice(),order:state.order.slice()};
-      for(const entry of entries)host.append(entry.button);
+    if(active&&!floatingToolParking){
+      const names=new Map([['Mesurer','measure'],['Relevé manuel','takeoff'],['Corriger','correction'],['Calepinage','layout']]);
+      const entries=state.entries.filter(entry=>names.has(entry.group.getAttribute('aria-label')));
+      floatingToolParking={entries:state.entries.slice(),order:state.order.slice()};
+      for(const entry of entries){const label=entry.group.getAttribute('aria-label');floatingPlanToolGroup(host,names.get(label),label).append(entry.button);}
       state.entries=state.entries.filter(entry=>!entries.includes(entry));state.order=state.order.filter(entry=>!entries.includes(entry));
-    }else if(!active&&focusToolParking){state.entries=focusToolParking.entries;state.order=focusToolParking.order;focusToolParking=null;}
+    }else if(!active&&floatingToolParking){state.entries=floatingToolParking.entries;state.order=floatingToolParking.order;floatingToolParking=null;}
     layoutRibbonOverflow();
   },
   onOpenRight:()=>specificationUI.open(specificationUI.getActiveTab()),
   parkNavigation:host=>{
-    const ids=new Set(['manualSelect','manualPan','manualFit','manualZoomIn','manualZoomOut']);
-    for(const id of ids)host.append($('#'+id));
+    const navigation=['manualSelect','manualPan','manualFit','manualZoomIn','manualZoomOut'],links=['pdfFinishSearchBtn','pdfSheetLinksBtn'],ids=new Set([...navigation,...links]);
+    for(const id of navigation)floatingPlanToolGroup(host,'navigation','Navigation').append($('#'+id));
+    for(const id of links)floatingPlanToolGroup(host,'links','Plans').append($('#'+id));
     ribbonOverflowState.entries=ribbonOverflowState.entries.filter(entry=>!ids.has(entry.button.id));
     ribbonOverflowState.order=ribbonOverflowState.order.filter(entry=>!ids.has(entry.button.id));
     layoutRibbonOverflow();
