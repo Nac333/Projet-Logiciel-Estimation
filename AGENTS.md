@@ -32,6 +32,12 @@ Ces six compétences sélectionnées sont **fournies sous forme de fichiers dans
 
 Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`. Veille hebdomadaire : `$const-ia-takeoff-nac`.
 
+## Radar complémentaire EGM / FreeLLMAPI / 21st MCP
+- Étudier **EGM** (Google Elephant-Goldfish) pour la critique de spécifications et la détection des écarts entre concept et code. Plugin complet requis (skills + agents + resources); **non installé par ce dépôt**; ne pas déclarer une revue indépendante sans sous-agents à contexte frais réellement disponibles.
+- **FreeLLMAPI** : agrégateur d'API de modèles externes, présenté par son auteur comme expérimental, non destiné à la production. Pas de fournisseur configuré, aucune clé externe et aucun plan client transmis. Ne pas remplacer le modèle Codex ni la détection géométrique par cette solution.
+- **Magic MCP / 21st MCP** : proxy de composants UI vers un service distant; génération AI conditionnelle/payante, sans intérêt direct pour la détection des pièces. Aucune installation/clé, aucune refonte React/Tailwind sans validation visuelle spécifique de l'utilisateur.
+- Guide : `docs/NAC_EGM_FREELLMAPI_MAGIC_CODEX.md`. Veille dans `.agents/skills/const-ia-takeoff-nac/references/trois-depots-egm-freellmapi-magic.md`. Séparer `DOCUMENTE`, `PLUGIN INSTALLE SUR PC`, `EXECUTE` et `TEST METIER VALIDE`.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.
