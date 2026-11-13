@@ -47,3 +47,11 @@ Les paramètres réels doivent être validés avec `npx skills@latest --help` et
 ## Tests métier à exiger
 
 Cas simple : 10 × 12 pieds = 120 pi² et 44 pi lin. de périmètre; puis pièces reliées par ouverture, trou, différentes échelles, rotation, PDF vectoriel et scan, sauvegarde des corrections/refus, révision des plans. Comparer à un relevé indépendant, fixer les seuils avant mesure et déclarer NON EXÉCUTÉ pour tout test non réellement lancé.
+
+## Quatre dépôts supplémentaires — intégration du 12 novembre 2026
+
+La présente référence conserve les **cinq skills** de veille initialement étudiés. Quatre nouveaux **dépôts** ont été vérifiés : Firecrawl AnyDoc, Addy Osmani Agent Skills, Anthropic Claude Plugins Official et Claude-Mem. Voir [quatre-depots-analyse-et-selection.md](quatre-depots-analyse-et-selection.md) et `docs/NAC_4_DEPOTS_CODEX.md`.
+
+Les **six skills techniques ciblés** présents dans la branche GitHub sont : `convert-documents-to-markdown` (AnyDoc), `source-driven-development`, `performance-optimization`, `constraint-driven-development`, `browser-testing-with-devtools` (Addy Osmani), et `build-mcp-server` (Anthropic). Ils ne doivent être appelés que lorsque le besoin précis existe. L'outil CLI AnyDoc, Chrome DevTools MCP et un serveur MCP réellement démarré requièrent une étape de vérification distincte. La mémoire Claude-Mem n'est pas installée (autorisations et coûts à vérifier).
+
+**Ne pas confondre** six dossiers `SKILL.md` copiés sur une branche, une PR fusionnée, les compétences installées sur le poste et une fonction takeoff réellement testée. Aucun appel OCR hébergé ni service facturable.
