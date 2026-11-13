@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, plugins Anthropic et Addy Osmani, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -22,6 +22,17 @@ Lire [integrations-skills-codex.md](references/integrations-skills-codex.md) pou
 - **Marketing Psychology — reporté / sur demande** : ne l'utiliser que pour une future discussion de commercialisation ou d'ergonomie, pas pour déduire la justesse des surfaces détectées.
 
 Ajouter un « Radar technique : 30 derniers jours » daté au rapport habituel « Ce qu'on a appris » : liens primaires vérifiés, date réelle, licence, coût, niveau de preuve, intérêt pour V7, tests exécutés ou NON EXÉCUTÉS. Si les sources de Last 30 Days ne fonctionnent pas, faire une recherche publique indépendante mais signaler explicitement que le moteur tiers n'a pas été exécuté.
+
+## Extension 2026-11-12 : quatre dépôts additionnels (veille NAC et développement)
+
+Lire [quatre-depots-analyse-et-selection.md](references/quatre-depots-analyse-et-selection.md) avant de rechercher ou d'évaluer ces projets. Ne pas modifier automatiquement le logiciel durant une veille.
+
+1. **Firecrawl AnyDoc (priorité P1, analyse documentaire)** : explorer ses nouveautés Rust/Node/WasM, et comparer son extraction **locale** des tableaux, codes de finis et annotations PDF à MarkItDown et aux relevés humains. Ne jamais lui attribuer de détection géométrique; son OCR hébergé transmet le document entier et ne doit pas être utilisé sur des plans privés.
+2. **Addy Osmani Agent Skills (P1, vérification Codex)** : étudier et appliquer si pertinent ses méthodes `source-driven-development`, `performance-optimization`, `constraint-driven-development` et `browser-testing-with-devtools`. Vérifier les tests Playwright existants avant tout ajout Chrome DevTools, et ne pas simuler l'exécution d'un outil absent.
+3. **Anthropic Claude Plugins Official (P2, méthode MCP)** : surveiller `mcp-server-dev/build-mcp-server` et les pratiques de revue de code, mais sélectionner les composants réellement réutilisables avec Codex. Préférer les MCP locaux pour les plans et les quantités; ne pas confondre plugin Claude Code et installation native Codex.
+4. **Claude-Mem (P2 sous réserve, historique)** : analyser les méthodes de mémoire, déduplication et recherche de décisions. Ne pas installer/activer de hooks, worker, capture d'écran, observateur LLM ou cloud par la seule veille. Vérifier consentement, confidentialité et coûts avant un pilote isolé.
+
+Ajouter au rapport **« Ce qu'on a appris »** un chapitre « Outils examinés / intégration Codex » avec état vérifié, licence, coût, version/activité quand connus, apprentissage concret pour V7, risque, et quatre statuts distincts `SOURCÉ`, `FICHIER SKILL DANS GITHUB`, `OUTIL LOCAL EXÉCUTÉ`, `TEST MÉTIER RÉUSSI`. Ne jamais écrire `INSTALLÉ SUR PC` si seul GitHub a été modifié. Distinguer le nouveau radar des 30 jours de l'inventaire complet des anciennes vidéos des cinq créateurs.
 
 ## Déroulement d’une analyse
 
