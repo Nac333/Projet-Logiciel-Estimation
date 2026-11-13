@@ -1,0 +1,14 @@
+interface:
+  display_name: CONST. IA & Takeoff — NAC
+  short_description: Veille vidéo IA et techniques de takeoff pour V7
+  default_prompt: Utilise $const-ia-takeoff-nac pour analyser les vidéos des cinq
+    créateurs et préparer les techniques utiles à Quantif Plancher V7.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
