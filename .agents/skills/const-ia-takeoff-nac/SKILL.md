@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, plugins Anthropic et Addy Osmani, et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -33,6 +33,16 @@ Lire [quatre-depots-analyse-et-selection.md](references/quatre-depots-analyse-et
 4. **Claude-Mem (P2 sous réserve, historique)** : analyser les méthodes de mémoire, déduplication et recherche de décisions. Ne pas installer/activer de hooks, worker, capture d'écran, observateur LLM ou cloud par la seule veille. Vérifier consentement, confidentialité et coûts avant un pilote isolé.
 
 Ajouter au rapport **« Ce qu'on a appris »** un chapitre « Outils examinés / intégration Codex » avec état vérifié, licence, coût, version/activité quand connus, apprentissage concret pour V7, risque, et quatre statuts distincts `SOURCÉ`, `FICHIER SKILL DANS GITHUB`, `OUTIL LOCAL EXÉCUTÉ`, `TEST MÉTIER RÉUSSI`. Ne jamais écrire `INSTALLÉ SUR PC` si seul GitHub a été modifié. Distinguer le nouveau radar des 30 jours de l'inventaire complet des anciennes vidéos des cinq créateurs.
+
+## Extension de veille : EGM, FreeLLMAPI et 21st MCP
+
+Lire [trois-depots-egm-freellmapi-magic.md](references/trois-depots-egm-freellmapi-magic.md) pour les sources primaires, les preuves, l'adaptation à V7 et les limites. Conserver les cinq créateurs vidéo et les archives comme priorité éditoriale; ne pas ajouter de veille hors takeoff sans intérêt démontré.
+
+- **Elephant-Goldfish Model — P1 conception / contrôle** : examiner les revues de spécifications indépendantes et le `egm-drift-report` (écarts documentation/code). Appliquer uniquement sur les documents de conception des fonctionnalités V7 : contours, calibration PDF, exclusion des trous, édition et sauvegarde, nomenclatures, coupes/élévations. Le plugin complet dépend de ses personas et standards; la copie d'un SKILL.md seul ne suffit pas. Une véritable revue Goldfish requiert la création de sous-agents à contexte frais, non présumée disponible; vérifier la version de Codex et les capacités avant d'annoncer un résultat.
+- **FreeLLMAPI — P3 expérimentation synthétique uniquement** : cet agrégateur de fournisseurs gratuits n'est ni un moteur de segmentation ni une source de quotas garantis; l'auteur le limite aux expérimentations personnelles et déconseille la production. Ne jamais transmettre de plans clients, configurer des clés fournisseurs, changer le fournisseur de Codex, ni ajouter de routeur au logiciel sous prétexte de veille. Signaler les coûts possibles et termes de fournisseurs.
+- **Magic MCP / 21st MCP — P3 ergonomie uniquement** : `@21st-dev/magic` est maintenant un proxy vers le service MCP HTTP distant 21st. Certaines fonctionnalités de génération et de récupération peuvent être payantes. Ne pas installer ou appeler ce service automatiquement, ni remplacer l'interface HTML V7 par React/Tailwind. Les changements d'apparence exigent la validation visuelle explicite de l'utilisateur.
+
+Dans le rapport NAC, utiliser des états distincts : `ANALYSÉ`, `PR DOCUMENTÉE`, `PLUGIN INSTALLÉ`, `OUTIL EXÉCUTÉ`, `TEST MÉTIER VALIDÉ`. Une PR ne prouve pas l'installation de composants sur le Mac/PC, et une revue de documents ne prouve pas l'exactitude du takeoff automatisé.
 
 ## Déroulement d’une analyse
 
