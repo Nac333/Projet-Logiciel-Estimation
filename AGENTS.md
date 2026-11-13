@@ -27,3 +27,10 @@ Faire evoluer les fonctions de takeoff et d'estimation de revetements du projet.
 - Faire des modifications limitees et faciles a revoir; eviter les grands blocs de contexte et les explorations redondantes.
 
 Guide : `docs/CODEX_TAKEOFF_GRATUIT.md`.
+
+## Veille NAC pour la recherche, l'apprentissage et les fiches Codex
+
+- Utiliser `$const-ia-takeoff-nac` pour la veille des cinq créateurs, le radar technique des 30 derniers jours, le rapport « Ce qu'on a appris » et les fiches préparatoires à Codex.
+- Source de référence : `.agents/skills/const-ia-takeoff-nac/SKILL.md` et `references/integrations-skills-codex.md`.
+- Last 30 Days, Teach, Chief of Staff, Anatomy et Marketing Psychology sont des sources ou options facultatives : ne déclarer leur installation et leur exécution qu'après vérification. Leur simple description dans NAC ne les installe pas.
+- Aucune donnée de plan privée vers des serveurs tiers, aucun achat/abonnement, aucune modification de `Quantif-Plancher-V7.html` au titre de cette veille. Suivre `docs/INSTALL_NAC_SKILLS_CODEX.md` pour les installations locales sous contrôle.
