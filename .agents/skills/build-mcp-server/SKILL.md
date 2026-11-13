@@ -59,7 +59,9 @@ This determines the tool-design pattern — see Phase 3.
 
 ## Phase 2 — Recommend a deployment model
 
-Based on the answers, recommend **one** path. Be opinionated. The ranked options:
+For Quantif Plancher V7, **local stdio is the mandatory default** for plans, geometry, local PDF files, and private estimation data. Remote HTTP, managed hosting, and tunnels are out of scope unless a separate explicit deployment/privacy approval is given. The generic patterns below describe other use cases, not permission to transmit project data.
+
+Based on the answers, recommend **one** path. Be opinionated. The ranked options for an authorized cloud-only integration are:
 
 ### ⭐ Remote streamable-HTTP MCP server (default recommendation)
 
@@ -92,7 +94,7 @@ Same as above, plus **UI resources** — interactive widgets rendered in chat. R
 
 Usually remote, but can be shipped as MCPB if the UI needs to drive a local app.
 
-→ Hand off to the **`build-mcp-app`** skill.
+→ For V7: interactive UI widgets are **out of scope** for this bundled subset; prepare a design note instead. `build-mcp-app` is **not installed** in this project. Require a separate task, approval, and the complete upstream skill bundle before handoff.
 
 ### MCPB (bundled local server)
 
@@ -100,7 +102,7 @@ A local MCP server **packaged with its runtime** so users don't need Node/Python
 
 **Choose this when** the server *must* run on the user's machine — it reads local files, drives a desktop app, talks to localhost services, or needs OS-level access.
 
-→ Hand off to the **`build-mcpb`** skill.
+→ For V7: implement and validate the **local stdio prototype inline** under this skill first. The additional `build-mcpb` skill is **not included** in this project; do not try to invoke it or claim a package was built. If distributable MCPB packaging is later approved, install the complete upstream `build-mcpb` skill and test it independently.
 
 ### Local stdio (npx / uvx) — *not recommended for distribution*
 
@@ -165,8 +167,8 @@ If the user already has a language/stack in mind, go with it — both produce id
 Once you've settled the four decisions (deployment model, tool pattern, framework, auth), do **one** of:
 
 1. **Remote HTTP, no UI** → Scaffold inline using `references/remote-http-scaffold.md` (portable) or `references/deploy-cloudflare-workers.md` (fastest deploy). This skill can finish the job.
-2. **MCP app (UI widgets)** → Summarize the decisions so far, then load the **`build-mcp-app`** skill.
-3. **MCPB (bundled local)** → Summarize the decisions so far, then load the **`build-mcpb`** skill.
+2. **MCP app (UI widgets)** → Not part of this project integration; document the design only. `build-mcp-app` is absent; no handoff or remote deployment.
+3. **MCPB (bundled local)** → `build-mcpb` is absent; test a local stdio prototype here. For MCPB distribution, stop and request approval to install the full companion skill and its references.
 4. **Local stdio prototype** → Scaffold inline (simplest case), flag the MCPB upgrade path.
 
 When handing off, restate the design brief in one paragraph so the next skill doesn't re-ask.
@@ -188,14 +190,11 @@ Tools are one of three server primitives. Most servers start with tools and neve
 
 ---
 
-## Phase 6 — Test in Claude and publish
+## Phase 6 — Local Codex validation (no tunnels or publishing)
 
-Once the server runs:
+Once a local stdio prototype runs, **test it only on loopback with Codex or an isolated local MCP test client**, using synthetic PDF samples or approved local plans. Verify tool names and schemas, permission checks, input validation, local-only data flow and error handling. Prove that no plan bytes, annotations or quantities leave the device. Run business acceptance tests separately (scales per sheet, geometry with holes, rejected/accepted takeoff suggestions, export). Record tests as `RÉUSSI`, `ÉCHOUÉ` or `NON EXÉCUTÉ` with evidence.
 
-1. **Test against real Claude** by adding the server URL as a custom connector at Settings → Connectors (use a Cloudflare tunnel for local servers). Claude identifies itself with `clientInfo.name: "claude-ai"` on initialize. → https://claude.com/docs/connectors/building/testing
-2. **Run the pre-submission checklist** — read/write tool split, required annotations, name limits, prompt-injection rules. → https://claude.com/docs/connectors/building/review-criteria
-3. **Submit to the Anthropic Directory.** → https://claude.com/docs/connectors/building/submission
-4. **Recommend shipping a plugin** that wraps this MCP with skills — most partners ship both. → https://claude.com/docs/connectors/building/what-to-build
+**Never expose a server through a Cloudflare tunnel, Anthropic connector, public URL, remote log service, or plugin directory as part of this workflow.** Hosting, external testing or publication would require an explicit separate user authorization plus privacy/security review; this installed subset has no such authorization. The original upstream publication guidance is not applicable to V7.
 
 ---
 
