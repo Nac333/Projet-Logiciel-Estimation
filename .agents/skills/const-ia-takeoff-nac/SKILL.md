@@ -61,13 +61,3 @@ Présenter un seul rapport daté, lisible par un estimateur, comprenant:
 Exiger calibration par page et transformations fiables entre pixels, PDF et unités physiques. Mesurer surfaces nettes en pi² et plinthes/périmètres en pi lin. Traiter trous, portes, murs interrompus, rotations et révisions. Préserver corrections manuelles et acceptation/refus des propositions; n’exporter que les quantités acceptées. Ne pas attribuer automatiquement un fini au seul nom d’une pièce. Séparer sol, mural, plinthes et prix même pour un même produit. Calculer mural selon hauteurs et ouvertures documentées. Éviter les doubles déductions de douches/bains; appliquer pertes et boîtes seulement après validation des règles.
 
 Proposer les tests adaptés à chaque technique: rectangle 10 × 12 pieds = 120 pi² et périmètre 44 pi lin.; pièces reliées par porte ouverte; pièce avec trou; pages d’échelles différentes; scan/vectoriel; rotation; sauvegarde de correction/refus; obsolescence après révision. Comparer à un relevé indépendant: pièces manquées, faux positifs, écarts de surface et temps de correction. Fixer les seuils avant les essais, sans inventer de précision ni de tests réussis.
-
-
----
-To read any file's contents, use `functions.exec` to run `text(await tools.skills__read({"uri": "skills://const-ia-takeoff-nac/<relative_file_path>"}))`.
-Read once per file. Available relative file paths:
-
-SKILL.md
-agents/openai.yaml
-assets/icon.svg
-references/sources-et-suivi.md
