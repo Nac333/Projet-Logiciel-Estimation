@@ -18,6 +18,20 @@ Faire evoluer les fonctions de takeoff et d'estimation de revetements du projet.
 - Analyse fonctionnelle de PlanSwift/Togal : `$rea-analyse-logiciel`
 - Mesures avec OpenTakeoff et calculs Craft Quantities : `$estimation-mcp-takeoff-gratuit`
 
+## Compétences supplémentaires : quatre dépôts GitHub
+
+Ces six compétences sélectionnées sont **fournies sous forme de fichiers dans la branche** et seront détectables dans Codex une fois la PR fusionnée et le dépôt local synchronisé. Ce n'est pas une installation de binaires sur le PC, ni l'exécution d'un moteur de takeoff.
+
+- Extraction textuelle des devis, tableaux de finis, PDF textuels : `$convert-documents-to-markdown` (**AnyDoc**) ; privilégier le local, **interdire `--ocr hosted`** sur les plans, comparer à MarkItDown, ne pas y chercher de géométrie.
+- Références API/version avant code : `$source-driven-development`.
+- Profilage PDF et navigation lourde après mesures : `$performance-optimization`.
+- Critères mesurables et non-affaissement des tests : `$constraint-driven-development`.
+- Inspections navigateur complémentaires : `$browser-testing-with-devtools` si Chrome DevTools MCP autorisé et disponible (Playwright existant prioritaire, profil isolé).
+- Conception d'intégrations MCP locales : `$build-mcp-server` ; sa documentation d'origine vient du système Claude, adapter à Codex, aucune transmission externe de plans.
+- Claude-Mem : **non installé**, non autorisé sur les fichiers clients à ce stade (hooks/observateur/télémétrie/quotas). Consigner le suivi et les décisions dans NAC et GitHub.
+
+Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`. Veille hebdomadaire : `$const-ia-takeoff-nac`.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.
