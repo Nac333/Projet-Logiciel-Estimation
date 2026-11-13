@@ -2160,7 +2160,7 @@ function initManualUI() {
     manualButton('manualRedo','redo-2','Rétablir','Rétablir la modification · Ctrl+Y')
   ].join('');
   const workflow=$('#workflow'),legacy=$('.ribbon');
-  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group" role="group" aria-label="Projet"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet</span></div><div class="manual-group" role="group" aria-label="Navigation"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group" role="group" aria-label="Mesurer"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group" role="group" aria-label="Relevé manuel"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group" role="group" aria-label="Détection des surfaces"><div id="ribbonDetection" class="manual-group-buttons"></div><span class="manual-group-label">Détection</span></div><div class="manual-group" role="group" aria-label="Corriger"><div id="ribbonCorrection" class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group" role="group" aria-label="Calepinage"><div id="ribbonLayout" class="manual-group-buttons"></div><span class="manual-group-label">Calepinage</span></div><div class="manual-group" role="group" aria-label="Analyse des plans"><div id="ribbonPdfIntelligence" class="manual-group-buttons">${manualButton('pdfFinishSearchBtn','search','Finis','Rechercher un fini dans tous les PDF du projet')}${manualButton('pdfSheetLinksBtn','link-2','Liens','Aperçus des repères et détails')}</div><span class="manual-group-label">Plans</span></div><div class="manual-group" role="group" aria-label="Commandes et aide"><div id="ribbonManagement" class="manual-group-buttons"></div><span class="manual-group-label">Commandes et aide</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
+  workflow.insertAdjacentHTML('beforebegin',`<section id="manualRibbon" class="manual-ribbon" aria-label="Ruban de relevé"><div class="manual-ribbon-scroll" role="toolbar" aria-label="Projet, détection et mesures"><div class="manual-group" role="group" aria-label="Projet"><div id="ribbonProject" class="manual-group-buttons"></div><span class="manual-group-label">Projet</span></div><div class="manual-group" role="group" aria-label="Navigation"><div class="manual-group-buttons">${navigation}</div><span class="manual-group-label">Navigation</span></div><div class="manual-group" role="group" aria-label="Mesurer"><div class="manual-group-buttons">${measure}</div><span class="manual-group-label">Mesurer</span></div><div class="manual-group" role="group" aria-label="Relevé manuel"><div class="manual-group-buttons">${takeoff}</div><span class="manual-group-label">Relevé manuel</span></div><div class="manual-group" role="group" aria-label="Détection des surfaces"><div id="ribbonDetection" class="manual-group-buttons"></div><span class="manual-group-label">Détection</span></div><div class="manual-group" role="group" aria-label="Corriger"><div id="ribbonCorrection" class="manual-group-buttons">${correction}</div><span class="manual-group-label">Corriger</span></div><div class="manual-group" role="group" aria-label="Calepinage"><div id="ribbonLayout" class="manual-group-buttons"></div><span class="manual-group-label">Calepinage</span></div><div class="manual-group" role="group" aria-label="Analyse des plans"><div id="ribbonPdfIntelligence" class="manual-group-buttons">${manualButton('pdfFinishSearchBtn','search','Finis','Rechercher un fini dans tous les PDF du projet')}${manualButton('pdfSheetLinksBtn','link-2','Liens','Aperçus des repères et détails')}${manualButton('planOverlayBtn','layers','Superposer','Superposer et comparer deux feuilles')}</div><span class="manual-group-label">Plans</span></div><div class="manual-group" role="group" aria-label="Commandes et aide"><div id="ribbonManagement" class="manual-group-buttons"></div><span class="manual-group-label">Commandes et aide</span></div></div><div class="manual-status-line"><p id="manualStatus" role="status" aria-live="polite">Ouvrez un plan pour commencer le relevé.</p><div id="manualActions" class="manual-actions" hidden><button type="button" id="manualFinish">Terminer · Entrée</button><button type="button" id="manualCancel">Annuler le tracé · Échap</button></div></div></section>`);
   const moveButton=(selector,host,icon,label,title)=>{
     const button=$(selector);if(!button)return;
     button.type='button';button.className='manual-button';
@@ -10751,6 +10751,127 @@ const pdfIntelligenceUIFactory = (function createPdfIntelligenceUI(options){
  }
  return {install,capture,hydrate,scan,open,render,paint,available,coverage,closeCard};
 });
+const planOverlayFactory = (function createPlanOverlay(options={}) {
+  const {revisions,getState,getDocuments,readImage,openAlignment,requestDraw,persist,toast}=options;
+  const doc=options.document||options.canvas?.ownerDocument,win=doc?.defaultView;
+  const find=id=>doc.getElementById(id),limit=2048;
+  let cache=null,sourceCache=null,sourcePending=null,generation=0,attempted='',preparing=null,error='',panelContext=null,observedContext=null,observedPlan=null;
+  const frame=value=>{if(!value||!['width','height'].every(k=>Number.isSafeInteger(value[k])&&value[k]>0&&value[k]<=100000))throw new Error('Dimensions de superposition invalides.');return {width:value.width,height:value.height};};
+  const identity=value=>{if(!value||typeof value.documentKey!=='string'||!value.documentKey||value.documentKey.length>1000||!Number.isSafeInteger(value.page)||value.page<1)throw new Error('Feuille de superposition invalide.');return {documentKey:value.documentKey,page:value.page,...frame(value)};};
+  function checkedAlignment(value){
+    const checked=revisions.align({pairs:value?.pairs,control:value?.control,maxDeviationPercent:value?.maxDeviationPercent});
+    for(const side of ['from','to']){
+      const a=checked.pairs[0][side],b=checked.pairs[1][side],c=checked.control[side],length=Math.hypot(b.x-a.x,b.y-a.y);
+      if(Math.abs((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x))/(length*length)<1e-8)throw new Error('Choisissez le contrôle hors de l’axe des deux repères : un contrôle colinéaire ne vérifie pas l’autre direction.');
+    }
+    if(!checked.verified)throw new Error('Alignement non vérifié : corrigez les correspondances et le contrôle.');
+    if(checked.scale<1e-6||checked.scale>1e6)throw new Error('Échelle de superposition hors des limites de rendu.');
+    return checked;
+  }
+  function validate(value){
+    if(!value||typeof value!=='object'||!['normal','revision'].includes(value.mode)||typeof value.enabled!=='boolean'||!Number.isFinite(value.opacity)||value.opacity<0||value.opacity>1||!/^#[0-9a-f]{6}$/i.test(value.color))throw new Error('Réglages de superposition invalides.');
+    const base=identity(value.base),source=identity(value.source);
+    if(base.documentKey===source.documentKey&&base.page===source.page)throw new Error('Choisissez une autre feuille à superposer.');
+    const alignment=checkedAlignment(value.alignment);
+    for(const pair of [...alignment.pairs,alignment.control])for(const [side,size]of [['from',source],['to',base]])if(pair[side].x<0||pair[side].y<0||pair[side].x>size.width||pair[side].y>size.height)throw new Error('Un repère de superposition est hors de sa feuille.');
+    return {base,source,alignment,mode:value.mode,enabled:value.enabled,opacity:value.opacity,color:value.color.toLowerCase()};
+  }
+  const ink=(data,i)=>((255-(data[i]*.2126+data[i+1]*.7152+data[i+2]*.0722))/255)*(data[i+3]/255);
+  const isPixels=data=>ArrayBuffer.isView(data)&&data.BYTES_PER_ELEMENT===1&&Number.isSafeInteger(data.length);
+  function tintPixels(data,color){
+    if(!isPixels(data)||data.length%4||!/^#[0-9a-f]{6}$/i.test(color))throw new Error('Pixels ou couleur invalides.');
+    const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)),out=new Uint8ClampedArray(data.length);
+    for(let i=0;i<data.length;i+=4){out[i]=rgb[0];out[i+1]=rgb[1];out[i+2]=rgb[2];out[i+3]=Math.round(255*ink(data,i));}return out;
+  }
+  function differencePixels(before,after,width,height){
+    if(!isPixels(before)||!isPixels(after)||!Number.isSafeInteger(width)||!Number.isSafeInteger(height)||width<=0||height<=0||before.length!==width*height*4||after.length!==before.length)throw new Error('Dimensions des pixels comparés invalides.');
+    const a=new Uint8Array(width*height),b=new Uint8Array(a.length),out=new Uint8ClampedArray(before.length);for(let p=0;p<a.length;p++){a[p]=ink(before,p*4)>.2;b[p]=ink(after,p*4)>.2;}
+    const near=(map,x,y)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<width&&ny>=0&&ny<height&&map[ny*width+nx])return true;}return false;};
+    const added=[214,40,40],removed=[23,101,204],common=[66,75,87],paper=[255,255,255];
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+      const p=y*width+x,i=p*4,onlyA=a[p]&&!near(b,x,y),onlyB=b[p]&&!near(a,x,y),rgb=onlyB?added:onlyA?removed:a[p]||b[p]?common:paper;out[i]=rgb[0];out[i+1]=rgb[1];out[i+2]=rgb[2];out[i+3]=255;
+    }return out;
+  }
+  const scope=()=>{const s=getState();return JSON.stringify([s.estimation?.workspace?.project?.id||'',s.documentKey,s.page]);};
+  const raw=()=>getState().settings?.planOverlays?.version===1?getState().settings.planOverlays.pages?.[getState().page]:null;
+  const keyOf=config=>JSON.stringify([scope(),config.base,config.source,config.alignment.pairs,config.alignment.control,config.alignment.maxDeviationPercent,config.mode,config.color]);
+  function current(){const value=raw();return value?validate(value):null;}
+  function sourceAvailable(config){return getDocuments().some(d=>d.key===config.source.documentKey&&config.source.page<=d.pages);}
+  function canvas(width,height){const c=doc.createElement('canvas');c.width=width;c.height=height;return c;}
+  function scaled(image){const width=image.naturalWidth||image.width,height=image.naturalHeight||image.height,ratio=Math.min(1,limit/Math.max(width,height)),c=canvas(Math.max(1,Math.round(width*ratio)),Math.max(1,Math.round(height*ratio)));c.getContext('2d').drawImage(image,0,0,c.width,c.height);return {canvas:c,width,height};}
+  function sameFrame(image,expected){return (image.naturalWidth||image.width)===expected.width&&(image.naturalHeight||image.height)===expected.height;}
+  async function decode(source){const result=await readImage(source);if(!result||typeof result.url!=='string'||!/^data:image\/(png|jpeg|webp);base64,/.test(result.url))throw new Error('Image locale de superposition indisponible.');return new Promise((resolve,reject)=>{const image=new win.Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Image de superposition illisible.'));image.src=result.url;});}
+  function acquireSource(config,provided){
+    const key=JSON.stringify([scope(),config.source]);if(sourceCache?.key===key)return Promise.resolve(sourceCache);if(sourcePending?.key===key)return sourcePending.promise;
+    const pending={key,promise:null};pending.promise=Promise.resolve().then(async()=>{const image=provided||await decode(config.source);if(!sameFrame(image,config.source))throw new Error('Les dimensions de la source ont changé. Recommencez l’alignement.');return {...scaled(image),key};}).finally(()=>{if(sourcePending===pending)sourcePending=null;});sourcePending=pending;return pending.promise;
+  }
+  function compose(config,base,source){
+    if(config.mode==='normal'){
+      const c=canvas(source.canvas.width,source.canvas.height),ctx=c.getContext('2d'),pixels=source.canvas.getContext('2d').getImageData(0,0,c.width,c.height);pixels.data.set(tintPixels(pixels.data,config.color));ctx.putImageData(pixels,0,0);return {canvas:c,width:config.source.width,height:config.source.height,mode:'normal',matrix:config.alignment.matrix};
+    }
+    const small=scaled(base),a=small.canvas,b=canvas(a.width,a.height),ctx=b.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,b.width,b.height);
+    const sx=a.width/config.base.width,sy=a.height/config.base.height,m=config.alignment.matrix;ctx.setTransform(sx*m.a,sy*m.b,-sx*m.b,sy*m.a,sx*m.tx,sy*m.ty);ctx.drawImage(source.canvas,0,0,config.source.width,config.source.height);
+    const result=canvas(a.width,a.height),pixels=a.getContext('2d').getImageData(0,0,a.width,a.height);pixels.data.set(differencePixels(pixels.data,b.getContext('2d').getImageData(0,0,b.width,b.height).data,a.width,a.height));result.getContext('2d').putImageData(pixels,0,0);return {canvas:result,width:config.base.width,height:config.base.height,mode:'revision'};
+  }
+  function prepare(config,provided){
+    const signature=keyOf(config),context=scope(),base=getState().plan,token=++generation;attempted=signature;error='';cache=null;
+    const valid=()=>token===generation&&context===scope()&&getState().plan===base&&raw()?.enabled&&keyOf(current())===signature;
+    preparing=(async()=>{
+      if(!base||!sameFrame(base,config.base))throw new Error('Le repère de la feuille a changé. Recommencez l’alignement.');
+      const source=await acquireSource(config,provided);if(!valid())return;sourceCache=source;
+      await new Promise(resolve=>win.setTimeout(resolve,0));if(!valid())return;
+      const result=compose(config,base,source);if(!valid())return;sourceCache=source;cache={...result,signature,context,referenceImage:base};requestDraw();
+    })().catch(failure=>{if(token===generation){error=failure.message;cache=null;requestDraw();}}).finally(()=>{if(token===generation){preparing=null;render();}});return preparing;
+  }
+  function saveConfig(value,provided){
+    const s=getState(),pages={...(s.settings.planOverlays?.version===1?s.settings.planOverlays.pages:{})};if(value)pages[s.page]=validate(value);else delete pages[s.page];s.settings={...s.settings,planOverlays:{version:1,pages}};persist();if(value&&provided)prepare(validate(value),provided);render();requestDraw();
+  }
+  function change(patch){try{const config=current();if(config)saveConfig({...config,...patch});}catch(failure){toast(failure.message);}}
+  async function choose(){
+    const state=getState();if(!state.plan||state.loading||state.detectJob)return toast('Ouvrez une feuille et attendez la fin du chargement.');
+    const baseContext=scope(),baseDocument=state.documentKey,basePage=state.page;
+    return openAlignment({reference:{documentKey:baseDocument,page:basePage},documents:getDocuments().map(d=>d.key),validateAlignment:checkedAlignment,onApply:async payload=>{
+      if(scope()!==baseContext||getState().loading)throw new Error('La feuille de référence a changé. Recommencez la superposition.');
+      const {source,alignment,images}=payload;
+      const config=validate({base:{documentKey:source.beforeDocument,page:source.beforePage,width:images.A.naturalWidth,height:images.A.naturalHeight},source:{documentKey:source.afterDocument,page:source.afterPage,width:images.B.naturalWidth,height:images.B.naturalHeight},alignment,mode:'normal',color:'#d62828',opacity:.45,enabled:true});
+      if(config.base.documentKey!==baseDocument||config.base.page!==basePage||!sourceAvailable(config))throw new Error('La sélection de feuilles ne correspond plus au projet courant.');
+      panelContext=scope();find('planOverlayPanel').hidden=false;saveConfig(config,images.B);await preparing;if(error)throw new Error(error);render();
+    }});
+  }
+  function install(){
+    const style=doc.createElement('style');style.textContent=`.plan-overlay-panel{position:absolute;right:12px;top:12px;z-index:11;width:288px;max-width:calc(100% - 76px);max-height:calc(100% - 24px);overflow:auto;padding:12px;border:1px solid #a9c6dd;border-radius:7px;background:#f7fbff;font:12px/1.4 'Segoe UI',Arial,sans-serif;color:#19364e;box-shadow:0 4px 16px #19364e22}.plan-overlay-panel[hidden]{display:none}.plan-overlay-panel header{display:flex;align-items:center;gap:6px;margin-bottom:8px}.plan-overlay-panel header strong{flex:1}.plan-overlay-panel label{display:block;margin:9px 0}.plan-overlay-panel select,.plan-overlay-panel input[type=range]{width:100%;min-width:0}.plan-overlay-panel select{padding:5px;border:1px solid #a9c6dd;background:white;color:inherit}.plan-overlay-panel button{min-height:28px;padding:4px 8px;border:1px solid #a9c6dd;border-radius:4px;background:white;color:#175580;cursor:pointer}.plan-overlay-panel button:focus-visible,.plan-overlay-panel input:focus-visible,.plan-overlay-panel select:focus-visible{outline:2px solid #0966cc;outline-offset:1px}.plan-overlay-panel small{display:block;color:#49647d;overflow-wrap:anywhere}.plan-overlay-actions{display:flex;gap:5px;flex-wrap:wrap}.plan-overlay-panel #planOverlayStatus{font-size:11px}.plan-overlay-panel #planOverlayLegend{font-size:11px;margin:8px 0}.plan-overlay-panel #planOverlayRemove{color:#a42b2b}`;doc.head.append(style);
+    const panel=doc.createElement('section');panel.id='planOverlayPanel';panel.className='plan-overlay-panel';panel.hidden=true;panel.setAttribute('aria-label','Superposition de plans');panel.innerHTML='<header><strong>Superposition de plans</strong><button type="button" id="planOverlayClose" aria-label="Fermer les réglages de superposition">×</button></header><small id="planOverlaySource"></small><label><input type="checkbox" id="planOverlayEnabled"> Afficher la superposition</label><label>Mode<select id="planOverlayMode"><option value="normal">Superposition normale</option><option value="revision">Comparer les versions</option></select></label><label>Opacité <output id="planOverlayOpacityValue"></output><input type="range" id="planOverlayOpacity" min="0" max="100" step="5" aria-label="Opacité de la superposition"></label><label>Couleur <input type="color" id="planOverlayColor" value="#d62828"></label><div id="planOverlayLegend"></div><p id="planOverlayStatus" role="status" aria-live="polite"></p><div class="plan-overlay-actions"><button type="button" id="planOverlayAlign">Choisir / aligner une feuille</button><button type="button" id="planOverlayRemove">Retirer</button></div><p><small>Comparaison visuelle à vérifier. Les quantités et l’échelle du relevé restent celles de la feuille de référence.</small></p>';options.canvas.parentElement.append(panel);
+    find('planOverlayBtn').onclick=()=>{if(!raw())return run(choose());panelContext=scope();panel.hidden=!panel.hidden;render();};
+    find('planOverlayClose').onclick=()=>{panel.hidden=true;};find('planOverlayAlign').onclick=()=>run(choose());find('planOverlayRemove').onclick=()=>{generation++;cache=null;sourceCache=null;attempted='';error='';saveConfig(null);panel.hidden=true;};
+    find('planOverlayEnabled').onchange=e=>change({enabled:e.target.checked});find('planOverlayOpacity').oninput=e=>change({opacity:Number(e.target.value)/100});find('planOverlayColor').onchange=e=>change({color:e.target.value});find('planOverlayMode').onchange=e=>change({mode:e.target.value,opacity:e.target.value==='revision'?1:.45});
+    panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();panel.hidden=true;find('planOverlayBtn').focus();}});render();
+  }
+  function run(promise){Promise.resolve(promise).catch(failure=>toast(failure.message));}
+  function render(){
+    if(!find('planOverlayPanel'))return;const state=getState(),context=scope(),button=find('planOverlayBtn'),panel=find('planOverlayPanel');button.disabled=!state.plan||state.loading||!!state.detectJob;
+    if(observedContext!==context||observedPlan!==state.plan){if(observedContext!==context){sourceCache=null;sourcePending=null;}observedContext=context;observedPlan=state.plan;generation++;cache=null;attempted='';preparing=null;error='';}
+    if(panelContext!==null&&panelContext!==context){panel.hidden=true;panelContext=null;}
+    let config;try{config=current();}catch(failure){error=failure.message;}
+    const relevant=config&&config.base.documentKey===state.documentKey&&config.base.page===state.page,available=relevant&&sourceAvailable(config);
+    if(!relevant||!available){if(cache||preparing){generation++;cache=null;preparing=null;attempted='';requestDraw();}if(config&&!available)error='La feuille source n’est plus disponible dans les plans actifs.';}
+    button.setAttribute('aria-pressed',String(!!(available&&config.enabled)));button.title=available&&config.enabled?'Superposition active · Ouvrir les réglages':'Superposer et comparer deux feuilles';button.setAttribute('aria-label',button.title);
+    if(relevant){
+      const source=getDocuments().find(d=>d.key===config.source.documentKey);find('planOverlaySource').textContent=(source?.name||'Source absente')+' · page '+config.source.page+' → référence page '+config.base.page;
+      find('planOverlayEnabled').checked=config.enabled;find('planOverlayMode').value=config.mode;find('planOverlayOpacity').value=String(Math.round(config.opacity*100));find('planOverlayOpacityValue').textContent=Math.round(config.opacity*100)+' %';find('planOverlayColor').value=config.color;find('planOverlayColor').disabled=config.mode==='revision';
+      find('planOverlayLegend').textContent=config.mode==='revision'?'B seulement : rouge · A seulement : bleu · commun : gris. Écarts de traits à vérifier.':'Les traits de la feuille B utilisent la couleur choisie.';
+      if(!config.enabled&&preparing){generation++;preparing=null;attempted='';}
+      const signature=keyOf(config);if(available&&config.enabled&&!state.loading&&cache?.signature!==signature&&attempted!==signature)prepare(config);
+      const ready=!!(cache&&cache.signature===signature&&cache.context===context);find('planOverlayStatus').dataset.ready=String(ready);find('planOverlayStatus').textContent=error||(!config.enabled?'Superposition masquée.':preparing?'Préparation locale…':ready?'Écart du contrôle '+config.alignment.deviationPercent.toLocaleString('fr-CA',{maximumFractionDigits:2})+' % · seuil saisi '+config.alignment.maxDeviationPercent.toLocaleString('fr-CA',{maximumFractionDigits:2})+' %. Rendu visuel limité à 2 048 px.':'Superposition à préparer.');
+    }else {find('planOverlayStatus').dataset.ready='false';find('planOverlayStatus').textContent=error||'Choisissez une feuille à superposer.';}
+  }
+  function paint(context){
+    if(!cache||cache.context!==scope()||cache.referenceImage!==getState().plan||getState().loading)return;let config;try{config=current();}catch{return;}if(!config?.enabled||!sourceAvailable(config)||cache.signature!==keyOf(config))return;
+    context.save();context.globalAlpha=config.opacity;
+    if(cache.mode==='normal'){const m=cache.matrix;context.globalCompositeOperation='multiply';context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);}
+    context.drawImage(cache.canvas,0,0,cache.width,cache.height);context.restore();
+  }
+  return {install,render,paint,validate,checkedAlignment,tintPixels,differencePixels,choose,settled:()=>preparing||Promise.resolve()};
+});
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
   const identityFields = ['format', 'color', 'pack', 'coverage', 'unit', 'purchaseSeparation'];
@@ -13205,19 +13326,21 @@ const revisionUIFactory = (function createRevisionUI(options) {
     $('#revisionToolsBtn').onclick = show;
   }
 
-  async function show() {
+  async function show(config={}) {
+    const overlayMode=typeof config.onApply==='function';
     let records;
     try { records = await documents.list(); }
     catch (failure) { toast('Plans locaux indisponibles : ' + failure.message); return; }
+    if(overlayMode&&Array.isArray(config.documents))records=records.filter(record=>config.documents.includes(record.id));
     const state = getState();
     const current = records.find(record => record.id === state.documentKey) || records[0];
     const second = records.find(record => record.id !== current?.id) || current;
     const choices = selected => records.map(record => `<option value="${esc(record.id)}" ${record.id === selected?.id ? 'selected' : ''}>${esc(record.name)}</option>`).join('');
-    openDialog('Comparer deux révisions', `<section id="revDialog">
-      <p>Les originaux et leurs mesures restent intacts. Cette comparaison produit des propositions; aucun relevé validé n’est transféré sur un autre document.</p>
+    openDialog(overlayMode?'Aligner la superposition':'Comparer deux révisions', `<section id="revDialog">
+      <p>${overlayMode?'Alignez une autre feuille sur le plan courant pour comparer les détails ou les versions. Les quantités restent celles du plan de référence.':'Les originaux et leurs mesures restent intacts. Cette comparaison produit des propositions; aucun relevé validé n’est transféré sur un autre document.'}</p>
       ${records.length ? '' : '<p>Aucun original local disponible. Ouvrez et conservez d’abord les deux documents depuis le projet.</p>'}
       <div class="v4-fields"><label for="revBeforeDocument">A · Document de référence<select id="revBeforeDocument">${choices(current)}</select></label><label for="revBeforePage">A · Page<input id="revBeforePage" type="number" min="1" step="1" value="1"></label>
-      <label for="revAfterDocument">B · Nouvelle révision<select id="revAfterDocument">${choices(second)}</select></label><label for="revAfterPage">B · Page<input id="revAfterPage" type="number" min="1" step="1" value="1"></label></div>
+      <label for="revAfterDocument">${overlayMode?'B · Feuille à superposer':'B · Nouvelle révision'}<select id="revAfterDocument">${choices(second)}</select></label><label for="revAfterPage">B · Page<input id="revAfterPage" type="number" min="1" step="1" value="1"></label></div>
       <button type="button" id="revLoad" ${records.length ? '' : 'disabled'}>Charger les aperçus</button><p id="revLoadState" role="status">Choisissez les documents et pages à afficher.</p>
       <div class="v4-fields"><label for="revMarker">Repère à renseigner<select id="revMarker"><option value="first">Repère 1</option><option value="second">Repère 2</option><option value="control">Contrôle indépendant</option></select></label>
       <label for="revThreshold">Seuil du contrôle (%)<input id="revThreshold" type="number" min="0.000001" step="any" value="1"></label></div>
@@ -13228,12 +13351,13 @@ const revisionUIFactory = (function createRevisionUI(options) {
       <p id="revMarkers" role="status"></p><label><input id="revShowOverlay" type="checkbox" checked> Superposer B sur A à 40 % après alignement</label>
       <div class="modal-actions"><button type="button" id="revReset">Effacer les repères</button><button type="button" class="primary" id="revCompare" disabled>Comparer</button></div>
       <p id="revError" class="v4-error" role="alert"></p><div id="revResults" aria-live="polite"></div>
-      <div class="modal-actions"><button type="button" id="revClose">Fermer</button><button type="button" id="revSaveReport" disabled>Enregistrer le rapport proposé</button></div>
-      <p>La comparaison des zones utilise leurs identifiants stables. Des identifiants différents apparaissent comme ajout et retrait. Produits et finis ne sont pas comparés automatiquement.</p></section>`, 'wide');
+      <div class="modal-actions"><button type="button" id="revClose">Fermer</button><button type="button" id="revSaveReport" ${overlayMode?'hidden':''} disabled>Enregistrer le rapport proposé</button>${overlayMode?'<button type="button" id="revApplyOverlay" disabled>Afficher sur le plan</button>':''}</div>
+      <p>${overlayMode?'Le troisième repère doit se trouver hors de l’axe des deux premiers. Après application, réglez l’opacité ou choisissez la comparaison en rouge et bleu.':'La comparaison des zones utilise leurs identifiants stables. Des identifiants différents apparaissent comme ajout et retrait. Produits et finis ne sont pas comparés automatiquement.'}</p></section>`, 'wide');
 
     let views = {}, loaded = null, alignment = null, report = null, generation = 0, comparisonVersion = 0;
     let markers = freshMarkers();
     const modal = $('#revDialog');
+    if(overlayMode){$('#revBeforeDocument').value=config.reference.documentKey;$('#revBeforeDocument').disabled=true;$('#revBeforePage').value=String(config.reference.page);$('#revBeforePage').readOnly=true;$('#revAfterPage').value=String(second?.id===config.reference.documentKey&&state.pages>1?(config.reference.page===1?2:1):1);}
     const error = failure => { if ($('#revError')) $('#revError').textContent = failure.message || String(failure); };
     function freshMarkers() { return { first: { A: null, B: null }, second: { A: null, B: null }, control: { A: null, B: null } }; }
     function selection() {
@@ -13253,6 +13377,7 @@ const revisionUIFactory = (function createRevisionUI(options) {
       $('#revMarkers').textContent = Object.keys(names).map(key => `${names[key]} : A ${location(markers[key].A)} · B ${location(markers[key].B)}`).join(' | ');
       $('#revCompare').disabled = !sameSelection() || !Object.keys(names).every(key => markers[key].A && markers[key].B);
       $('#revSaveReport').disabled = !report;
+      if(overlayMode)$('#revApplyOverlay').disabled=!report||!alignment?.verified||!sameSelection();
     }
     function coordinates() {
       for (const side of ['A', 'B']) {
@@ -13368,8 +13493,10 @@ const revisionUIFactory = (function createRevisionUI(options) {
           pairs: ['first', 'second'].map(key => ({ from: markers[key].B, to: markers[key].A })),
           control: { from: markers.control.B, to: markers.control.A }, maxDeviationPercent: threshold,
         });
+        if(overlayMode)alignment=config.validateAlignment(alignment);
         draw(); report = null; update();
         if (!alignment.verified) throw new Error(`Alignement non fiable : écart du contrôle ${number(alignment.deviationPercent)} %, au-delà de ${number(threshold)} %. Corrigez les repères.`);
+        if(overlayMode){report={source:structuredClone(loaded),alignment:structuredClone(alignment)};$('#revResults').textContent=`Alignement contrôlé : rotation ${number(alignment.rotationDegrees)}°, échelle ${number(alignment.scale)}, écart ${number(alignment.deviationPercent)} %. Les échelles et quantités du relevé sont conservées.`;update();return;}
         const source = structuredClone(loaded), token = generation;
         const [before, after] = await Promise.all([getMeasurements(source.beforeDocument, source.beforePage), getMeasurements(source.afterDocument, source.afterPage)]);
         if (!modal.isConnected || token !== generation || comparisonToken !== comparisonVersion || JSON.stringify(source) !== JSON.stringify(loaded)) return;
@@ -13399,6 +13526,7 @@ const revisionUIFactory = (function createRevisionUI(options) {
         $('#revSaveReport').disabled = true;
       } catch (failure) { error(failure); }
     };
+    if(overlayMode)$('#revApplyOverlay').onclick=async()=>{try{if(!report||!alignment?.verified||!sameSelection())throw new Error('Vérifiez d’abord les trois correspondances.');$('#revApplyOverlay').disabled=true;await config.onApply({source:structuredClone(loaded),alignment:structuredClone(alignment),images:{A:views.A.image,B:views.B.image}});if(modal.isConnected){cleanup();closeDialog();}}catch(failure){error(failure);update();}};
     update();
   }
 
@@ -14174,7 +14302,7 @@ $('#root').innerHTML=`<div class="app">
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+'<small>Mesurer et naviguer</small>';
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 const canvas=$('#planCanvas'), ctx=canvas.getContext('2d');
-let specificationUI=null,pdfIntelligenceUI=null;
+let specificationUI=null,pdfIntelligenceUI=null,planOverlayUI=null;
 const pdfNavigationHistory=[];
 let workspaceAppearance=null;
 const specificationEntryIndexes=new WeakMap();
@@ -14193,6 +14321,7 @@ function renderPlanScene() {
   ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);
   if(S.plan){const rotation=viewRotation();if(rotation===90)ctx.transform(0,1,-1,0,S.plan.height,0);else if(rotation===180)ctx.transform(-1,0,0,-1,S.plan.width,S.plan.height);else if(rotation===270)ctx.transform(0,-1,1,0,0,S.plan.width);}
   if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';}
+  planOverlayUI?.paint(ctx);
   for(const item of S.items.filter(item=>item.page===S.page)) {
     if(isKitchenElevation(item))continue;
     const active=S.selection.has(item.id),color=colorForItem(item);ctx.save();
@@ -15367,7 +15496,7 @@ function refresh() {
   canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   $('#toggleTileGrid').setAttribute('aria-pressed',String(S.tileGrid));
   $('#hint').hidden=true;
-  refreshWorkflow();refreshManualUI();renderTakeoffSummary();pdfIntelligenceUI?.render();
+  refreshWorkflow();refreshManualUI();renderTakeoffSummary();pdfIntelligenceUI?.render();planOverlayUI?.render();
 }
 function downloadBlob(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
@@ -16244,6 +16373,11 @@ const revisionUI=revisionUIFactory({revisions,documents,getState:()=>S,save,reme
     return{rooms:(state?.items||[]).filter(item=>item.page===page&&item.kind==='area'&&!item.work?.roomBoundary).map(item=>({id:item.work?.revisionMatchId||item.id,points:item.points,holes:getHoles(item)})),feetPerUnit:state?.scales[page]||null,verified:!!state?.scaleMeta[page]?.verified};
   }});
 revisionUI.install();
+planOverlayUI=planOverlayFactory({document,canvas,revisions,getState:()=>S,
+  getDocuments:()=>{const docs=(S.estimation.workspace?.documents||[]).filter(d=>!d.excluded&&d.fingerprint&&d.pageCount>0).map(d=>({key:d.fingerprint,name:d.fileName||d.name,pages:d.pageCount}));if(S.plan&&!docs.some(d=>d.key===S.documentKey))docs.push({key:S.documentKey,name:S.fileName,pages:S.pages});return docs;},
+  readImage:source=>readPlanImage(source),openAlignment:config=>revisionUI.show(config),requestDraw:draw,
+  persist:()=>{const saved=persistence.save(S),shared=projectSession.save(S);if(!saved||!shared)toast('Réglages de superposition non sauvegardés localement. Exportez le relevé pour les conserver.');},toast});
+planOverlayUI.install();
 const legendUI=legendUIFactory({legends,getState:()=>S,remember,save,openDialog,toast,esc,uid});
 legendUI.install();
 $('#workspaceTools').insertAdjacentHTML('beforeend','<button type="button" id="devisToolBtn" title="Analyser et consulter les finis des plans"><span aria-hidden="true">▤</span> Devis.AI</button>');
@@ -16329,7 +16463,7 @@ workspaceAppearance=workspaceAppearanceFactory({document,window,
   },
   onOpenRight:()=>specificationUI.open(specificationUI.getActiveTab()),
   parkNavigation:host=>{
-    const navigation=['manualSelect','manualPan','manualFit','manualZoomIn','manualZoomOut'],links=['pdfFinishSearchBtn','pdfSheetLinksBtn'],ids=new Set([...navigation,...links]);
+    const navigation=['manualSelect','manualPan','manualFit','manualZoomIn','manualZoomOut'],links=['pdfFinishSearchBtn','pdfSheetLinksBtn','planOverlayBtn'],ids=new Set([...navigation,...links]);
     for(const id of navigation)floatingPlanToolGroup(host,'navigation','Navigation').append($('#'+id));
     for(const id of links)floatingPlanToolGroup(host,'links','Plans').append($('#'+id));
     ribbonOverflowState.entries=ribbonOverflowState.entries.filter(entry=>!ids.has(entry.button.id));
