@@ -38,6 +38,14 @@ Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`
 - **Magic MCP / 21st MCP** : proxy de composants UI vers un service distant; génération AI conditionnelle/payante, sans intérêt direct pour la détection des pièces. Aucune installation/clé, aucune refonte React/Tailwind sans validation visuelle spécifique de l'utilisateur.
 - Guide : `docs/NAC_EGM_FREELLMAPI_MAGIC_CODEX.md`. Veille dans `.agents/skills/const-ia-takeoff-nac/references/trois-depots-egm-freellmapi-magic.md`. Séparer `DOCUMENTE`, `PLUGIN INSTALLE SUR PC`, `EXECUTE` et `TEST METIER VALIDE`.
 
+## Veille YouTube NAC : classements et chapitres
+
+- Les compétences **$yt-viral** et **$yt-chapters** sont intégrées au dépôt `.agents/skills/` comme aides à la veille des CINQ créateurs existants de CONST. IA & Takeoff — NAC. Python 3 standard, sans clé YouTube requise pour traiter des fichiers locaux; les scripts ne collectent pas les vidéos ni les sous-titres.
+- `$yt-viral` : prendre un JSON vérifié (chaîne, titre, URL, vues) d'au moins quatre vidéos par chaîne; calculer le ratio vues/médiane. Trier ensuite selon la **pertinence réelle pour les plans PDF et le takeoff**, pas seulement selon la popularité.
+- `$yt-chapters` : proposer des chapitres horodatés à partir de sous-titres SRT, VTT ou Whisper JSON autorisés; confirmer les minutes et les thèmes à partir du contenu réellement accessible. Ne jamais prétendre avoir regardé des images depuis les seuls sous-titres.
+- Lire `docs/NAC_YOUTUBE_VIRAL_CHAPTERS_CODEX.md` et `.agents/skills/const-ia-takeoff-nac/references/youtube-agent-skill-integration.md`. Les neuf autres skills du pack de Jake Schincariol ne sont pas installés.
+- Aucune publication YouTube, aucun service payant, aucune copie de plans confidentiels dans des services distants et aucune modification du fichier HTML pour la veille. Indiquer les résultats des scripts uniquement après exécution documentée.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.

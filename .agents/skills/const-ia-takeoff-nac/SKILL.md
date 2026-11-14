@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -43,6 +43,17 @@ Lire [trois-depots-egm-freellmapi-magic.md](references/trois-depots-egm-freellma
 - **Magic MCP / 21st MCP — P3 ergonomie uniquement** : `@21st-dev/magic` est maintenant un proxy vers le service MCP HTTP distant 21st. Certaines fonctionnalités de génération et de récupération peuvent être payantes. Ne pas installer ou appeler ce service automatiquement, ni remplacer l'interface HTML V7 par React/Tailwind. Les changements d'apparence exigent la validation visuelle explicite de l'utilisateur.
 
 Dans le rapport NAC, utiliser des états distincts : `ANALYSÉ`, `PR DOCUMENTÉE`, `PLUGIN INSTALLÉ`, `OUTIL EXÉCUTÉ`, `TEST MÉTIER VALIDÉ`. Une PR ne prouve pas l'installation de composants sur le Mac/PC, et une revue de documents ne prouve pas l'exactitude du takeoff automatisé.
+
+## Extension YouTube : yt-viral + yt-chapters pour la veille
+
+Lire [youtube-agent-skill-integration.md](references/youtube-agent-skill-integration.md) et le guide de Codex `docs/NAC_YOUTUBE_VIRAL_CHAPTERS_CODEX.md`. Les deux compétences et leurs scripts Python sans dépendance externe sont fournis sous `.agents/skills/yt-viral/` et `.agents/skills/yt-chapters/` sur le dépôt, source MIT Jake Schincariol. Les autres compétences du pack YouTube ne sont pas installées.
+
+- **$yt-viral — repérage** : sur un fichier JSON de vidéos publiques, classer la performance relative à la médiane des vidéos comparables de CHAQUE chaîne (au moins quatre vidéos par chaîne), puis retenir les sujets techniquement pertinents pour le takeoff de plancher. Les vues seules ne démontrent ni l'importance technique ni l'accès aux paroles. Le script n'interroge pas l'API YouTube et n'invente aucune donnée.
+- **$yt-chapters — localisation des passages** : sur les transcriptions horodatées SRT/VTT/Whisper JSON auxquelles on a légitimement accès, proposer des frontières et titres de chapitres. Réviser les titres et consulter ensuite la source complète ou l'extrait autorisé. Une segmentation textuelle ne prouve pas que les étapes démontrées à l'écran ont été observées.
+
+**Workflow à suivre si des sources existent** : inventorier les cinq chaînes et les vidéos récentes/archives → qualifier par le sujet (PDF, détection de pièces, murs, nomenclatures, surfaces, calculs, IA, tests) → **facultativement** calculer les ratios yt-viral sur données vérifiables → retrouver les sous-titres accessibles → **facultativement** indexer les chapitres yt-chapters → vérifier méthodes et démonstrations → produire le rapport « Ce qu'on a appris » et, si utile, une fiche prête pour Codex. L'absence de données ne bloque jamais l'analyse normale de NAC.
+
+**Ne pas** transformer NAC en gestion de chaîne YouTube, publier de contenu, utiliser des clés personnelles, contourner YouTube ou envoyer des fichiers clients. Aucun appel au code ou moteur externe dans `Quantif-Plancher-V7.html`. Pour le rapport, séparer les statuts `VIDEO REPERÉE`, `RATIO CALCULÉ`, `CHAPITRES PROPOSÉS`, `TRANSCRIPTION LUE`, `DEMONSTRATION VERIFIÉE` et `TECHNIQUE TESTÉE`. Les classements et chapitres doivent rester des aides au tri, non des preuves scientifiques.
 
 ## Déroulement d’une analyse
 
