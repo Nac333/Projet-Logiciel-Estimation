@@ -1,0 +1,16 @@
+{
+  "checked_on": "2026-11-13",
+  "upstream_commits": {
+    "vercel": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "taste": "f6b76575f949707b4e3c37cd86cb44b0b98643e8",
+    "image": "beb16b0d0f4dae9a6f5cb04ea41e97b93a54ab8e",
+    "playwright": "b21724888b8100b05ef8dee3a92f2bb03bf4dcde",
+    "guidelines": "434b7f91364665f2f733b310ec54809bf8f37937",
+    "awesome": "fcc70284932276d085f01ef9f83edde90b1258cb"
+  },
+  "adaptations": [
+    "aite-design-taste",
+    "aite-image-to-code"
+  ],
+  "remote_21st_enabled": false
+}
