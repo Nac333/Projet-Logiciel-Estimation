@@ -10757,6 +10757,7 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
   const find=id=>doc.getElementById(id),limit=2048;
   let cache=null,sourceCache=null,sourcePending=null,generation=0,attempted='',preparing=null,error='',panelContext=null,observedContext=null,observedPlan=null;
   let alignmentSession=null,alignmentGeneration=0,chooserGeneration=0,layerSignature='',layerHost=null;
+  let nativeView=null;
   const frame=value=>{if(!value||!['width','height'].every(k=>Number.isSafeInteger(value[k])&&value[k]>0&&value[k]<=100000))throw new Error('Dimensions de superposition invalides.');return {width:value.width,height:value.height};};
   const identity=value=>{if(!value||typeof value.documentKey!=='string'||!value.documentKey||value.documentKey.length>1000||!Number.isSafeInteger(value.page)||value.page<1)throw new Error('Feuille de superposition invalide.');return {documentKey:value.documentKey,page:value.page,...frame(value)};};
   function checkedAlignment(value){
@@ -10821,14 +10822,36 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
   async function decode(source){const result=await readImage(source);if(!result||typeof result.url!=='string'||!/^data:image\/(png|jpeg|webp);base64,/.test(result.url))throw new Error('Image locale de superposition indisponible.');return new Promise((resolve,reject)=>{const image=new win.Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Image de superposition illisible.'));image.src=result.url;});}
   function acquireSource(config,provided){
     const key=JSON.stringify([scope(),config.source]);if(sourceCache?.key===key)return Promise.resolve(sourceCache);if(sourcePending?.key===key)return sourcePending.promise;
-    const pending={key,promise:null};pending.promise=Promise.resolve().then(async()=>{const image=provided||await decode(config.source);if(!sameFrame(image,config.source))throw new Error('Les dimensions de la source ont changé. Recommencez l’alignement.');return {...scaled(image),key};}).finally(()=>{if(sourcePending===pending)sourcePending=null;});sourcePending=pending;return pending.promise;
+    const pending={key,promise:null};pending.promise=Promise.resolve().then(async()=>{const image=provided||await decode(config.source);if(!sameFrame(image,config.source))throw new Error('Les dimensions de la source ont changé. Recommencez l’alignement.');return {image,width:config.source.width,height:config.source.height,key,preview:null};}).finally(()=>{if(sourcePending===pending)sourcePending=null;});sourcePending=pending;return pending.promise;
+  }
+  function sourcePreview(source){if(!source.preview)source.preview=scaled(source.image);return source.preview.canvas;}
+  function clearNativeView(){if(nativeView){nativeView.canvas.width=0;nativeView.canvas.height=0;}nativeView=null;}
+  function paintNative(context,source,matrix,color,opacity){
+    const width=context.canvas.width,height=context.canvas.height;if(!width||!height)return;
+    context.save();context.transform(matrix.a,matrix.b,-matrix.b,matrix.a,matrix.tx,matrix.ty);const m=context.getTransform();context.restore();
+    const signature=JSON.stringify([width,height,m.a,m.b,m.c,m.d,m.e,m.f,color,context.imageSmoothingEnabled,context.imageSmoothingQuality]);
+    if(!nativeView)nativeView={canvas:canvas(width,height),source:null,signature:null};
+    const surface=nativeView.canvas;
+    if(nativeView.source!==source.image||nativeView.signature!==signature){
+      if(surface.width!==width||surface.height!==height){surface.width=width;surface.height=height;}
+      const ctx=surface.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';ctx.fillStyle='white';ctx.fillRect(0,0,width,height);
+      ctx.imageSmoothingEnabled=context.imageSmoothingEnabled;ctx.imageSmoothingQuality=context.imageSmoothingQuality;
+      const inverse=m.inverse(),corners=[[0,0],[width,0],[width,height],[0,height]].map(([x,y])=>({x:inverse.a*x+inverse.c*y+inverse.e,y:inverse.b*x+inverse.d*y+inverse.f}));
+      const left=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x)))-2),top=Math.max(0,Math.floor(Math.min(...corners.map(p=>p.y)))-2),right=Math.min(source.width,Math.ceil(Math.max(...corners.map(p=>p.x)))+2),bottom=Math.min(source.height,Math.ceil(Math.max(...corners.map(p=>p.y)))+2);
+      ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);ctx.filter='grayscale(1)';if(right>left&&bottom>top)ctx.drawImage(source.image,left,top,right-left,bottom-top,left,top,right-left,bottom-top);
+      ctx.setTransform(1,0,0,1,0,0);ctx.filter='none';ctx.globalCompositeOperation='screen';ctx.fillStyle=color;ctx.fillRect(0,0,width,height);ctx.globalCompositeOperation='source-over';
+      nativeView.source=source.image;nativeView.signature=signature;
+    }
+    // Rasterize straight from the same native resolution as A into a single
+    // viewport-sized buffer. No reduced full-page image is enlarged at zoom.
+    context.save();context.setTransform(1,0,0,1,0,0);context.globalAlpha*=opacity;context.globalCompositeOperation='multiply';context.drawImage(surface,0,0);context.restore();
   }
   function compose(config,base,source){
     if(config.mode==='normal'){
-      const c=canvas(source.canvas.width,source.canvas.height),ctx=c.getContext('2d'),pixels=source.canvas.getContext('2d').getImageData(0,0,c.width,c.height);pixels.data.set(tintPixels(pixels.data,config.color));ctx.putImageData(pixels,0,0);return {canvas:c,width:config.source.width,height:config.source.height,mode:'normal',matrix:config.alignment.matrix};
+      return {source,width:config.source.width,height:config.source.height,mode:'normal',matrix:config.alignment.matrix};
     }
     const small=scaled(base),a=small.canvas,b=canvas(a.width,a.height),ctx=b.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,b.width,b.height);
-    const sx=a.width/config.base.width,sy=a.height/config.base.height,m=config.alignment.matrix;ctx.setTransform(sx*m.a,sy*m.b,-sx*m.b,sy*m.a,sx*m.tx,sy*m.ty);ctx.drawImage(source.canvas,0,0,config.source.width,config.source.height);
+    const sx=a.width/config.base.width,sy=a.height/config.base.height,m=config.alignment.matrix;ctx.setTransform(sx*m.a,sy*m.b,-sx*m.b,sy*m.a,sx*m.tx,sy*m.ty);ctx.drawImage(sourcePreview(source),0,0,config.source.width,config.source.height);
     const result=canvas(a.width,a.height),pixels=a.getContext('2d').getImageData(0,0,a.width,a.height);pixels.data.set(differencePixels(pixels.data,b.getContext('2d').getImageData(0,0,b.width,b.height).data,a.width,a.height,config.color));result.getContext('2d').putImageData(pixels,0,0);return {canvas:result,width:config.base.width,height:config.base.height,mode:'revision'};
   }
   function prepare(config,provided){
@@ -10907,7 +10930,7 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
       const finish=find('planOverlayFinish');finish.textContent='Chargement…';find('planOverlayChooseError').textContent='';
       try{
         const sourceImage=await decode(chosen);if(!alive())return;
-        const config=validate({base,source:{...chosen,width:sourceImage.naturalWidth,height:sourceImage.naturalHeight},name,alignment:{method:'page-origin'},mode,color,opacity:mode==='revision'?1:.45,enabled:true});
+        const config=validate({base,source:{...chosen,width:sourceImage.naturalWidth,height:sourceImage.naturalHeight},name,alignment:{method:'page-origin'},mode,color,opacity:mode==='revision'?1:.85,enabled:true});
         if(!sourceAvailable(config))throw new Error('La feuille choisie n’est plus disponible dans ce projet.');
         options.closeDialog();panelContext=scope();find('planOverlayPanel').hidden=false;saveConfig(config,sourceImage);
         options.openDialog('Aligner la superposition ?',`<section id="planOverlayAlignPrompt"><p>Les deux plans sont affichés l’un sur l’autre.</p><p>S’ils sont déjà bien placés, conservez ce placement. Sinon, alignez-les avec deux repères correspondants.</p><div class="modal-actions"><button type="button" id="planOverlayKeepPlacement">Non, conserver le placement</button><button type="button" id="planOverlayAlignNow" class="primary">Oui, aligner</button></div></section>`);
@@ -10926,44 +10949,89 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     const context=scope(),image=getState().plan,signature=JSON.stringify(raw()),token=++alignmentGeneration;
     const source=await acquireSource(config);
     if(token!==alignmentGeneration||!validContext(context,image)||signature!==JSON.stringify(raw()))return;
-    sourceCache=source;alignmentSession={config,context,image,source,signature,points:[],matrix:config.alignment.matrix,result:null};
+    sourceCache=source;alignmentSession={config,context,image,source,signature,points:[],matrix:config.alignment.matrix,previewMatrix:{...config.alignment.matrix},result:null,drag:null};
     find('planOverlayPanel').hidden=true;options.canvas.style.cursor='crosshair';updateAlignment();options.canvas.focus();requestDraw();
   }
+  function releasePointer(drag){if(drag&&options.canvas.hasPointerCapture?.(drag.pointer))options.canvas.releasePointerCapture(drag.pointer);}
   function cancelAlignment(){
     alignmentGeneration++;
     if(!alignmentSession)return;
+    if(alignmentSession.drag){getState().dragged=true;releasePointer(alignmentSession.drag);}
     alignmentSession=null;find('planOverlayAlignmentBar').hidden=true;options.canvas.style.cursor=getState().tool==='hand'?'grab':'default';requestDraw();
   }
   function updateAlignment(message=''){
     const session=alignmentSession;if(!session)return;
-    const bar=find('planOverlayAlignmentBar'),step=session.points.length;bar.hidden=false;bar.dataset.step=String(step);
-    find('planOverlayAlignmentStep').textContent=step<4?'Alignement · '+(step+1)+' / 4':'Placement prêt';
+    const bar=find('planOverlayAlignmentBar'),step=session.points.length;bar.hidden=false;bar.dataset.step=String(step);bar.dataset.view='combined';
+    find('planOverlayAlignmentStep').textContent=step<4?'Repère '+(Math.floor(step/2)+1)+' / 2':'Placement prêt';
     find('planOverlayAlignmentInstruction').textContent=message||[
-      'Sur la superposition, cliquez le premier repère.',
-      'Sur le plan de référence, cliquez le même repère.',
-      'Sur la superposition, cliquez un second repère éloigné du premier.',
-      'Sur le plan de référence, cliquez ce second repère.',
-      'Vérifiez le résultat, puis cliquez sur Terminer.'
+      'Glissez un premier repère rouge sur son correspondant noir.',
+      'Cliquez sur le point noir correspondant au premier repère rouge.',
+      'Glissez un second repère rouge sur son correspondant noir, loin du premier.',
+      'Cliquez sur le point noir correspondant au second repère rouge.',
+      'Les deux repères sont placés. Vérifiez, puis cliquez sur Terminer.'
     ][step];
-    find('planOverlayAlignmentSide').textContent=step===4?'A + B':step%2===0?'B · Superposition':'A · Référence';
+    find('planOverlayAlignmentSide').textContent='Original noir + plan superposé';
     find('planOverlayAlignmentBack').disabled=step===0;find('planOverlayAlignmentFinish').hidden=step!==4;
     requestDraw();
   }
+  const inFrame=(point,size)=>point&&Number.isFinite(point.x)&&Number.isFinite(point.y)&&point.x>=0&&point.y>=0&&point.x<=size.width&&point.y<=size.height;
+  function sourcePoint(point,m){const denominator=m.a*m.a+m.b*m.b,dx=point.x-m.tx,dy=point.y-m.ty;return {x:(m.a*dx+m.b*dy)/denominator,y:(-m.b*dx+m.a*dy)/denominator};}
+  function placedMatrix(session,from,to){
+    if(session.points.length<2){const m=session.matrix;return {a:m.a,b:m.b,tx:to.x-m.a*from.x+m.b*from.y,ty:to.y-m.b*from.x-m.a*from.y};}
+    return checkedAlignment({method:'two-points',pairs:[{from:session.points[0],to:session.points[1]},{from,to}]}).matrix;
+  }
+  function syncPlacement(session){
+    session.result=null;session.previewMatrix={...session.matrix};
+    if(session.points.length>=2)session.previewMatrix=placedMatrix({...session,points:[]},session.points[0],session.points[1]);
+    if(session.points.length===4){session.result=checkedAlignment({method:'two-points',pairs:[{from:session.points[0],to:session.points[1]},{from:session.points[2],to:session.points[3]}]});session.previewMatrix=session.result.matrix;}
+  }
   function pick(point){
     if(!aligning())return false;
-    const session=alignmentSession,step=session.points.length;if(step===4)return true;
-    let native={...point};const sourceSide=step%2===0;
-    if(sourceSide){const m=session.matrix,denominator=m.a*m.a+m.b*m.b,dx=point.x-m.tx,dy=point.y-m.ty;native={x:(m.a*dx+m.b*dy)/denominator,y:(-m.b*dx+m.a*dy)/denominator};}
-    const size=sourceSide?session.config.source:session.config.base;
-    if(!Number.isFinite(native.x)||!Number.isFinite(native.y)||native.x<0||native.y<0||native.x>size.width||native.y>size.height){updateAlignment('Cliquez un repère à l’intérieur de la feuille affichée.');return true;}
+    const session=alignmentSession,step=session.points.length;if(step===4||session.drag)return true;
+    const sourceSide=step%2===0,native=sourceSide?sourcePoint(point,session.previewMatrix):{...point},size=sourceSide?session.config.source:session.config.base;
+    if(!inFrame(native,size)){updateAlignment('Choisissez un point à l’intérieur du plan '+(sourceSide?'rouge.':'noir.'));return true;}
     if(step>=2&&Math.hypot(native.x-session.points[step-2].x,native.y-session.points[step-2].y)<1){updateAlignment('Choisissez un second repère distinct et éloigné du premier.');return true;}
     session.points.push(native);
-    if(session.points.length===4){try{session.result=checkedAlignment({method:'two-points',pairs:[{from:session.points[0],to:session.points[1]},{from:session.points[2],to:session.points[3]}]});}catch(failure){session.points.pop();updateAlignment(failure.message);return true;}}
+    try{syncPlacement(session);}catch(failure){session.points.pop();syncPlacement(session);updateAlignment(failure.message);return true;}
     updateAlignment();return true;
   }
-  function backAlignment(){if(!aligning())return;alignmentSession.points.pop();alignmentSession.result=null;updateAlignment();}
+  function pointerDown(event,point){
+    if(!aligning()||event.button!==0||event.isPrimary===false)return false;
+    const session=alignmentSession;if(session.points.length===4||session.points.length%2)return false;
+    const from=sourcePoint(point,session.previewMatrix);
+    if(!inFrame(from,session.config.source)){updateAlignment('Choisissez un repère sur le plan rouge.');return true;}
+    if(session.points.length===2&&Math.hypot(from.x-session.points[0].x,from.y-session.points[0].y)<1){updateAlignment('Choisissez un second repère distinct et éloigné du premier.');return true;}
+    session.drag={pointer:event.pointerId,from,start:{x:event.clientX,y:event.clientY},before:{...session.previewMatrix},moved:false};
+    options.canvas.setPointerCapture?.(event.pointerId);event.preventDefault();return true;
+  }
+  function pointerMove(event,point){
+    if(!aligning()||!alignmentSession.drag||alignmentSession.drag.pointer!==event.pointerId)return false;
+    if(event.buttons===0){pointerCancel(event);return true;}
+    const session=alignmentSession,drag=session.drag;
+    drag.moved=drag.moved||Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>3;
+    if(!drag.moved)return true;
+    if(!inFrame(point,session.config.base)){updateAlignment('Déposez le repère sur le plan noir, ou Échap pour annuler.');return true;}
+    try{session.previewMatrix=placedMatrix(session,drag.from,point);drag.target={...point};updateAlignment('Relâchez sur le repère noir. Les deux plans restent visibles.');}catch(failure){updateAlignment(failure.message);}
+    return true;
+  }
+  function pointerUp(event,point){
+    if(!aligning()||!alignmentSession.drag||alignmentSession.drag.pointer!==event.pointerId)return false;
+    const session=alignmentSession,drag=session.drag;session.drag=null;releasePointer(drag);
+    const moved=drag.moved||Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>3;
+    if(!moved){session.previewMatrix=drag.before;return false;}
+    if(!inFrame(point,session.config.base)){session.previewMatrix=drag.before;updateAlignment('Déposez le repère à l’intérieur du plan noir.');return true;}
+    try{placedMatrix(session,drag.from,point);session.points.push(drag.from,{...point});syncPlacement(session);updateAlignment();}
+    catch(failure){session.previewMatrix=drag.before;updateAlignment(failure.message);}
+    return true;
+  }
+  function pointerCancel(event){
+    if(!alignmentSession?.drag)return;
+    if(event&&event.pointerId!==alignmentSession.drag.pointer)return;
+    const session=alignmentSession,drag=session.drag;session.drag=null;session.previewMatrix=drag.before;getState().dragged=true;releasePointer(drag);updateAlignment();
+  }
+  function backAlignment(){if(!aligning())return;pointerCancel();alignmentSession.points.pop();syncPlacement(alignmentSession);updateAlignment();}
   function finishAlignment(){
-    if(!aligning()||!alignmentSession.result)return;
+    if(!aligning()||!alignmentSession.result||alignmentSession.drag)return;
     const session=alignmentSession;
     if(JSON.stringify(raw())!==session.signature){cancelAlignment();toast('La superposition a changé. Recommencez l’alignement.');return;}
     const value=validate({...session.config,alignment:session.result});cancelAlignment();saveConfig(value);panelContext=scope();find('planOverlayPanel').hidden=false;options.canvas.focus();
@@ -10984,19 +11052,13 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
   }
   function paintAlignment(context){
     if(!aligning())return false;
-    const session=alignmentSession,step=session.points.length,bSide=step%2===0&&step<4;
-    // The host already applied DPR, view rotation, zoom and pan. Paint one
-    // sheet at a time so the four clicks have an unambiguous coordinate frame.
-    context.save();
-    if(bSide){const m=session.matrix;context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);context.drawImage(session.source.canvas,0,0,session.config.source.width,session.config.source.height);}
-    else{context.drawImage(session.image,0,0);if(step===4){const m=session.result.matrix;context.globalAlpha=.45;context.globalCompositeOperation='multiply';context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);context.drawImage(session.source.canvas,0,0,session.config.source.width,session.config.source.height);}}
-    context.restore();
-    const zoom=getState().zoom||1;
-    session.points.forEach((point,index)=>{
-      if(step<4&&(index%2===0)!==bSide)return;
-      if(step===4&&index%2===0)return;
-      let p=point;if(index%2===0){const m=session.matrix;p={x:m.a*point.x-m.b*point.y+m.tx,y:m.b*point.x+m.a*point.y+m.ty};}
-      const radius=6/zoom;context.save();context.beginPath();context.arc(p.x,p.y,radius,0,Math.PI*2);context.fillStyle='#0966cc';context.fill();context.strokeStyle='white';context.lineWidth=2/zoom;context.stroke();context.font='bold '+14/zoom+'px Arial';context.fillStyle='#0966cc';context.fillText(String(Math.floor(index/2)+1),p.x+10/zoom,p.y-9/zoom);context.restore();
+    const session=alignmentSession,m=session.previewMatrix;
+    context.drawImage(session.image,0,0);
+    paintNative(context,session.source,m,session.config.color,Math.max(.85,session.config.opacity));
+    const zoom=getState().zoom||1,marks=[...session.points];if(session.drag)marks.push(session.drag.from);
+    marks.forEach((point,index)=>{
+      const from=index%2===0,p=from?{x:m.a*point.x-m.b*point.y+m.tx,y:m.b*point.x+m.a*point.y+m.ty}:point,radius=(from?7:4)/zoom;
+      context.save();context.beginPath();context.arc(p.x,p.y,radius,0,Math.PI*2);context.strokeStyle=from?session.config.color:'#132d43';context.lineWidth=2/zoom;context.fillStyle='white';context.fill();context.stroke();context.font='bold '+13/zoom+'px Arial';context.fillStyle=from?session.config.color:'#132d43';context.fillText(String(Math.floor(index/2)+1),p.x+10/zoom,p.y-9/zoom);context.restore();
     });
     return true;
   }
@@ -11008,7 +11070,7 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     if(layerSignature===signature&&layerHost?.isConnected&&layerHost.previousElementSibling===row)return;
     find('planOverlayLayer')?.remove();const layer=doc.createElement('div');layer.id='planOverlayLayer';layer.className='overlay-layer-row';layer.setAttribute('aria-label','Couche de superposition');
     const source=getDocuments().find(d=>d.key===config.source.documentKey),name=config.name||labelOf(source,config.source.page);
-    layer.innerHTML='<input type="checkbox" aria-label="Afficher la superposition" '+(config.enabled?'checked':'')+'><input type="color" aria-label="Couleur de la superposition" value="'+config.color+'"><button type="button" class="overlay-layer-name" title="Réglages de la superposition">'+escape(name)+'</button><button type="button" class="overlay-layer-align" aria-label="Réaligner la superposition" title="Réaligner en quatre clics">⤧</button>';
+    layer.innerHTML='<input type="checkbox" aria-label="Afficher la superposition" '+(config.enabled?'checked':'')+'><input type="color" aria-label="Couleur de la superposition" value="'+config.color+'"><button type="button" class="overlay-layer-name" title="Réglages de la superposition">'+escape(name)+'</button><button type="button" class="overlay-layer-align" aria-label="Réaligner la superposition" title="Ajuster par deux repères">⤧</button>';
     layer.querySelector('input[type=checkbox]').onchange=e=>change({enabled:e.target.checked});layer.querySelector('input[type=color]').onchange=e=>change({color:e.target.value});
     layer.querySelector('.overlay-layer-name').onclick=()=>{panelContext=scope();find('planOverlayPanel').hidden=false;render();};layer.querySelector('.overlay-layer-align').onclick=()=>run(startAlignment());
     row.after(layer);layerSignature=signature;layerHost=layer;
@@ -11026,16 +11088,17 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
       .overlay-layer-row{display:flex;gap:5px;align-items:center;padding:4px 5px 5px 29px;color:#19364e;font:11px/1.4 'Segoe UI',Arial,sans-serif}.overlay-layer-row input[type=checkbox]{width:13px;margin:0}.overlay-layer-row input[type=color]{width:19px;height:20px;padding:0;border:0;background:transparent;flex-shrink:0}.overlay-layer-row button{padding:3px;border:0;background:transparent;color:#175580;cursor:pointer}.overlay-layer-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}.overlay-layer-align{font-size:16px}.overlay-layer-align:hover{background:#d9edff;border-radius:3px}
     `;doc.head.append(style);
     const panel=doc.createElement('section');panel.id='planOverlayPanel';panel.className='plan-overlay-panel';panel.hidden=true;panel.setAttribute('aria-label','Superposition de plans');
-    panel.innerHTML='<header><strong>Superposition de plans</strong><button type="button" id="planOverlayClose" aria-label="Fermer les réglages de superposition">×</button></header><small id="planOverlaySource"></small><label><input type="checkbox" id="planOverlayEnabled"> Afficher la superposition</label><label>Mode<select id="planOverlayMode"><option value="normal">Superposition normale</option><option value="revision">Comparaison de versions</option></select></label><label>Opacité <output id="planOverlayOpacityValue"></output><input type="range" id="planOverlayOpacity" min="0" max="100" step="5" aria-label="Opacité de la superposition"></label><label>Couleur <input type="color" id="planOverlayColor" value="#d62828"></label><div id="planOverlayLegend"></div><p id="planOverlayStatus" role="status" aria-live="polite"></p><div class="plan-overlay-actions"><button type="button" id="planOverlayAlign">Réaligner · 4 clics</button><button type="button" id="planOverlayChangeSheet">Autre feuille…</button><button type="button" id="planOverlayRemove">Retirer</button></div><p><small>Comparaison visuelle. Les mesures et l’échelle de référence sont conservées.</small></p>';
+    panel.innerHTML='<header><strong>Superposition de plans</strong><button type="button" id="planOverlayClose" aria-label="Fermer les réglages de superposition">×</button></header><small id="planOverlaySource"></small><label><input type="checkbox" id="planOverlayEnabled"> Afficher la superposition</label><label>Mode<select id="planOverlayMode"><option value="normal">Superposition normale</option><option value="revision">Comparaison de versions</option></select></label><label>Opacité <output id="planOverlayOpacityValue"></output><input type="range" id="planOverlayOpacity" min="0" max="100" step="5" aria-label="Opacité de la superposition"></label><label>Couleur <input type="color" id="planOverlayColor" value="#d62828"></label><div id="planOverlayLegend"></div><p id="planOverlayStatus" role="status" aria-live="polite"></p><div class="plan-overlay-actions"><button type="button" id="planOverlayAlign">Ajuster · 2 repères</button><button type="button" id="planOverlayChangeSheet">Autre feuille…</button><button type="button" id="planOverlayRemove">Retirer</button></div><p><small>Comparaison visuelle. Les mesures et l’échelle de référence sont conservées.</small></p>';
     options.canvas.parentElement.append(panel);
     const bar=doc.createElement('section');bar.id='planOverlayAlignmentBar';bar.className='overlay-alignment-bar';bar.hidden=true;bar.setAttribute('aria-label','Alignement de la superposition');
-    bar.innerHTML='<header><strong id="planOverlayAlignmentStep"></strong><span id="planOverlayAlignmentSide"></span></header><p id="planOverlayAlignmentInstruction" role="status" aria-live="polite"></p><footer><small>Molette : zoom · Espace + glisser : déplacer · Échap : annuler</small><div class="overlay-alignment-buttons"><button type="button" id="planOverlayAlignmentBack">Retour</button><button type="button" id="planOverlayAlignmentCancel">Annuler</button><button type="button" id="planOverlayAlignmentFinish" hidden>Terminer</button></div></footer>';
+    bar.innerHTML='<header><strong id="planOverlayAlignmentStep"></strong><span id="planOverlayAlignmentSide"></span></header><p id="planOverlayAlignmentInstruction" role="status" aria-live="polite"></p><footer><small>Glisser rouge → noir · Molette : zoom · Espace : déplacer · Échap : annuler</small><div class="overlay-alignment-buttons"><button type="button" id="planOverlayAlignmentBack">Retour</button><button type="button" id="planOverlayAlignmentCancel">Annuler</button><button type="button" id="planOverlayAlignmentFinish" hidden>Terminer</button></div></footer>';
     options.canvas.parentElement.append(bar);
     find('planOverlayBtn').onclick=()=>{if(!raw())return run(choose());if(aligning())return;panelContext=scope();panel.hidden=!panel.hidden;render();};
     find('planOverlayClose').onclick=()=>{panel.hidden=true;};find('planOverlayAlign').onclick=()=>run(startAlignment());find('planOverlayChangeSheet').onclick=()=>run(choose());
-    find('planOverlayRemove').onclick=()=>{cancelAlignment();generation++;cache=null;sourceCache=null;attempted='';error='';saveConfig(null);panel.hidden=true;};
-    find('planOverlayEnabled').onchange=e=>change({enabled:e.target.checked});find('planOverlayOpacity').oninput=e=>change({opacity:Number(e.target.value)/100});find('planOverlayColor').onchange=e=>change({color:e.target.value});find('planOverlayMode').onchange=e=>change({mode:e.target.value,opacity:e.target.value==='revision'?1:.45});
+    find('planOverlayRemove').onclick=()=>{cancelAlignment();generation++;cache=null;sourceCache=null;clearNativeView();attempted='';error='';saveConfig(null);panel.hidden=true;};
+    find('planOverlayEnabled').onchange=e=>change({enabled:e.target.checked});find('planOverlayOpacity').oninput=e=>change({opacity:Number(e.target.value)/100});find('planOverlayColor').onchange=e=>change({color:e.target.value});find('planOverlayMode').onchange=e=>change({mode:e.target.value,opacity:e.target.value==='revision'?1:.85});
     find('planOverlayAlignmentBack').onclick=backAlignment;find('planOverlayAlignmentCancel').onclick=cancelAlignment;find('planOverlayAlignmentFinish').onclick=finishAlignment;
+    options.canvas.addEventListener('lostpointercapture',event=>{if(!options.canvas.hasPointerCapture?.(event.pointerId))pointerCancel(event);});
     panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();panel.hidden=true;find('planOverlayBtn').focus();}});
     // A different command leaves alignment before that command runs. View-only
     // controls remain available and neither select nor edit measurements.
@@ -11049,11 +11112,11 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
   function run(promise){Promise.resolve(promise).catch(failure=>toast(failure.message));}
   function render(){
     if(!find('planOverlayPanel'))return;const state=getState(),context=scope(),button=find('planOverlayBtn'),panel=find('planOverlayPanel');button.disabled=!state.plan||state.loading||!!state.detectJob;
-    if(observedContext!==context||observedPlan!==state.plan){chooserGeneration++;cancelAlignment();if(observedContext!==context){sourceCache=null;sourcePending=null;}observedContext=context;observedPlan=state.plan;generation++;cache=null;attempted='';preparing=null;error='';}
+    if(observedContext!==context||observedPlan!==state.plan){chooserGeneration++;cancelAlignment();clearNativeView();if(observedContext!==context){sourceCache=null;sourcePending=null;}observedContext=context;observedPlan=state.plan;generation++;cache=null;attempted='';preparing=null;error='';}
     if(panelContext!==null&&panelContext!==context){panel.hidden=true;panelContext=null;}
     let config;try{config=current();}catch(failure){error=failure.message;}
     const relevant=config&&config.base.documentKey===state.documentKey&&config.base.page===state.page,available=relevant&&sourceAvailable(config);
-    if(!relevant||!available){cancelAlignment();if(cache||preparing){generation++;cache=null;preparing=null;attempted='';requestDraw();}if(config&&!available)error='La feuille source n’est plus disponible dans les plans actifs.';}
+    if(!relevant||!available){cancelAlignment();clearNativeView();sourceCache=null;if(cache||preparing){generation++;cache=null;preparing=null;attempted='';requestDraw();}if(config&&!available)error='La feuille source n’est plus disponible dans les plans actifs.';}
     button.setAttribute('aria-pressed',String(!!(available&&config.enabled)));button.title=available&&config.enabled?'Superposition active · Ouvrir les réglages':'Superposer et comparer deux feuilles';button.setAttribute('aria-label',button.title);
     renderLayer(relevant?config:null);
     if(relevant){
@@ -11063,16 +11126,16 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
       if(!config.enabled&&preparing){generation++;preparing=null;attempted='';}
       const signature=keyOf(config);if(available&&config.enabled&&!state.loading&&cache?.signature!==signature&&attempted!==signature)prepare(config);
       const ready=!!(cache&&cache.signature===signature&&cache.context===context),placement=config.alignment.method==='page-origin'?'Placement initial. Alignez les plans si nécessaire.':config.alignment.method==='two-points'?'Alignement manuel à deux repères. Vérifiez la concordance.':'Alignement antérieur avec contrôle indépendant conservé.';
-      find('planOverlayStatus').dataset.ready=String(ready);find('planOverlayStatus').textContent=error||(!config.enabled?'Superposition masquée.':preparing?'Préparation locale…':ready?placement+' Aperçu limité à 2 048 px.':'Superposition à préparer.');
+      find('planOverlayStatus').dataset.ready=String(ready);find('planOverlayStatus').textContent=error||(!config.enabled?'Superposition masquée.':preparing?'Préparation locale…':ready?placement+(config.mode==='normal'?' Traits et textes à la résolution d’origine.':' Comparaison visuelle limitée à 2 048 px.'):'Superposition à préparer.');
     }else {find('planOverlayStatus').dataset.ready='false';find('planOverlayStatus').textContent=error||'Choisissez une feuille à superposer.';}
   }
   function paint(context){
     if(!cache||cache.context!==scope()||cache.referenceImage!==getState().plan||getState().loading)return;let config;try{config=current();}catch{return;}if(!config?.enabled||!sourceAvailable(config)||cache.signature!==keyOf(config))return;
+    if(cache.mode==='normal'){paintNative(context,cache.source,cache.matrix,config.color,config.opacity);return;}
     context.save();context.globalAlpha=config.opacity;
-    if(cache.mode==='normal'){const m=cache.matrix;context.globalCompositeOperation='multiply';context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);}
     context.drawImage(cache.canvas,0,0,cache.width,cache.height);context.restore();
   }
-  return {install,render,paint,paintAlignment,aligning,pick,handleKey,cancelAlignment,validate,checkedAlignment,tintPixels,differencePixels,choose,settled:()=>preparing||Promise.resolve()};
+  return {install,render,paint,paintAlignment,aligning,pick,pointerDown,pointerMove,pointerUp,pointerCancel,handleKey,cancelAlignment,validate,checkedAlignment,tintPixels,differencePixels,choose,settled:()=>preparing||Promise.resolve()};
 });
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
@@ -16477,7 +16540,8 @@ canvas.onpointerdown=event=>{
   if(event.button===1||(S.spaceHeld||S.tool==='hand'&&!planOverlayUI?.aligning())&&event.button===0) {
     event.preventDefault();S.dragged=true;S.panning={x:event.clientX,y:event.clientY,pan:{...S.pan}};canvas.setPointerCapture?.(event.pointerId);canvas.style.cursor='grabbing';return;
   }
-  if(event.button!==0||planOverlayUI?.aligning())return;
+  if(event.button!==0)return;
+  if(planOverlayUI?.pointerDown(event,canvasPoint(event))||planOverlayUI?.aligning())return;
   const item=S.items.find(i=>i.id===S.selected),point=canvasPoint(event);
   if(fixturePointerDown(event,point))return;
   const editable=focusedSurfaceEdit();
@@ -16495,6 +16559,7 @@ canvas.onpointerdown=event=>{
   }
 };
 canvas.onpointermove=event=>{
+  if(!S.panning&&planOverlayUI?.pointerMove(event,canvasPoint(event)))return;
   const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;refreshManualUI();
   if(S.panning){S.pan={x:S.panning.pan.x+event.clientX-S.panning.x,y:S.panning.pan.y+event.clientY-S.panning.y};return;}
   if(S.selectionBox) {
@@ -16510,13 +16575,14 @@ canvas.onpointermove=event=>{
   }
 };
 canvas.onpointerup=event=>{
+  if(planOverlayUI?.pointerUp(event,canvasPoint(event)))S.dragged=true;
   draw();
   if(S.selectionBox){const box=S.selectionBox;S.selectionBox=null;if(box.moved)finishSelectionBox(box);}
   if(S.dragging){const drag=S.dragging;S.dragging=null;if(S.dragged)commitDrag(drag);else restoreSnapshot(drag.before);}
   S.panning=null;canvas.style.cursor=planOverlayUI?.aligning()?'crosshair':S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);
 };
-canvas.onpointercancel=()=>{if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;S.dragged=true;draw();};
+canvas.onpointercancel=()=>{planOverlayUI?.pointerCancel();if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;S.dragged=true;draw();};
 $$('[data-tool]').forEach(button=>button.onclick=()=>activateTool(button.dataset.tool));
 $('#uploadBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=event=>{loadFile(event.target.files[0]);event.target.value='';};
 const openDemo=async()=>{
