@@ -62,3 +62,11 @@ Guide : `docs/CODEX_TAKEOFF_GRATUIT.md`.
 - Source de référence : `.agents/skills/const-ia-takeoff-nac/SKILL.md` et `.agents/skills/const-ia-takeoff-nac/references/integrations-skills-codex.md`.
 - Last 30 Days, Teach, Chief of Staff, Anatomy et Marketing Psychology sont des sources ou options facultatives : ne déclarer leur installation et leur exécution qu'après vérification. Leur simple description dans NAC ne les installe pas.
 - Aucune donnée de plan privée vers des serveurs tiers, aucun achat/abonnement, aucune modification de `Quantif-Plancher-V7.html` au titre de cette veille. Suivre `docs/INSTALL_NAC_SKILLS_CODEX.md` pour les installations locales sous contrôle.
+
+## Design AITE — outils installés au dépôt
+
+- Utiliser `$aite-validation-visuelle` comme pilote et `DESIGN.md` comme contraintes. L'installation de ressources et d'instructions demandée par l'utilisateur est autorisée; elle ne sélectionne aucune maquette.
+- Audit: `$web-design-guidelines`; propositions compactes: `$aite-design-taste`; traduction d'une maquette approuvée: `$aite-image-to-code`. Taste et Image to Code sont des adaptations AITE, sans hooks amont.
+- Navigateur: `$playwright-cli`, dépendance isolée et verrouillée dans `tools/design`. Voir `docs/AITE_DESIGN_TOOLS.md`. Priorité aux tests existants lorsqu'ils sont disponibles.
+- 21st reste NON CONNECTÉ. Awesome DESIGN.md sert de référence documentaire. Aucun service payant activé.
+- Conserver Quantif V7 et AMTA séparés. Aucun changement UI/source ou lancement de refonte avant le choix explicite d'une proposition.

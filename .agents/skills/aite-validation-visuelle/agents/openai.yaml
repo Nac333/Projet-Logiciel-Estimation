@@ -1,0 +1,12 @@
+interface:
+  display_name: AITE - Validation visuelle
+  short_description: Comparer des maquettes AITE avant toute modification dans Codex
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
