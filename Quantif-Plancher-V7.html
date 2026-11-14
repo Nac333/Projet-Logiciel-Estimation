@@ -10752,13 +10752,29 @@ const pdfIntelligenceUIFactory = (function createPdfIntelligenceUI(options){
  return {install,capture,hydrate,scan,open,render,paint,available,coverage,closeCard};
 });
 const planOverlayFactory = (function createPlanOverlay(options={}) {
-  const {revisions,getState,getDocuments,readImage,openAlignment,requestDraw,persist,toast}=options;
+  const {revisions,getState,getDocuments,readImage,requestDraw,persist,toast}=options;
   const doc=options.document||options.canvas?.ownerDocument,win=doc?.defaultView;
   const find=id=>doc.getElementById(id),limit=2048;
   let cache=null,sourceCache=null,sourcePending=null,generation=0,attempted='',preparing=null,error='',panelContext=null,observedContext=null,observedPlan=null;
+  let alignmentSession=null,alignmentGeneration=0,chooserGeneration=0,layerSignature='',layerHost=null;
   const frame=value=>{if(!value||!['width','height'].every(k=>Number.isSafeInteger(value[k])&&value[k]>0&&value[k]<=100000))throw new Error('Dimensions de superposition invalides.');return {width:value.width,height:value.height};};
   const identity=value=>{if(!value||typeof value.documentKey!=='string'||!value.documentKey||value.documentKey.length>1000||!Number.isSafeInteger(value.page)||value.page<1)throw new Error('Feuille de superposition invalide.');return {documentKey:value.documentKey,page:value.page,...frame(value)};};
   function checkedAlignment(value){
+    if(value?.method==='page-origin')return {method:'page-origin',matrix:{a:1,b:0,tx:0,ty:0},verified:false};
+    if(value?.method==='two-points'){
+      if(!Array.isArray(value.pairs)||value.pairs.length!==2)throw new Error('Deux paires de repères sont requises.');
+      const point=p=>{if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))throw new Error('Les coordonnées des repères doivent être finies.');return {x:p.x,y:p.y};};
+      const pairs=value.pairs.map(p=>({from:point(p?.from),to:point(p?.to)})),[first,second]=pairs;
+      const ux=second.from.x-first.from.x,uy=second.from.y-first.from.y,vx=second.to.x-first.to.x,vy=second.to.y-first.to.y,denominator=ux*ux+uy*uy;
+      if(!Number.isFinite(denominator)||denominator<=1e-12||Math.hypot(vx,vy)<=1e-6)throw new Error('Choisissez deux repères distincts sur chaque feuille.');
+      const a=(ux*vx+uy*vy)/denominator,b=(ux*vy-uy*vx)/denominator,scale=Math.hypot(a,b);
+      const matrix={a,b,tx:first.to.x-a*first.from.x+b*first.from.y,ty:first.to.y-b*first.from.x-a*first.from.y};
+      if(!Object.values(matrix).every(Number.isFinite)||!Number.isFinite(scale)||scale<1e-6||scale>1e6)throw new Error('Échelle de superposition hors des limites de rendu.');
+      // Two points determine a visual similarity, not an independent accuracy
+      // check or a calibration. Never manufacture a third control point.
+      return {method:'two-points',pairs,matrix,scale,rotationDegrees:Math.atan2(b,a)*180/Math.PI,verified:false};
+    }
+    if(value?.method!==undefined)throw new Error('Méthode d’alignement inconnue.');
     const checked=revisions.align({pairs:value?.pairs,control:value?.control,maxDeviationPercent:value?.maxDeviationPercent});
     for(const side of ['from','to']){
       const a=checked.pairs[0][side],b=checked.pairs[1][side],c=checked.control[side],length=Math.hypot(b.x-a.x,b.y-a.y);
@@ -10773,8 +10789,9 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     const base=identity(value.base),source=identity(value.source);
     if(base.documentKey===source.documentKey&&base.page===source.page)throw new Error('Choisissez une autre feuille à superposer.');
     const alignment=checkedAlignment(value.alignment);
-    for(const pair of [...alignment.pairs,alignment.control])for(const [side,size]of [['from',source],['to',base]])if(pair[side].x<0||pair[side].y<0||pair[side].x>size.width||pair[side].y>size.height)throw new Error('Un repère de superposition est hors de sa feuille.');
-    return {base,source,alignment,mode:value.mode,enabled:value.enabled,opacity:value.opacity,color:value.color.toLowerCase()};
+    for(const pair of [...(alignment.pairs||[]),...(alignment.control?[alignment.control]:[])])for(const [side,size]of [['from',source],['to',base]])if(pair[side].x<0||pair[side].y<0||pair[side].x>size.width||pair[side].y>size.height)throw new Error('Un repère de superposition est hors de sa feuille.');
+    if(value.name!==undefined&&(typeof value.name!=='string'||value.name.length>200))throw new Error('Nom de superposition invalide (200 caractères maximum).');
+    return {base,source,alignment,mode:value.mode,enabled:value.enabled,opacity:value.opacity,color:value.color.toLowerCase(),...(value.name!==undefined?{name:value.name.trim()}:{} )};
   }
   const ink=(data,i)=>((255-(data[i]*.2126+data[i+1]*.7152+data[i+2]*.0722))/255)*(data[i+3]/255);
   const isPixels=data=>ArrayBuffer.isView(data)&&data.BYTES_PER_ELEMENT===1&&Number.isSafeInteger(data.length);
@@ -10783,18 +10800,19 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)),out=new Uint8ClampedArray(data.length);
     for(let i=0;i<data.length;i+=4){out[i]=rgb[0];out[i+1]=rgb[1];out[i+2]=rgb[2];out[i+3]=Math.round(255*ink(data,i));}return out;
   }
-  function differencePixels(before,after,width,height){
+  function differencePixels(before,after,width,height,color='#d62828'){
     if(!isPixels(before)||!isPixels(after)||!Number.isSafeInteger(width)||!Number.isSafeInteger(height)||width<=0||height<=0||before.length!==width*height*4||after.length!==before.length)throw new Error('Dimensions des pixels comparés invalides.');
     const a=new Uint8Array(width*height),b=new Uint8Array(a.length),out=new Uint8ClampedArray(before.length);for(let p=0;p<a.length;p++){a[p]=ink(before,p*4)>.2;b[p]=ink(after,p*4)>.2;}
     const near=(map,x,y)=>{for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<width&&ny>=0&&ny<height&&map[ny*width+nx])return true;}return false;};
-    const added=[214,40,40],removed=[23,101,204],common=[66,75,87],paper=[255,255,255];
+    if(!/^#[0-9a-f]{6}$/i.test(color))throw new Error('Couleur de comparaison invalide.');
+    const added=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)),removed=[23,101,204],common=[66,75,87],paper=[255,255,255];
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){
       const p=y*width+x,i=p*4,onlyA=a[p]&&!near(b,x,y),onlyB=b[p]&&!near(a,x,y),rgb=onlyB?added:onlyA?removed:a[p]||b[p]?common:paper;out[i]=rgb[0];out[i+1]=rgb[1];out[i+2]=rgb[2];out[i+3]=255;
     }return out;
   }
   const scope=()=>{const s=getState();return JSON.stringify([s.estimation?.workspace?.project?.id||'',s.documentKey,s.page]);};
   const raw=()=>getState().settings?.planOverlays?.version===1?getState().settings.planOverlays.pages?.[getState().page]:null;
-  const keyOf=config=>JSON.stringify([scope(),config.base,config.source,config.alignment.pairs,config.alignment.control,config.alignment.maxDeviationPercent,config.mode,config.color]);
+  const keyOf=config=>JSON.stringify([scope(),config.base,config.source,config.alignment.method,config.alignment.pairs,config.alignment.control,config.alignment.maxDeviationPercent,config.mode,config.color]);
   function current(){const value=raw();return value?validate(value):null;}
   function sourceAvailable(config){return getDocuments().some(d=>d.key===config.source.documentKey&&config.source.page<=d.pages);}
   function canvas(width,height){const c=doc.createElement('canvas');c.width=width;c.height=height;return c;}
@@ -10811,7 +10829,7 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     }
     const small=scaled(base),a=small.canvas,b=canvas(a.width,a.height),ctx=b.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,b.width,b.height);
     const sx=a.width/config.base.width,sy=a.height/config.base.height,m=config.alignment.matrix;ctx.setTransform(sx*m.a,sy*m.b,-sx*m.b,sy*m.a,sx*m.tx,sy*m.ty);ctx.drawImage(source.canvas,0,0,config.source.width,config.source.height);
-    const result=canvas(a.width,a.height),pixels=a.getContext('2d').getImageData(0,0,a.width,a.height);pixels.data.set(differencePixels(pixels.data,b.getContext('2d').getImageData(0,0,b.width,b.height).data,a.width,a.height));result.getContext('2d').putImageData(pixels,0,0);return {canvas:result,width:config.base.width,height:config.base.height,mode:'revision'};
+    const result=canvas(a.width,a.height),pixels=a.getContext('2d').getImageData(0,0,a.width,a.height);pixels.data.set(differencePixels(pixels.data,b.getContext('2d').getImageData(0,0,b.width,b.height).data,a.width,a.height,config.color));result.getContext('2d').putImageData(pixels,0,0);return {canvas:result,width:config.base.width,height:config.base.height,mode:'revision'};
   }
   function prepare(config,provided){
     const signature=keyOf(config),context=scope(),base=getState().plan,token=++generation;attempted=signature;error='';cache=null;
@@ -10827,41 +10845,225 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     const s=getState(),pages={...(s.settings.planOverlays?.version===1?s.settings.planOverlays.pages:{})};if(value)pages[s.page]=validate(value);else delete pages[s.page];s.settings={...s.settings,planOverlays:{version:1,pages}};persist();if(value&&provided)prepare(validate(value),provided);render();requestDraw();
   }
   function change(patch){try{const config=current();if(config)saveConfig({...config,...patch});}catch(failure){toast(failure.message);}}
+  const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const normalized=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const labelOf=(document,page)=>document?.sheets?.[page]||'Page '+page;
+  const validContext=(context,image)=>scope()===context&&getState().plan===image&&!getState().loading&&!getState().detectJob;
+
   async function choose(){
     const state=getState();if(!state.plan||state.loading||state.detectJob)return toast('Ouvrez une feuille et attendez la fin du chargement.');
-    const baseContext=scope(),baseDocument=state.documentKey,basePage=state.page;
-    return openAlignment({reference:{documentKey:baseDocument,page:basePage},documents:getDocuments().map(d=>d.key),validateAlignment:checkedAlignment,onApply:async payload=>{
-      if(scope()!==baseContext||getState().loading)throw new Error('La feuille de référence a changé. Recommencez la superposition.');
-      const {source,alignment,images}=payload;
-      const config=validate({base:{documentKey:source.beforeDocument,page:source.beforePage,width:images.A.naturalWidth,height:images.A.naturalHeight},source:{documentKey:source.afterDocument,page:source.afterPage,width:images.B.naturalWidth,height:images.B.naturalHeight},alignment,mode:'normal',color:'#d62828',opacity:.45,enabled:true});
-      if(config.base.documentKey!==baseDocument||config.base.page!==basePage||!sourceAvailable(config))throw new Error('La sélection de feuilles ne correspond plus au projet courant.');
-      panelContext=scope();find('planOverlayPanel').hidden=false;saveConfig(config,images.B);await preparing;if(error)throw new Error(error);render();
-    }});
+    cancelAlignment();
+    const context=scope(),image=state.plan,base={documentKey:state.documentKey,page:state.page,width:image.naturalWidth||image.width,height:image.naturalHeight||image.height};
+    const token=++chooserGeneration,documents=getDocuments(true);let selected=null,autoName=true;
+    const previous=current();
+    options.openDialog('Superposer un plan',`<section id="planOverlayChooser">
+      <p class="overlay-intro">Gardez le plan courant comme référence. Choisissez une autre feuille du projet à afficher par-dessus.</p>
+      <div id="planOverlayTypeStep">
+        <fieldset class="overlay-type-list"><legend>Type de superposition</legend>
+          <label><input type="radio" name="overlayType" value="normal" checked><span><strong>Superposition normale</strong><small>Afficher une autre feuille comme un transparent : plans d’étages, architecture et design.</small></span></label>
+          <label><input type="radio" name="overlayType" value="revision"><span><strong>Comparaison de versions</strong><small>Nouvelle version en rouge, traits retirés en bleu. Vérifiez d’abord le placement des plans.</small></span></label>
+        </fieldset>
+        <div class="modal-actions"><button type="button" id="planOverlayChooseCancel">Annuler</button><button type="button" id="planOverlayNext" class="primary">Suivant →</button></div>
+      </div>
+      <div id="planOverlaySheetStep" hidden>
+        <div class="overlay-choice-fields"><label>Nom<input id="planOverlayName" maxlength="200" placeholder="Nom de la superposition"></label><label>Couleur<input id="planOverlayChooseColor" type="color" value="#d62828"></label></div>
+        <label class="overlay-search">Feuille à superposer<input type="search" id="planOverlaySearch" placeholder="Rechercher par numéro, nom ou document…"></label>
+        <div id="planOverlaySheetTree" class="overlay-sheet-tree" role="group" aria-label="Feuilles du projet"></div>
+        <p id="planOverlaySelection" class="overlay-selection" role="status">Sélectionnez une feuille.</p>
+        <p id="planOverlayChooseError" role="alert" class="v4-error"></p>
+        <div class="modal-actions"><button type="button" id="planOverlayBack">← Précédent</button><button type="button" id="planOverlaySheetCancel">Annuler</button><button type="button" id="planOverlayFinish" class="primary" disabled>Terminer</button></div>
+      </div>
+    </section>`);
+    const chooser=find('planOverlayChooser');
+    const alive=()=>token===chooserGeneration&&chooser.isConnected&&validContext(context,image);
+    function tree(){
+      const host=find('planOverlaySheetTree'),search=normalized(find('planOverlaySearch').value),opened=new Map([...host.querySelectorAll('details')].map(node=>[node.dataset.document,node.open]));
+      host.replaceChildren();let count=0;
+      documents.forEach(record=>{
+        const details=doc.createElement('details');details.dataset.document=record.key;details.open=!!search||(opened.get(record.key)??(record.key===base.documentKey||record.key===previous?.source.documentKey));
+        const summary=doc.createElement('summary');summary.textContent=record.name+' · '+record.pages+' p.';details.append(summary);
+        for(let page=1;page<=record.pages;page++){
+          const label=labelOf(record,page);if(search&&!normalized(record.name+' '+label+' '+page).includes(search))continue;
+          const button=doc.createElement('button');button.type='button';button.className='overlay-sheet-choice';button.dataset.document=record.key;button.dataset.page=String(page);button.textContent=label;
+          const isBase=record.key===base.documentKey&&page===base.page;button.disabled=isBase;if(isBase)button.textContent+=' · référence';
+          button.setAttribute('aria-pressed',String(selected?.documentKey===record.key&&selected.page===page));
+          button.onclick=()=>{selected={documentKey:record.key,page};if(autoName)find('planOverlayName').value=(label+' · '+record.name).slice(0,200);find('planOverlaySelection').textContent=record.name+' → '+label;find('planOverlayFinish').disabled=false;host.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));};
+          details.append(button);count++;
+        }
+        if(details.childElementCount>1)host.append(details);
+      });
+      if(!count)host.textContent='Aucune feuille ne correspond à cette recherche.';
+    }
+    find('planOverlayNext').onclick=()=>{find('planOverlayTypeStep').hidden=true;find('planOverlaySheetStep').hidden=false;tree();find('planOverlaySearch').focus();};
+    find('planOverlayBack').onclick=()=>{find('planOverlaySheetStep').hidden=true;find('planOverlayTypeStep').hidden=false;find('planOverlayNext').focus();};
+    find('planOverlayChooseCancel').onclick=()=>{chooserGeneration++;options.closeDialog();};
+    find('planOverlaySheetCancel').onclick=()=>{chooserGeneration++;options.closeDialog();};
+    find('planOverlayName').oninput=()=>autoName=false;
+    find('planOverlaySearch').oninput=tree;
+    find('planOverlayFinish').onclick=async()=>{
+      if(!selected||!alive())return;
+      const chosen={...selected},name=find('planOverlayName').value,mode=chooser.querySelector('[name="overlayType"]:checked').value,color=find('planOverlayChooseColor').value;
+      const controls=[...chooser.querySelectorAll('input,button')].map(node=>({node,disabled:node.disabled}));controls.forEach(({node})=>node.disabled=true);
+      const finish=find('planOverlayFinish');finish.textContent='Chargement…';find('planOverlayChooseError').textContent='';
+      try{
+        const sourceImage=await decode(chosen);if(!alive())return;
+        const config=validate({base,source:{...chosen,width:sourceImage.naturalWidth,height:sourceImage.naturalHeight},name,alignment:{method:'page-origin'},mode,color,opacity:mode==='revision'?1:.45,enabled:true});
+        if(!sourceAvailable(config))throw new Error('La feuille choisie n’est plus disponible dans ce projet.');
+        options.closeDialog();panelContext=scope();find('planOverlayPanel').hidden=false;saveConfig(config,sourceImage);
+        options.openDialog('Aligner la superposition ?',`<section id="planOverlayAlignPrompt"><p>Les deux plans sont affichés l’un sur l’autre.</p><p>S’ils sont déjà bien placés, conservez ce placement. Sinon, alignez-les avec deux repères correspondants.</p><div class="modal-actions"><button type="button" id="planOverlayKeepPlacement">Non, conserver le placement</button><button type="button" id="planOverlayAlignNow" class="primary">Oui, aligner</button></div></section>`);
+        find('planOverlayKeepPlacement').onclick=()=>{options.closeDialog();render();};
+        find('planOverlayAlignNow').onclick=()=>{options.closeDialog();run(startAlignment());};
+      }catch(failure){if(chooser.isConnected){controls.forEach(({node,disabled})=>node.disabled=disabled);find('planOverlayChooseError').textContent=failure.message;finish.textContent='Terminer';}else toast(failure.message);}
+    };
+  }
+
+  function aligning(){
+    if(alignmentSession&&!validContext(alignmentSession.context,alignmentSession.image))cancelAlignment();
+    return !!alignmentSession;
+  }
+  async function startAlignment(){
+    cancelAlignment();const config=current();if(!config||!sourceAvailable(config))return toast('Choisissez une feuille disponible à superposer.');
+    const context=scope(),image=getState().plan,signature=JSON.stringify(raw()),token=++alignmentGeneration;
+    const source=await acquireSource(config);
+    if(token!==alignmentGeneration||!validContext(context,image)||signature!==JSON.stringify(raw()))return;
+    sourceCache=source;alignmentSession={config,context,image,source,signature,points:[],matrix:config.alignment.matrix,result:null};
+    find('planOverlayPanel').hidden=true;options.canvas.style.cursor='crosshair';updateAlignment();options.canvas.focus();requestDraw();
+  }
+  function cancelAlignment(){
+    alignmentGeneration++;
+    if(!alignmentSession)return;
+    alignmentSession=null;find('planOverlayAlignmentBar').hidden=true;options.canvas.style.cursor=getState().tool==='hand'?'grab':'default';requestDraw();
+  }
+  function updateAlignment(message=''){
+    const session=alignmentSession;if(!session)return;
+    const bar=find('planOverlayAlignmentBar'),step=session.points.length;bar.hidden=false;bar.dataset.step=String(step);
+    find('planOverlayAlignmentStep').textContent=step<4?'Alignement · '+(step+1)+' / 4':'Placement prêt';
+    find('planOverlayAlignmentInstruction').textContent=message||[
+      'Sur la superposition, cliquez le premier repère.',
+      'Sur le plan de référence, cliquez le même repère.',
+      'Sur la superposition, cliquez un second repère éloigné du premier.',
+      'Sur le plan de référence, cliquez ce second repère.',
+      'Vérifiez le résultat, puis cliquez sur Terminer.'
+    ][step];
+    find('planOverlayAlignmentSide').textContent=step===4?'A + B':step%2===0?'B · Superposition':'A · Référence';
+    find('planOverlayAlignmentBack').disabled=step===0;find('planOverlayAlignmentFinish').hidden=step!==4;
+    requestDraw();
+  }
+  function pick(point){
+    if(!aligning())return false;
+    const session=alignmentSession,step=session.points.length;if(step===4)return true;
+    let native={...point};const sourceSide=step%2===0;
+    if(sourceSide){const m=session.matrix,denominator=m.a*m.a+m.b*m.b,dx=point.x-m.tx,dy=point.y-m.ty;native={x:(m.a*dx+m.b*dy)/denominator,y:(-m.b*dx+m.a*dy)/denominator};}
+    const size=sourceSide?session.config.source:session.config.base;
+    if(!Number.isFinite(native.x)||!Number.isFinite(native.y)||native.x<0||native.y<0||native.x>size.width||native.y>size.height){updateAlignment('Cliquez un repère à l’intérieur de la feuille affichée.');return true;}
+    if(step>=2&&Math.hypot(native.x-session.points[step-2].x,native.y-session.points[step-2].y)<1){updateAlignment('Choisissez un second repère distinct et éloigné du premier.');return true;}
+    session.points.push(native);
+    if(session.points.length===4){try{session.result=checkedAlignment({method:'two-points',pairs:[{from:session.points[0],to:session.points[1]},{from:session.points[2],to:session.points[3]}]});}catch(failure){session.points.pop();updateAlignment(failure.message);return true;}}
+    updateAlignment();return true;
+  }
+  function backAlignment(){if(!aligning())return;alignmentSession.points.pop();alignmentSession.result=null;updateAlignment();}
+  function finishAlignment(){
+    if(!aligning()||!alignmentSession.result)return;
+    const session=alignmentSession;
+    if(JSON.stringify(raw())!==session.signature){cancelAlignment();toast('La superposition a changé. Recommencez l’alignement.');return;}
+    const value=validate({...session.config,alignment:session.result});cancelAlignment();saveConfig(value);panelContext=scope();find('planOverlayPanel').hidden=false;options.canvas.focus();
+  }
+  function handleKey(event){
+    if(!aligning())return false;
+    const key=event.key.toLowerCase();
+    if(key==='escape'){event.preventDefault();cancelAlignment();return true;}
+    if(key==='backspace'){event.preventDefault();backAlignment();return true;}
+    if(key==='enter'){event.preventDefault();finishAlignment();return true;}
+    if(['arrowleft','arrowright','arrowup','arrowdown'].includes(key)){
+      event.preventDefault();const state=getState(),step=event.shiftKey?150:40;
+      state.pan={x:state.pan.x+(key==='arrowleft'?step:key==='arrowright'?-step:0),y:state.pan.y+(key==='arrowup'?step:key==='arrowdown'?-step:0)};requestDraw();return true;
+    }
+    if(key===' '||['+','=','-','_','0','1','home','pageup','pagedown'].includes(key)||(event.ctrlKey||event.metaKey)&&key==='s')return false;
+    if(key==='tab')return false;
+    event.preventDefault();return true;
+  }
+  function paintAlignment(context){
+    if(!aligning())return false;
+    const session=alignmentSession,step=session.points.length,bSide=step%2===0&&step<4;
+    // The host already applied DPR, view rotation, zoom and pan. Paint one
+    // sheet at a time so the four clicks have an unambiguous coordinate frame.
+    context.save();
+    if(bSide){const m=session.matrix;context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);context.drawImage(session.source.canvas,0,0,session.config.source.width,session.config.source.height);}
+    else{context.drawImage(session.image,0,0);if(step===4){const m=session.result.matrix;context.globalAlpha=.45;context.globalCompositeOperation='multiply';context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);context.drawImage(session.source.canvas,0,0,session.config.source.width,session.config.source.height);}}
+    context.restore();
+    const zoom=getState().zoom||1;
+    session.points.forEach((point,index)=>{
+      if(step<4&&(index%2===0)!==bSide)return;
+      if(step===4&&index%2===0)return;
+      let p=point;if(index%2===0){const m=session.matrix;p={x:m.a*point.x-m.b*point.y+m.tx,y:m.b*point.x+m.a*point.y+m.ty};}
+      const radius=6/zoom;context.save();context.beginPath();context.arc(p.x,p.y,radius,0,Math.PI*2);context.fillStyle='#0966cc';context.fill();context.strokeStyle='white';context.lineWidth=2/zoom;context.stroke();context.font='bold '+14/zoom+'px Arial';context.fillStyle='#0966cc';context.fillText(String(Math.floor(index/2)+1),p.x+10/zoom,p.y-9/zoom);context.restore();
+    });
+    return true;
+  }
+
+  function renderLayer(config){
+    const row=doc.querySelector('#sheetList [data-sheet="'+getState().page+'"]');
+    if(!row||!config){find('planOverlayLayer')?.remove();layerSignature='';layerHost=null;return;}
+    const signature=JSON.stringify([scope(),config.name,config.source,config.enabled,config.color]);
+    if(layerSignature===signature&&layerHost?.isConnected&&layerHost.previousElementSibling===row)return;
+    find('planOverlayLayer')?.remove();const layer=doc.createElement('div');layer.id='planOverlayLayer';layer.className='overlay-layer-row';layer.setAttribute('aria-label','Couche de superposition');
+    const source=getDocuments().find(d=>d.key===config.source.documentKey),name=config.name||labelOf(source,config.source.page);
+    layer.innerHTML='<input type="checkbox" aria-label="Afficher la superposition" '+(config.enabled?'checked':'')+'><input type="color" aria-label="Couleur de la superposition" value="'+config.color+'"><button type="button" class="overlay-layer-name" title="Réglages de la superposition">'+escape(name)+'</button><button type="button" class="overlay-layer-align" aria-label="Réaligner la superposition" title="Réaligner en quatre clics">⤧</button>';
+    layer.querySelector('input[type=checkbox]').onchange=e=>change({enabled:e.target.checked});layer.querySelector('input[type=color]').onchange=e=>change({color:e.target.value});
+    layer.querySelector('.overlay-layer-name').onclick=()=>{panelContext=scope();find('planOverlayPanel').hidden=false;render();};layer.querySelector('.overlay-layer-align').onclick=()=>run(startAlignment());
+    row.after(layer);layerSignature=signature;layerHost=layer;
   }
   function install(){
-    const style=doc.createElement('style');style.textContent=`.plan-overlay-panel{position:absolute;right:12px;top:12px;z-index:11;width:288px;max-width:calc(100% - 76px);max-height:calc(100% - 24px);overflow:auto;padding:12px;border:1px solid #a9c6dd;border-radius:7px;background:#f7fbff;font:12px/1.4 'Segoe UI',Arial,sans-serif;color:#19364e;box-shadow:0 4px 16px #19364e22}.plan-overlay-panel[hidden]{display:none}.plan-overlay-panel header{display:flex;align-items:center;gap:6px;margin-bottom:8px}.plan-overlay-panel header strong{flex:1}.plan-overlay-panel label{display:block;margin:9px 0}.plan-overlay-panel select,.plan-overlay-panel input[type=range]{width:100%;min-width:0}.plan-overlay-panel select{padding:5px;border:1px solid #a9c6dd;background:white;color:inherit}.plan-overlay-panel button{min-height:28px;padding:4px 8px;border:1px solid #a9c6dd;border-radius:4px;background:white;color:#175580;cursor:pointer}.plan-overlay-panel button:focus-visible,.plan-overlay-panel input:focus-visible,.plan-overlay-panel select:focus-visible{outline:2px solid #0966cc;outline-offset:1px}.plan-overlay-panel small{display:block;color:#49647d;overflow-wrap:anywhere}.plan-overlay-actions{display:flex;gap:5px;flex-wrap:wrap}.plan-overlay-panel #planOverlayStatus{font-size:11px}.plan-overlay-panel #planOverlayLegend{font-size:11px;margin:8px 0}.plan-overlay-panel #planOverlayRemove{color:#a42b2b}`;doc.head.append(style);
-    const panel=doc.createElement('section');panel.id='planOverlayPanel';panel.className='plan-overlay-panel';panel.hidden=true;panel.setAttribute('aria-label','Superposition de plans');panel.innerHTML='<header><strong>Superposition de plans</strong><button type="button" id="planOverlayClose" aria-label="Fermer les réglages de superposition">×</button></header><small id="planOverlaySource"></small><label><input type="checkbox" id="planOverlayEnabled"> Afficher la superposition</label><label>Mode<select id="planOverlayMode"><option value="normal">Superposition normale</option><option value="revision">Comparer les versions</option></select></label><label>Opacité <output id="planOverlayOpacityValue"></output><input type="range" id="planOverlayOpacity" min="0" max="100" step="5" aria-label="Opacité de la superposition"></label><label>Couleur <input type="color" id="planOverlayColor" value="#d62828"></label><div id="planOverlayLegend"></div><p id="planOverlayStatus" role="status" aria-live="polite"></p><div class="plan-overlay-actions"><button type="button" id="planOverlayAlign">Choisir / aligner une feuille</button><button type="button" id="planOverlayRemove">Retirer</button></div><p><small>Comparaison visuelle à vérifier. Les quantités et l’échelle du relevé restent celles de la feuille de référence.</small></p>';options.canvas.parentElement.append(panel);
-    find('planOverlayBtn').onclick=()=>{if(!raw())return run(choose());panelContext=scope();panel.hidden=!panel.hidden;render();};
-    find('planOverlayClose').onclick=()=>{panel.hidden=true;};find('planOverlayAlign').onclick=()=>run(choose());find('planOverlayRemove').onclick=()=>{generation++;cache=null;sourceCache=null;attempted='';error='';saveConfig(null);panel.hidden=true;};
+    const style=doc.createElement('style');style.textContent=`
+      .plan-overlay-panel{position:absolute;right:12px;top:12px;z-index:11;width:270px;max-width:calc(100% - 76px);max-height:calc(100% - 24px);overflow:auto;padding:12px;border:1px solid #a9c6dd;border-radius:8px;background:#f7fbff;font:12px/1.4 'Segoe UI',Arial,sans-serif;color:#19364e;box-shadow:0 4px 16px #19364e22}
+      .plan-overlay-panel[hidden],.overlay-alignment-bar[hidden],#planOverlayChooser [hidden]{display:none}
+      .plan-overlay-panel header{display:flex;align-items:center;gap:6px;margin-bottom:8px}.plan-overlay-panel header strong{flex:1}.plan-overlay-panel label{display:block;margin:9px 0}.plan-overlay-panel select,.plan-overlay-panel input[type=range]{width:100%;min-width:0}.plan-overlay-panel select{padding:5px;border:1px solid #a9c6dd;background:white;color:inherit}
+      .plan-overlay-panel button,.overlay-alignment-bar button{min-height:28px;padding:4px 8px;border:1px solid #a9c6dd;border-radius:4px;background:white;color:#175580;cursor:pointer}
+      .plan-overlay-panel button:focus-visible,.plan-overlay-panel input:focus-visible,.plan-overlay-panel select:focus-visible,#planOverlayChooser :focus-visible,.overlay-layer-row :focus-visible,.overlay-alignment-bar :focus-visible{outline:2px solid #0966cc;outline-offset:1px}
+      .plan-overlay-panel small{display:block;color:#49647d;overflow-wrap:anywhere}.plan-overlay-actions{display:flex;gap:5px;flex-wrap:wrap}.plan-overlay-panel #planOverlayStatus,.plan-overlay-panel #planOverlayLegend{font-size:11px;margin:8px 0}.plan-overlay-panel #planOverlayRemove{color:#a42b2b}
+      #planOverlayChooser .overlay-intro{color:#49647d;margin:0 0 16px}.overlay-type-list{border:0;margin:0;padding:0;display:grid;gap:10px}.overlay-type-list legend{font-weight:600;margin-bottom:9px}.overlay-type-list label{display:flex;align-items:flex-start;gap:10px;border:1px solid #bfd6e5;border-radius:7px;padding:14px;background:#f7fbff;cursor:pointer}.overlay-type-list label:has(input:checked){border-color:#0966cc;background:#eaf4ff}.overlay-type-list small{display:block;color:#49647d;margin-top:5px;font-weight:400;line-height:1.5}#planOverlayChooser .overlay-type-list input[type=radio]{width:16px;height:16px;min-height:0;flex:0 0 16px;margin:2px 0;padding:0}#planOverlayChooser .overlay-type-list label>span{flex:1;min-width:0}.overlay-choice-fields{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:12px}.overlay-choice-fields label,.overlay-search{display:block;font-size:12px;font-weight:600}.overlay-choice-fields input:not([type=color]),.overlay-search input{box-sizing:border-box;width:100%;margin:5px 0 12px;padding:8px;border:1px solid #a9c6dd;border-radius:4px;font:inherit}.overlay-choice-fields input[type=color]{display:block;height:33px;width:100%;margin-top:5px;border:1px solid #a9c6dd;background:white;border-radius:4px}.overlay-sheet-tree{max-height:300px;overflow:auto;border:1px solid #bfd6e5;border-radius:5px;padding:5px;background:white}.overlay-sheet-tree summary{font-size:12px;font-weight:600;padding:8px;cursor:pointer;overflow-wrap:anywhere}.overlay-sheet-choice{display:block;width:100%;text-align:left;border:0;border-radius:3px;background:white;color:#19364e;padding:8px 10px 8px 27px;font:12px/1.4 'Segoe UI',Arial,sans-serif;cursor:pointer;overflow-wrap:anywhere}.overlay-sheet-choice:hover{background:#f0f7ff}.overlay-sheet-choice[aria-pressed=true]{background:#d9edff;color:#124a7a;font-weight:600}.overlay-sheet-choice:disabled{color:#6b7784;background:#f5f7fa;cursor:default}.overlay-selection{color:#49647d;font-size:12px;overflow-wrap:anywhere;min-height:18px}
+      .overlay-alignment-bar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:13;width:600px;box-sizing:border-box;max-width:calc(100% - 24px);padding:12px 14px;border:1px solid #a9c6dd;border-radius:9px;background:#f7fbfff5;color:#19364e;box-shadow:0 4px 16px #19364e22;font:12px/1.4 'Segoe UI',Arial,sans-serif}.overlay-alignment-bar header{display:flex;gap:10px;justify-content:space-between;margin-bottom:6px}.overlay-alignment-bar header span{font-size:11px;color:#175580}.overlay-alignment-bar p{margin:5px 0;font-weight:600}.overlay-alignment-bar footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;flex-wrap:wrap}.overlay-alignment-bar small{font-size:11px;color:#49647d}.overlay-alignment-bar .overlay-alignment-buttons{display:flex;gap:6px;flex-wrap:wrap}.overlay-alignment-bar button:disabled{opacity:.45;cursor:default}.overlay-alignment-bar #planOverlayAlignmentFinish{background:#0966cc;color:white;border-color:#0966cc}
+      .overlay-layer-row{display:flex;gap:5px;align-items:center;padding:4px 5px 5px 29px;color:#19364e;font:11px/1.4 'Segoe UI',Arial,sans-serif}.overlay-layer-row input[type=checkbox]{width:13px;margin:0}.overlay-layer-row input[type=color]{width:19px;height:20px;padding:0;border:0;background:transparent;flex-shrink:0}.overlay-layer-row button{padding:3px;border:0;background:transparent;color:#175580;cursor:pointer}.overlay-layer-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}.overlay-layer-align{font-size:16px}.overlay-layer-align:hover{background:#d9edff;border-radius:3px}
+    `;doc.head.append(style);
+    const panel=doc.createElement('section');panel.id='planOverlayPanel';panel.className='plan-overlay-panel';panel.hidden=true;panel.setAttribute('aria-label','Superposition de plans');
+    panel.innerHTML='<header><strong>Superposition de plans</strong><button type="button" id="planOverlayClose" aria-label="Fermer les réglages de superposition">×</button></header><small id="planOverlaySource"></small><label><input type="checkbox" id="planOverlayEnabled"> Afficher la superposition</label><label>Mode<select id="planOverlayMode"><option value="normal">Superposition normale</option><option value="revision">Comparaison de versions</option></select></label><label>Opacité <output id="planOverlayOpacityValue"></output><input type="range" id="planOverlayOpacity" min="0" max="100" step="5" aria-label="Opacité de la superposition"></label><label>Couleur <input type="color" id="planOverlayColor" value="#d62828"></label><div id="planOverlayLegend"></div><p id="planOverlayStatus" role="status" aria-live="polite"></p><div class="plan-overlay-actions"><button type="button" id="planOverlayAlign">Réaligner · 4 clics</button><button type="button" id="planOverlayChangeSheet">Autre feuille…</button><button type="button" id="planOverlayRemove">Retirer</button></div><p><small>Comparaison visuelle. Les mesures et l’échelle de référence sont conservées.</small></p>';
+    options.canvas.parentElement.append(panel);
+    const bar=doc.createElement('section');bar.id='planOverlayAlignmentBar';bar.className='overlay-alignment-bar';bar.hidden=true;bar.setAttribute('aria-label','Alignement de la superposition');
+    bar.innerHTML='<header><strong id="planOverlayAlignmentStep"></strong><span id="planOverlayAlignmentSide"></span></header><p id="planOverlayAlignmentInstruction" role="status" aria-live="polite"></p><footer><small>Molette : zoom · Espace + glisser : déplacer · Échap : annuler</small><div class="overlay-alignment-buttons"><button type="button" id="planOverlayAlignmentBack">Retour</button><button type="button" id="planOverlayAlignmentCancel">Annuler</button><button type="button" id="planOverlayAlignmentFinish" hidden>Terminer</button></div></footer>';
+    options.canvas.parentElement.append(bar);
+    find('planOverlayBtn').onclick=()=>{if(!raw())return run(choose());if(aligning())return;panelContext=scope();panel.hidden=!panel.hidden;render();};
+    find('planOverlayClose').onclick=()=>{panel.hidden=true;};find('planOverlayAlign').onclick=()=>run(startAlignment());find('planOverlayChangeSheet').onclick=()=>run(choose());
+    find('planOverlayRemove').onclick=()=>{cancelAlignment();generation++;cache=null;sourceCache=null;attempted='';error='';saveConfig(null);panel.hidden=true;};
     find('planOverlayEnabled').onchange=e=>change({enabled:e.target.checked});find('planOverlayOpacity').oninput=e=>change({opacity:Number(e.target.value)/100});find('planOverlayColor').onchange=e=>change({color:e.target.value});find('planOverlayMode').onchange=e=>change({mode:e.target.value,opacity:e.target.value==='revision'?1:.45});
-    panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();panel.hidden=true;find('planOverlayBtn').focus();}});render();
+    find('planOverlayAlignmentBack').onclick=backAlignment;find('planOverlayAlignmentCancel').onclick=cancelAlignment;find('planOverlayAlignmentFinish').onclick=finishAlignment;
+    panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();panel.hidden=true;find('planOverlayBtn').focus();}});
+    // A different command leaves alignment before that command runs. View-only
+    // controls remain available and neither select nor edit measurements.
+    doc.addEventListener('pointerdown',event=>{
+      if(!aligning()||!event.target.closest('button,input,select,summary,[data-item]')||bar.contains(event.target))return;
+      if(event.target.closest('#manualFit,#manualZoomIn,#manualZoomOut,#zoomIn,#zoomOut,#rotatePlan,#workspaceFocus,#toggleAiteRibbon,#planOverlayBtn'))return;
+      cancelAlignment();
+    },true);
+    render();
   }
   function run(promise){Promise.resolve(promise).catch(failure=>toast(failure.message));}
   function render(){
     if(!find('planOverlayPanel'))return;const state=getState(),context=scope(),button=find('planOverlayBtn'),panel=find('planOverlayPanel');button.disabled=!state.plan||state.loading||!!state.detectJob;
-    if(observedContext!==context||observedPlan!==state.plan){if(observedContext!==context){sourceCache=null;sourcePending=null;}observedContext=context;observedPlan=state.plan;generation++;cache=null;attempted='';preparing=null;error='';}
+    if(observedContext!==context||observedPlan!==state.plan){chooserGeneration++;cancelAlignment();if(observedContext!==context){sourceCache=null;sourcePending=null;}observedContext=context;observedPlan=state.plan;generation++;cache=null;attempted='';preparing=null;error='';}
     if(panelContext!==null&&panelContext!==context){panel.hidden=true;panelContext=null;}
     let config;try{config=current();}catch(failure){error=failure.message;}
     const relevant=config&&config.base.documentKey===state.documentKey&&config.base.page===state.page,available=relevant&&sourceAvailable(config);
-    if(!relevant||!available){if(cache||preparing){generation++;cache=null;preparing=null;attempted='';requestDraw();}if(config&&!available)error='La feuille source n’est plus disponible dans les plans actifs.';}
+    if(!relevant||!available){cancelAlignment();if(cache||preparing){generation++;cache=null;preparing=null;attempted='';requestDraw();}if(config&&!available)error='La feuille source n’est plus disponible dans les plans actifs.';}
     button.setAttribute('aria-pressed',String(!!(available&&config.enabled)));button.title=available&&config.enabled?'Superposition active · Ouvrir les réglages':'Superposer et comparer deux feuilles';button.setAttribute('aria-label',button.title);
+    renderLayer(relevant?config:null);
     if(relevant){
-      const source=getDocuments().find(d=>d.key===config.source.documentKey);find('planOverlaySource').textContent=(source?.name||'Source absente')+' · page '+config.source.page+' → référence page '+config.base.page;
-      find('planOverlayEnabled').checked=config.enabled;find('planOverlayMode').value=config.mode;find('planOverlayOpacity').value=String(Math.round(config.opacity*100));find('planOverlayOpacityValue').textContent=Math.round(config.opacity*100)+' %';find('planOverlayColor').value=config.color;find('planOverlayColor').disabled=config.mode==='revision';
-      find('planOverlayLegend').textContent=config.mode==='revision'?'B seulement : rouge · A seulement : bleu · commun : gris. Écarts de traits à vérifier.':'Les traits de la feuille B utilisent la couleur choisie.';
+      const source=getDocuments().find(d=>d.key===config.source.documentKey);find('planOverlaySource').textContent=(config.name?config.name+' · ':'')+(source?.name||'Source absente')+' · page '+config.source.page+' → référence page '+config.base.page;
+      find('planOverlayEnabled').checked=config.enabled;find('planOverlayMode').value=config.mode;find('planOverlayOpacity').value=String(Math.round(config.opacity*100));find('planOverlayOpacityValue').textContent=Math.round(config.opacity*100)+' %';find('planOverlayColor').value=config.color;
+      find('planOverlayLegend').textContent=config.mode==='revision'?'Ajouts : couleur choisie · Retraits : bleu · Commun : gris.':'Les traits de la feuille superposée utilisent la couleur choisie.';
       if(!config.enabled&&preparing){generation++;preparing=null;attempted='';}
       const signature=keyOf(config);if(available&&config.enabled&&!state.loading&&cache?.signature!==signature&&attempted!==signature)prepare(config);
-      const ready=!!(cache&&cache.signature===signature&&cache.context===context);find('planOverlayStatus').dataset.ready=String(ready);find('planOverlayStatus').textContent=error||(!config.enabled?'Superposition masquée.':preparing?'Préparation locale…':ready?'Écart du contrôle '+config.alignment.deviationPercent.toLocaleString('fr-CA',{maximumFractionDigits:2})+' % · seuil saisi '+config.alignment.maxDeviationPercent.toLocaleString('fr-CA',{maximumFractionDigits:2})+' %. Rendu visuel limité à 2 048 px.':'Superposition à préparer.');
+      const ready=!!(cache&&cache.signature===signature&&cache.context===context),placement=config.alignment.method==='page-origin'?'Placement initial. Alignez les plans si nécessaire.':config.alignment.method==='two-points'?'Alignement manuel à deux repères. Vérifiez la concordance.':'Alignement antérieur avec contrôle indépendant conservé.';
+      find('planOverlayStatus').dataset.ready=String(ready);find('planOverlayStatus').textContent=error||(!config.enabled?'Superposition masquée.':preparing?'Préparation locale…':ready?placement+' Aperçu limité à 2 048 px.':'Superposition à préparer.');
     }else {find('planOverlayStatus').dataset.ready='false';find('planOverlayStatus').textContent=error||'Choisissez une feuille à superposer.';}
   }
   function paint(context){
@@ -10870,7 +11072,7 @@ const planOverlayFactory = (function createPlanOverlay(options={}) {
     if(cache.mode==='normal'){const m=cache.matrix;context.globalCompositeOperation='multiply';context.transform(m.a,m.b,-m.b,m.a,m.tx,m.ty);}
     context.drawImage(cache.canvas,0,0,cache.width,cache.height);context.restore();
   }
-  return {install,render,paint,validate,checkedAlignment,tintPixels,differencePixels,choose,settled:()=>preparing||Promise.resolve()};
+  return {install,render,paint,paintAlignment,aligning,pick,handleKey,cancelAlignment,validate,checkedAlignment,tintPixels,differencePixels,choose,settled:()=>preparing||Promise.resolve()};
 });
 const quantities = (function createQuantities() {
   const modes = ['zone', 'unit', 'floor', 'project'];
@@ -14320,6 +14522,7 @@ function renderPlanScene() {
   ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#dfe2df';ctx.fillRect(0,0,w,h);
   ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);
   if(S.plan){const rotation=viewRotation();if(rotation===90)ctx.transform(0,1,-1,0,S.plan.height,0);else if(rotation===180)ctx.transform(-1,0,0,-1,S.plan.width,S.plan.height);else if(rotation===270)ctx.transform(0,-1,1,0,0,S.plan.width);}
+  if(!planOverlayUI?.paintAlignment(ctx)){
   if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';}
   planOverlayUI?.paint(ctx);
   for(const item of S.items.filter(item=>item.page===S.page)) {
@@ -14338,10 +14541,12 @@ function renderPlanScene() {
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
   }
-  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>item.page===S.page&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));ctx.restore();
+  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>item.page===S.page&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));
+  }
+  ctx.restore();
   drawSelectionBox(ctx);
   if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
-  pdfIntelligenceUI?.paint();
+  if(!planOverlayUI?.aligning())pdfIntelligenceUI?.paint();
 }
 draw();
 function itemQuantityText(item,withWaste=false) {
@@ -15202,6 +15407,7 @@ function zoomSelection() {
 }
 function activateTool(tool) {
   if(S.loading)return;
+  planOverlayUI?.cancelAlignment();
   S.selectionBox=null;
   S.fixtureDrawing=null;S.fixtureEditing=null;
   if(tool==='calibrate')return calibrationModal();
@@ -15253,6 +15459,7 @@ function keyboard(event) {
   }
   if(event.target.closest?.('input,select,textarea,[contenteditable="true"],[contenteditable=""]'))return;
   if(event.target.closest?.('button,summary')&&(key==='enter'||key===' '))return;
+  if(planOverlayUI?.handleKey(event))return;
   if(S.selectionBox){if(key==='escape'){event.preventDefault();S.selectionBox=null;S.dragged=true;draw();}return;}
   if(S.dragging){if(key==='escape'){event.preventDefault();const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);S.dragged=true;}return;}
   if(S.loading)return;
@@ -16227,6 +16434,7 @@ canvas.onwheel=event=>{
 canvas.onclick=event=>{
   if(!S.plan||S.loading||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
+  if(planOverlayUI?.pick(canvasPoint(event)))return;
   const point=snapPoint(canvasPoint(event),event);
   if(S.tool==='sanitaryPoint'){placeManualSanitary(point);return;}
   if(S.tool==='wallSamples'){recordWallSample(point);return;}
@@ -16244,7 +16452,7 @@ canvas.onclick=event=>{
   refreshManualUI();
 };
 canvas.ondblclick=event=>{
-  event.preventDefault();if(S.loading)return;
+  event.preventDefault();if(S.loading||planOverlayUI?.aligning())return;
   if(finishManualTool())return;
   if(['area','split','exclude'].includes(S.tool)&&S.draft.length>=3)finishArea(S.draft);
   else if(S.tool==='linear'&&S.draft.length>=2)finishLine(S.draft);
@@ -16253,7 +16461,7 @@ canvas.ondblclick=event=>{
 };
 const measurementContextMenu=measurementContextMenuFactory({
   canvas,getState:()=>S,pointFromEvent:canvasPoint,hitTest:surfaceForEdit,
-  isBlocked:()=>!!$('#overlay').innerHTML.trim(),
+  isBlocked:()=>!!$('#overlay').innerHTML.trim()||!!planOverlayUI?.aligning(),
   selectSurface:id=>{S.tool='select';S.fixtureDrawing=null;S.fixtureEditing=null;selectItem(id);},
   removeLastPoint:()=>{S.draft.pop();refresh();},resetTool:()=>{S.tool='select';refresh();},
   openFinish:id=>{openItemEditor(id);$('#surfaceMaterial')?.focus();},
@@ -16266,10 +16474,10 @@ measurementContextMenu.install();
 canvas.onpointerdown=event=>{
   draw();
   if(!S.plan||S.loading)return;S.dragged=false;canvas.focus();
-  if(event.button===1||(S.spaceHeld||S.tool==='hand')&&event.button===0) {
+  if(event.button===1||(S.spaceHeld||S.tool==='hand'&&!planOverlayUI?.aligning())&&event.button===0) {
     event.preventDefault();S.dragged=true;S.panning={x:event.clientX,y:event.clientY,pan:{...S.pan}};canvas.setPointerCapture?.(event.pointerId);canvas.style.cursor='grabbing';return;
   }
-  if(event.button!==0)return;
+  if(event.button!==0||planOverlayUI?.aligning())return;
   const item=S.items.find(i=>i.id===S.selected),point=canvasPoint(event);
   if(fixturePointerDown(event,point))return;
   const editable=focusedSurfaceEdit();
@@ -16305,7 +16513,7 @@ canvas.onpointerup=event=>{
   draw();
   if(S.selectionBox){const box=S.selectionBox;S.selectionBox=null;if(box.moved)finishSelectionBox(box);}
   if(S.dragging){const drag=S.dragging;S.dragging=null;if(S.dragged)commitDrag(drag);else restoreSnapshot(drag.before);}
-  S.panning=null;canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
+  S.panning=null;canvas.style.cursor=planOverlayUI?.aligning()?'crosshair':S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);
 };
 canvas.onpointercancel=()=>{if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;S.dragged=true;draw();};
@@ -16374,8 +16582,14 @@ const revisionUI=revisionUIFactory({revisions,documents,getState:()=>S,save,reme
   }});
 revisionUI.install();
 planOverlayUI=planOverlayFactory({document,canvas,revisions,getState:()=>S,
-  getDocuments:()=>{const docs=(S.estimation.workspace?.documents||[]).filter(d=>!d.excluded&&d.fingerprint&&d.pageCount>0).map(d=>({key:d.fingerprint,name:d.fileName||d.name,pages:d.pageCount}));if(S.plan&&!docs.some(d=>d.key===S.documentKey))docs.push({key:S.documentKey,name:S.fileName,pages:S.pages});return docs;},
-  readImage:source=>readPlanImage(source),openAlignment:config=>revisionUI.show(config),requestDraw:draw,
+  getDocuments:(includeSheets=false)=>{
+    const states=includeSheets?projectStates():[];
+    const docs=(S.estimation.workspace?.documents||[]).filter(d=>!d.excluded&&d.fingerprint&&d.pageCount>0).map(d=>({key:d.fingerprint,name:d.fileName||d.name,pages:d.pageCount}));
+    if(S.plan&&!docs.some(d=>d.key===S.documentKey))docs.push({key:S.documentKey,name:S.fileName,pages:S.pages});
+    if(includeSheets)for(const d of docs){const state=d.key===S.documentKey?S:states.find(p=>p.documentKey===d.key);d.sheets=Object.fromEntries(Object.entries(state?.sheetNames||{}).map(([page,n])=>[page,n.custom||[n.code,n.title].filter(Boolean).join(' · ')]));}
+    return docs;
+  },
+  readImage:source=>readPlanImage(source),openDialog,closeDialog,requestDraw:draw,
   persist:()=>{const saved=persistence.save(S),shared=projectSession.save(S);if(!saved||!shared)toast('Réglages de superposition non sauvegardés localement. Exportez le relevé pour les conserver.');},toast});
 planOverlayUI.install();
 const legendUI=legendUIFactory({legends,getState:()=>S,remember,save,openDialog,toast,esc,uid});
