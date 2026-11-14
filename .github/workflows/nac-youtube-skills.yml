@@ -1,0 +1,34 @@
+name: NAC YouTube skill scripts
+
+on:
+  pull_request:
+    paths:
+      - ".agents/skills/yt-viral/**"
+      - ".agents/skills/yt-chapters/**"
+      - "tests/nac_youtube/**"
+      - ".github/workflows/nac-youtube-skills.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - ".agents/skills/yt-viral/**"
+      - ".agents/skills/yt-chapters/**"
+      - "tests/nac_youtube/**"
+      - ".github/workflows/nac-youtube-skills.yml"
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python scripts
+        run: |
+          python3 -m py_compile .agents/skills/yt-viral/swipe.py
+          python3 -m py_compile .agents/skills/yt-chapters/chapters.py
+          python3 -m py_compile .agents/skills/yt-chapters/deadair.py
+      - name: Run NAC YouTube tests
+        run: python3 -m unittest discover -s tests/nac_youtube -v
