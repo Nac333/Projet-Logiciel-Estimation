@@ -2222,8 +2222,8 @@ function initRibbonOverflow() {
   main.insertAdjacentHTML('afterend','<section id="advancedTools" class="advanced-tools" aria-label="Outils supplémentaires du ruban" hidden><header><strong>Autres outils</strong><button type="button" id="closeAdvanced" aria-label="Fermer les autres outils">×</button></header><div id="ribbonOverflowGroups"></div></section>');
   const panel=$('#advancedTools'),toggle=$('#advancedToggle'),holder=$('#manualOverflowHolder'),groups=$$('.manual-group',strip),entries=[];
   const lowPriority=['demoBtn','helpBtn','catalogNav','ordersBtn','tileOriginBtn','toggleTileGrid','tileSettings','manualZoomOut','manualZoomIn','manualSegment','manualRectangle','wallLayersToggle','manualPan','manualFit'];
-  const atelierEssentials=['manualScale','manualDimension','manualArea','manualLinear','manualCount','stepDetect'];
-  const atelierAdditional=['manualExclude','deleteSelection','wallTakeoffBtn','traceWallBtn','wallLayersToggle','tileOriginBtn','toggleTileGrid','tileSettings','helpBtn','demoBtn','catalogNav','ordersBtn','manualSegment','wallSamplesBtn'];
+  const atelierEssentials=['manualRectangle','manualScale','manualDimension','manualArea','manualLinear','manualCount','stepDetect'];
+  const atelierAdditional=['manualExclude','deleteSelection','wallTakeoffBtn','traceWallBtn','wallLayersToggle','helpBtn','demoBtn','catalogNav','ordersBtn','manualSegment','wallSamplesBtn'];
   const middlePriority=['manualCount','manualLinear','manualExclude','manualRedo','manualUndo','wallTakeoffBtn','traceWallBtn'];
   groups.forEach((group,index)=>{
     const home=$('.manual-group-buttons',group),overflow=document.createElement('div');overflow.className='ribbon-overflow-group';overflow.hidden=true;
@@ -3945,7 +3945,7 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
   const $=selector=>document.querySelector(selector), model=()=>getState().estimation.workspace;
   const catalogue=()=>library.catalogue(model());
   let signature='',selection=null,menu=null,menuOrigin=null,importing=false,lastType='other';
-  const icons={add:'M12 5v14M5 12h14',folder:'M3 7V5h6l2 2h10v13H3zM12 11v6M9 14h6',type:'M4 4h16v16H4zM7 8h10M12 8v9',rename:'M4 20l4-1L20 7l-3-3L5 16z',remove:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7',compare:'M14 3h7v7M21 3L11 13M10 5H4v16h16v-6',restore:'M4 10h11a6 6 0 1 1-5 10M4 10l5-5M4 10l5 5'};
+  const icons={add:'M12 5v14M5 12h14',folder:'M3 7V5h6l2 2h10v13H3zM12 11v6M9 14h6',type:'M4 4h16v16H4zM7 8h10M12 8v9',rename:'M4 20l4-1L20 7l-3-3L5 16z',remove:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7',compare:'M14 3h7v7M21 3L11 13M10 5H4v16h16v-6',tabs:'M3 4h18v5H3zM3 9v11h9M17 12v9M13 16.5h8',restore:'M4 10h11a6 6 0 1 1-5 10M4 10l5-5M4 10l5 5'};
   const icon=id=>`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[id]}"></path></svg>`;
   const button=(id,label,name)=>`<button type="button" id="${id}" title="${label}" aria-label="${label}">${icon(name)}</button>`;
   const select=(id,label,entries,value)=>`<label for="${id}">${label}<select id="${id}">${entries.map(([id,text])=>`<option value="${esc(id)}" ${id===value?'selected':''}>${esc(text)}</option>`).join('')}</select></label>`;
@@ -4059,6 +4059,7 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     if($('#libraryRename'))$('#libraryRename').disabled=importing||!(doc||folder||selection?.kind==='page');
     if($('#libraryRemove'))$('#libraryRemove').disabled=importing||!(doc||folder);
     if($('#libraryCompare'))$('#libraryCompare').disabled=importing||!(doc?.fingerprint||selection?.kind==='page'&&getState().plan);
+    if($('#openPlanTabsBtn'))$('#openPlanTabsBtn').disabled=importing||!(getState().plan||model()?.documents.some(d=>!d.excluded&&d.fingerprint));
     for(const id of ['libraryAddPlans','libraryAddFolder','libraryTypes'])if($('#'+id))$('#'+id).disabled=importing;
   }
   function selectNode(kind,id) {
@@ -4073,6 +4074,7 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     if(kind==='folder')entries.push(['Renommer le dossier',()=>folderDialog(id)],['Supprimer le dossier',()=>removeFolder(id)]);
     if(kind==='document')entries.push(['Modifier ou renommer le plan',()=>documentDialog(id)],['Ouvrir dans une fenêtre',compareSelection],['Retirer le plan du projet',()=>retireDocument(id)]);
     if(kind==='page')entries.push(['Renommer la feuille',()=>renamePage(+id)],['Ouvrir dans une fenêtre',compareSelection]);
+    if(options.openPlanTabs&&['page','document'].includes(kind))entries.unshift([options.planTabsMenuLabel?.(kind,id)||'Ouvrir dans un nouvel onglet',()=>options.openPlanTabs({kind,id})]);
     menu=document.createElement('div');menu.id='planLibraryMenu';menu.className='plan-library-menu';menu.setAttribute('role','menu');menu.setAttribute('aria-label','Actions des plans');
     entries.forEach(([label,action])=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','menuitem');b.textContent=label;b.onclick=()=>{closeMenu();action();};menu.append(b);});document.body.append(menu);
     const r=menu.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(x,innerWidth-r.width-8))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-r.height-8))+'px';
@@ -4087,14 +4089,15 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     const opened=new Map([...host.querySelectorAll('details')].map(d=>[d.dataset.sourceFolder,d.open]));
     const unfiled=docs.filter(d=>library.folderOf(w,d)===null),groups=[...meta.folders,...(unfiled.length?[{id:'unfiled',name:'Non classés',typeId:'other'}]:[])];
     const removed=all.filter(d=>d.excluded).length;
-    host.innerHTML=`<div class="plan-library-toolbar" role="toolbar" aria-label="Gérer les plans">${button('libraryAddPlans','Ajouter des plans','add')}${button('libraryAddFolder','Ajouter un dossier','folder')}${button('libraryTypes','Types de plans','type')}${button('libraryRename','Renommer la sélection','rename')}${button('libraryRemove','Retirer ou supprimer la sélection','remove')}${button('libraryCompare','Ouvrir dans une fenêtre','compare')}${removed?button('libraryRetired','Plans retirés ('+removed+')','restore'):''}</div>`+groups.map(folder=>{
+    host.innerHTML=`<div class="plan-library-toolbar" role="toolbar" aria-label="Gérer les plans">${button('libraryAddPlans','Ajouter des plans','add')}${button('libraryAddFolder','Ajouter un dossier','folder')}${button('libraryTypes','Types de plans','type')}${button('libraryRename','Renommer la sélection','rename')}${button('libraryRemove','Retirer ou supprimer la sélection','remove')}${options.openPlanTabs?button('openPlanTabsBtn','Ouvrir les feuilles sélectionnées dans des onglets','tabs'):''}${button('libraryCompare','Ouvrir dans une fenêtre','compare')}${removed?button('libraryRetired','Plans retirés ('+removed+')','restore'):''}</div>`+groups.map(folder=>{
       const entries=docs.filter(d=>library.folderOf(w,d)===(folder.id==='unfiled'?null:folder.id));
       return `<details class="source-folder" data-source-folder="${esc(folder.id)}" ${opened.get(folder.id)!==false?'open':''}><summary><span>${esc(folder.name)}</span><small data-source-count="${esc(folder.id)}">${entries.length}</small><button type="button" data-source-import="${esc(folder.id)}" aria-label="Importer un plan ${esc(folder.name)}" title="Importer un plan ${esc(folder.name)}">+</button></summary><div class="source-folder-files">${entries.map(doc=>`<button type="button" data-source-document="${esc(doc.id)}" class="source-document ${doc.fingerprint===state.documentKey?'active':''}" aria-current="${doc.fingerprint===state.documentKey?'page':'false'}" title="${esc(doc.fileName)} · ${esc(meta.types.find(t=>t.id===library.typeOf(w,doc))?.name||'Autres')}" ${doc.fingerprint?'':'disabled'}><span>${esc(doc.name)}</span><small>${doc.pageCount} p.</small></button>`).join('')||'<small class="source-folder-empty">Aucun plan</small>'}</div></details>`;
     }).join('')+groups.map(folder=>`<input id="${folder.id==='architecture'?'architecturePlanInput':folder.id==='design'?'designPlanInput':'sourceInput-'+esc(folder.id)}" data-source-file-input="${esc(folder.id)}" type="file" accept=".pdf,.png,.jpg,.jpeg" multiple hidden>`).join('');
     $('#libraryAddPlans').onclick=importDialog;$('#libraryAddFolder').onclick=()=>folderDialog();$('#libraryTypes').onclick=()=>typesDialog();$('#libraryRename').onclick=editSelection;$('#libraryRemove').onclick=removeSelection;$('#libraryCompare').onclick=compareSelection;if($('#libraryRetired'))$('#libraryRetired').onclick=retiredDialog;
+    if($('#openPlanTabsBtn'))$('#openPlanTabsBtn').onclick=()=>options.openPlanTabs(selection?.kind==='document'&&model()?.documents.find(d=>d.id===selection.id)?.fingerprint!==getState().documentKey?selection:null);
     host.querySelectorAll('[data-source-import]').forEach(b=>b.onclick=event=>{event.preventDefault();event.stopPropagation();host.querySelector(`[data-source-file-input="${b.dataset.sourceImport}"]`).click();});
     host.querySelectorAll('[data-source-file-input]').forEach(input=>input.onchange=()=>{const id=input.dataset.sourceFileInput,folder=meta.folders.find(f=>f.id===id),files=[...input.files];input.value='';importFiles(files,id==='unfiled'?null:id,folder?.typeId||'other');});
-    host.querySelectorAll('[data-source-document]').forEach(b=>b.onclick=()=>{selectNode('document',b.dataset.sourceDocument);openDocument(b.dataset.sourceDocument);});
+    host.querySelectorAll('[data-source-document]').forEach(b=>b.onclick=()=>{selectNode('document',b.dataset.sourceDocument);if(options.navigatePlanDocument)options.navigatePlanDocument(b.dataset.sourceDocument);else openDocument(b.dataset.sourceDocument);});
     host.querySelectorAll('summary').forEach(s=>s.addEventListener('click',event=>{if(!event.target.closest('button'))selectNode('folder',s.parentElement.dataset.sourceFolder);}));
     if(!selection){const current=docs.find(d=>d.fingerprint===state.documentKey);if(current)selection={kind:'document',id:current.id};}
     const old=$('#treeFile')?.closest('.tree-page');if(old)old.hidden=(!state.plan&&state.documentKey==='legacy')||all.some(d=>d.fingerprint===state.documentKey);
@@ -4113,6 +4116,236 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     `;document.head.append(style);render();
   }
   return {install,render,capture,classificationFields,openDocument};
+});
+const planTabs = (function createPlanTabs() {
+  let tabs=[],activeKey=null;
+  const key=(documentKey,page)=>JSON.stringify([documentKey,page]);
+  const text=(value,max)=>typeof value==='string'?value.slice(0,max):'';
+  function view(value){
+    if(!value||!Number.isFinite(value.zoom)||value.zoom<=0||value.zoom>1000||
+      !value.pan||![value.pan.x,value.pan.y].every(Number.isFinite))return null;
+    return {zoom:value.zoom,pan:{x:value.pan.x,y:value.pan.y},
+      width:Number.isFinite(value.width)&&value.width>0?value.width:null,
+      height:Number.isFinite(value.height)&&value.height>0?value.height:null};
+  }
+  function descriptor(value,pinned){
+    if(!value||typeof value.documentKey!=='string'||!value.documentKey||value.documentKey==='legacy'||
+      !Number.isSafeInteger(value.page)||value.page<1)return null;
+    return {key:key(value.documentKey,value.page),documentKey:value.documentKey,page:value.page,
+      title:text(value.title,500)||'Feuille '+value.page,documentName:text(value.documentName,500),
+      pinned:!!pinned,view:view(value.view)};
+  }
+  const copy=tab=>({...tab,view:tab.view?{...tab.view,pan:{...tab.view.pan}}:null});
+  function restore(value){
+    tabs=[];activeKey=null;if(value?.version!==1||!Array.isArray(value.tabs))return;
+    let preview=false;
+    for(const valueTab of value.tabs.slice(0,2000)){
+      const tab=descriptor(valueTab,valueTab?.pinned);if(!tab)continue;
+      if(tabs.some(t=>t.key===tab.key))continue;
+      if(!tab.pinned){if(preview)continue;preview=true;}
+      tabs.push(tab);
+    }
+    if(tabs.some(t=>t.key===value.activeKey))activeKey=value.activeKey;
+  }
+  function remember(documentKey,page,value){
+    const tab=tabs.find(t=>t.key===key(documentKey,page)),v=view(value);if(tab&&v)tab.view=v;
+  }
+  function current(value){
+    const incoming=descriptor(value,false);if(!incoming)return;
+    let tab=tabs.find(t=>t.key===incoming.key);
+    if(!tab){
+      const preview=tabs.findIndex(t=>!t.pinned);
+      if(preview<0)tabs.push(incoming);else tabs.splice(preview,1,incoming);
+      tab=incoming;
+    }
+    tab.title=incoming.title;tab.documentName=incoming.documentName;
+    if(incoming.view)tab.view=incoming.view;activeKey=tab.key;
+  }
+  function open(values){
+    const keys=[];
+    for(const value of values){
+      const incoming=descriptor(value,true);if(!incoming)continue;
+      let tab=tabs.find(t=>t.key===incoming.key);
+      if(tab){tab.pinned=true;tab.title=incoming.title;tab.documentName=incoming.documentName;}
+      else{tab=incoming;tabs.push(tab);}
+      if(!keys.includes(tab.key))keys.push(tab.key);
+    }
+    return keys;
+  }
+  function remove(k){tabs=tabs.filter(tab=>tab.key!==k);if(activeKey===k)activeKey=null;}
+  function prune(documents){
+    const allowed=new Map(documents.map(d=>[d.key,d.pages]));
+    tabs=tabs.filter(tab=>allowed.has(tab.documentKey)&&tab.page<=allowed.get(tab.documentKey));
+    if(!tabs.some(tab=>tab.key===activeKey))activeKey=null;
+  }
+  function labels(resolve){for(const tab of tabs){const title=resolve(tab.documentKey,tab.page);if(typeof title==='string'&&title)tab.title=title.slice(0,500);}}
+  return {key,view,restore,remember,current,open,remove,prune,labels,
+    clearCurrent:()=>{activeKey=null;},
+    get:k=>{const tab=tabs.find(t=>t.key===k);return tab?copy(tab):null;},
+    snapshot:()=>({version:1,activeKey,tabs:tabs.map(copy)})};
+})();
+const planTabsUIFactory = (function createPlanTabsUI(options) {
+  const {document,window,model,getCurrent,getDocuments,getDocumentKeys,getSheetLabel,
+    onNavigate,onCloseLast,canNavigate,toast,openDialog,closeDialog}=options;
+  const $=selector=>document.querySelector(selector);
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const pref='aite-plan-tabs-v1:';
+  let project=null,signature='',saved='',busy=false,anchor=null,selection=new Set(),persistTimer=null;
+  const currentKey=()=>{const s=getCurrent();return s.documentKey&&s.documentKey!=='legacy'?model.key(s.documentKey,s.page):null;};
+  function persist() {
+    if(!project)return;
+    const snapshot=model.snapshot();if(project==='unassigned'&&!snapshot.tabs.length&&!saved)return;
+    const json=JSON.stringify(snapshot);if(json===saved)return;
+    try{window.localStorage.setItem(pref+project,json);saved=json;}catch(_){/* Preferences can be unavailable; takeoff storage is independent. */}
+  }
+  function rememberCurrent() {
+    const s=getCurrent();if(s.ready)model.remember(s.documentKey,s.page,s.view);
+  }
+  function changeProject() {
+    const id=getCurrent().projectId||'unassigned';if(id===project)return;
+    if(project)persist();project=id;signature='';saved='';selection.clear();anchor=null;
+    let value;try{value=JSON.parse(window.localStorage.getItem(pref+id)||'null');}catch(_){}
+    model.restore(value);model.clearCurrent();
+  }
+  function renderSelection() {
+    const host=$('#sheetList'),s=getCurrent();if(!host)return;
+    host.setAttribute('role','listbox');host.setAttribute('aria-label','Feuilles du plan · Ctrl ou Maj pour en sélectionner plusieurs');host.setAttribute('aria-multiselectable','true');
+    for(const row of host.querySelectorAll('[data-sheet]')){
+      row.setAttribute('role','option');row.setAttribute('aria-selected',String(selection.has(model.key(s.documentKey,+row.dataset.sheet))));
+      row.classList.toggle('tab-sheet-selected',selection.has(model.key(s.documentKey,+row.dataset.sheet)));
+    }
+    const button=$('#openPlanTabsBtn');if(button){const count=selected().length;button.title=button.getAttribute('aria-label')==='Ouvrir les feuilles sélectionnées dans des onglets'?'Ouvrir les feuilles sélectionnées dans des onglets · Ctrl+Alt+T':'';button.disabled=busy||(!count&&!s.ready&&!getDocumentKeys().length);}
+  }
+  function sync() {
+    if(busy)return;changeProject();
+    const available=getDocumentKeys();model.prune(available);
+    const s=getCurrent();
+    if(!s.loading){if(s.ready&&available.some(d=>d.key===s.documentKey))model.current(s);else model.clearCurrent();}
+    model.labels(getSheetLabel);render();renderSelection();persist();
+  }
+  function render() {
+    const host=$('#planTabs');if(!host)return;
+    const state=model.snapshot(),actual=currentKey(),active=getCurrent().ready&&state.activeKey===actual?actual:null;
+    const next=JSON.stringify([state.tabs.map(t=>[t.key,t.title,t.documentName,t.pinned]),active,busy]);
+    if(next===signature)return;signature=next;
+    const focused=document.activeElement?.closest('[data-plan-tab]'),focusKey=focused?.dataset.planTab,focusClose=document.activeElement?.hasAttribute('data-close-plan-tab');
+    host.innerHTML=state.tabs.map((tab,i)=>`<div class="plan-tab ${tab.pinned?'':'plan-tab-preview'} ${tab.key===active?'is-current':''}" data-plan-tab="${esc(tab.key)}" data-plan-page="${tab.page}"><button type="button" id="planTab-${i}" role="tab" aria-selected="${tab.key===active}" aria-controls="planCanvas" tabindex="${tab.key===(active||state.tabs[0]?.key)?0:-1}" data-activate-plan-tab title="${esc(tab.title+' · '+tab.documentName)}" ${busy?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/></svg><span>${esc(tab.title)}</span></button><button type="button" class="plan-tab-close" data-close-plan-tab aria-label="Fermer l’onglet ${esc(tab.title)}" title="Fermer l’onglet · le plan et ses relevés restent conservés" ${busy?'disabled':''}>×</button></div>`).join('');
+    for(const tab of host.querySelectorAll('[data-plan-tab]')){
+      tab.querySelector('[data-activate-plan-tab]').onclick=()=>activate(tab.dataset.planTab);
+      tab.querySelector('[data-activate-plan-tab]').ondblclick=()=>{const entry=model.get(tab.dataset.planTab);if(entry){model.open([entry]);render();persist();}};
+      tab.querySelector('[data-close-plan-tab]').onclick=()=>close(tab.dataset.planTab);
+    }
+    if(active){const node=[...host.children].find(n=>n.dataset.planTab===active);$('#planCanvas')?.setAttribute('aria-labelledby',node.querySelector('[role=tab]').id);node.scrollIntoView({block:'nearest',inline:'nearest'});}
+    else $('#planCanvas')?.removeAttribute('aria-labelledby');
+    if(focusKey){const node=[...host.children].find(n=>n.dataset.planTab===focusKey);node?.querySelector(focusClose?'[data-close-plan-tab]':'[role=tab]')?.focus({preventScroll:true});}
+    $('#planTabsAdd').disabled=busy||!getDocumentKeys().length;
+  }
+  function blocked(target) {const reason=busy?'Attendez l’ouverture de la feuille.':canNavigate(target);if(reason){toast(reason);return true;}return false;}
+  async function activate(key) {
+    const tab=model.get(key);if(!tab)return false;
+    if(key===currentKey()&&getCurrent().ready){sync();return true;}
+    if(blocked(tab))return false;
+    rememberCurrent();persist();busy=true;render();renderSelection();
+    let result;
+    try{result=await onNavigate(tab,tab.view);}catch(error){result={ok:false,reason:error.message};}
+    busy=false;sync();
+    if(!result?.ok){toast(result?.reason||'Cette feuille n’a pas pu être ouverte.');return false;}
+    $('#planCanvas')?.focus({preventScroll:true});return true;
+  }
+  async function preview(value) {
+    if(!value||!getDocumentKeys().some(d=>d.key===value.documentKey&&value.page>=1&&value.page<=d.pages))return false;
+    if(blocked(value))return false;
+    const old=model.snapshot();rememberCurrent();
+    if(!model.get(model.key(value.documentKey,value.page))){
+      // Register a preview only after a successful render. The previous preview remains recoverable on failure.
+      busy=true;render();let result;
+      try{result=await onNavigate(value,null);}catch(error){result={ok:false,reason:error.message};}
+      busy=false;if(!result?.ok){model.restore(old);sync();toast(result?.reason||'Cette feuille n’a pas pu être ouverte.');return false;}
+      sync();return true;
+    }
+    return activate(model.key(value.documentKey,value.page));
+  }
+  async function close(key) {
+    const state=model.snapshot(),tab=model.get(key);if(!tab||busy)return;
+    const active=key===currentKey()&&getCurrent().ready;
+    if(!active){model.remove(key);render();persist();return;}
+    const index=state.tabs.findIndex(t=>t.key===key),neighbor=state.tabs[index+1]||state.tabs[index-1];
+    if(blocked(neighbor))return;
+    if(neighbor){if(!await activate(neighbor.key))return;model.remove(key);sync();return;}
+    rememberCurrent();busy=true;
+    try{await onCloseLast();model.remove(key);}finally{busy=false;sync();}
+  }
+  function selected() {
+    const s=getCurrent();return [...selection].map(k=>{let pair;try{pair=JSON.parse(k);}catch(_){return null;}if(pair?.[0]!==s.documentKey)return null;return {documentKey:pair[0],page:pair[1],title:getSheetLabel(pair[0],pair[1])||'Feuille '+pair[1],documentName:s.documentName};}).filter(Boolean).sort((a,b)=>a.page-b.page);
+  }
+  function targets(context) {
+    const s=getCurrent();
+    if(context?.kind==='document'){
+      const doc=getDocuments().find(d=>d.id===context.id);return doc?[{documentKey:doc.key,page:doc.key===s.documentKey?s.page:1,title:doc.sheets?.[doc.key===s.documentKey?s.page:1]||'Feuille 1',documentName:doc.name}]:[];
+    }
+    const chosen=selected();
+    if(context?.kind==='page'&&!selection.has(model.key(s.documentKey,+context.id)))return [{documentKey:s.documentKey,page:+context.id,title:getSheetLabel(s.documentKey,+context.id),documentName:s.documentName}];
+    if(chosen.length)return chosen;
+    return s.ready?[{documentKey:s.documentKey,page:s.page,title:s.title,documentName:s.documentName}]:[];
+  }
+  async function open(values) {
+    if(!values.length)return chooser();if(blocked(values[0]))return false;
+    rememberCurrent();const keys=model.open(values);render();persist();return keys.length?activate(keys[0]):false;
+  }
+  function chooser() {
+    if(blocked())return;
+    const docs=getDocuments(),entries=docs.flatMap(d=>Array.from({length:d.pages},(_,i)=>({documentKey:d.key,page:i+1,title:d.sheets?.[i+1]||'Feuille '+(i+1),documentName:d.name}))),chosen=new Set();
+    openDialog('Ouvrir des feuilles dans des onglets',`<div class="plan-tabs-picker"><label for="planTabsSearch">Rechercher une feuille ou un plan</label><input id="planTabsSearch" type="search" placeholder="Numéro, titre, fichier…"><div id="planTabsChoices" class="plan-tabs-choices"></div><p id="planTabsPicked" role="status">0 feuille sélectionnée</p><div class="modal-actions"><button type="button" id="cancelPlanTabs">Annuler</button><button type="button" class="primary" id="confirmPlanTabs" disabled>Ouvrir les onglets</button></div></div>`);
+    const list=$('#planTabsChoices');
+    const renderChoices=()=>{const query=$('#planTabsSearch').value.toLocaleLowerCase('fr');list.innerHTML=entries.map((e,i)=>({e,i})).filter(({e})=>(e.title+' '+e.documentName).toLocaleLowerCase('fr').includes(query)).map(({e,i})=>`<label><input type="checkbox" data-tab-choice="${i}" ${chosen.has(i)?'checked':''}><span><b>${esc(e.title)}</b><small>${esc(e.documentName)} · page ${e.page}</small></span></label>`).join('')||'<p>Aucune feuille correspondante.</p>';};
+    list.onchange=e=>{const input=e.target.closest('[data-tab-choice]');if(!input)return;input.checked?chosen.add(+input.dataset.tabChoice):chosen.delete(+input.dataset.tabChoice);$('#planTabsPicked').textContent=chosen.size+' feuille'+(chosen.size>1?'s':'')+' sélectionnée'+(chosen.size>1?'s':'');$('#confirmPlanTabs').disabled=!chosen.size;};
+    $('#planTabsSearch').oninput=renderChoices;$('#cancelPlanTabs').onclick=closeDialog;
+    $('#confirmPlanTabs').onclick=()=>{const values=[...chosen].sort((a,b)=>a-b).map(i=>entries[i]);closeDialog();open(values);};renderChoices();$('#planTabsSearch').focus();
+  }
+  function install() {
+    const row=$('.stagebar .document');if(!row)return;
+    row.classList.add('document-with-tabs');
+    row.insertAdjacentHTML('afterbegin','<div id="planTabs" role="tablist" aria-label="Feuilles ouvertes"></div><button type="button" id="planTabsAdd" aria-label="Choisir des feuilles à ouvrir dans des onglets" title="Choisir des feuilles à ouvrir dans des onglets">+</button>');
+    $('#planTabsAdd').onclick=chooser;
+    $('#planTabs').addEventListener('keydown',e=>{
+      if(!e.target.matches('[role=tab]')||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+      e.preventDefault();e.stopPropagation();const tabs=[...$('#planTabs').querySelectorAll('[role=tab]')],i=tabs.indexOf(e.target),index=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[index]?.focus();
+    });
+    const tree=$('#sheetList');
+    tree?.addEventListener('click',e=>{
+      const node=e.target.closest('[data-sheet]');if(!node)return;const s=getCurrent(),n=+node.dataset.sheet,k=model.key(s.documentKey,n);
+      if(e.ctrlKey||e.metaKey||e.shiftKey){
+        e.preventDefault();e.stopImmediatePropagation();
+        if(e.shiftKey&&anchor?.documentKey===s.documentKey){if(!e.ctrlKey&&!e.metaKey)selection.clear();for(let p=Math.min(n,anchor.page);p<=Math.max(n,anchor.page);p++)selection.add(model.key(s.documentKey,p));}
+        else{if(selection.has(k))selection.delete(k);else selection.add(k);anchor={documentKey:s.documentKey,page:n};}
+      }else{selection=new Set([k]);anchor={documentKey:s.documentKey,page:n};}
+      renderSelection();
+    },true);
+    document.addEventListener('keydown',e=>{
+      if(e.key.toLowerCase()!=='t'||!e.ctrlKey||!e.altKey||e.metaKey||e.shiftKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable], [role=dialog]'))return;
+      e.preventDefault();e.stopImmediatePropagation();open(targets());
+    },true);
+    const saveView=()=>{window.clearTimeout(persistTimer);persistTimer=window.setTimeout(()=>{if(!busy){rememberCurrent();persist();}},180);};
+    $('#planCanvas')?.addEventListener('pointerup',saveView);$('#planCanvas')?.addEventListener('wheel',saveView,{passive:true});
+    window.addEventListener('pagehide',()=>{rememberCurrent();persist();});
+    const style=document.createElement('style');style.id='planTabsStyle';style.textContent=`
+      .stagebar .document.document-with-tabs{min-width:0;flex:1;gap:5px;overflow:hidden}.document-with-tabs>#stageFile,.document-with-tabs>svg,.document-with-tabs>i{display:none!important}
+      #planTabs{display:flex;align-items:stretch;gap:3px;min-width:0;overflow:auto;scrollbar-width:thin;max-width:100%;flex:0 1 auto;padding:2px 0}
+      .plan-tab{display:flex;align-items:stretch;flex:0 0 auto;max-width:210px;border:1px solid #dce3ec;border-radius:5px;background:#f6f8fc;color:#43536a;min-width:78px}
+      .plan-tab.is-current{background:#edf3ff;border-color:#b9cbff;box-shadow:inset 0 -2px #3265e8;color:#173e9a}.plan-tab-preview [role=tab] span{font-style:italic}
+      .plan-tab>[role=tab]{display:flex;align-items:center;gap:6px;min-width:0;padding:5px 3px 5px 8px;border:0;background:transparent;color:inherit;cursor:pointer;font:600 11px/1.4 'Segoe UI',Arial,sans-serif}.plan-tab>[role=tab] span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.plan-tab svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+      .plan-tab-close{flex:none;background:transparent;border:0;color:inherit;min-width:24px;padding:0 5px;cursor:pointer;opacity:.55}.plan-tab:hover .plan-tab-close,.plan-tab:focus-within .plan-tab-close{opacity:1}.plan-tab-close:hover{background:#dbe6fa;border-radius:4px}
+      #planTabsAdd{flex:none;width:27px;height:27px;border:1px solid transparent;background:transparent;color:#52637a;font-size:20px;cursor:pointer;border-radius:4px}#planTabsAdd:hover{background:#edf3ff;border-color:#c8d6f2}
+      #planTabs button:focus-visible,#planTabsAdd:focus-visible{outline:2px solid #2456dc;outline-offset:-2px}.document-with-tabs .pages{flex:none;margin-left:auto}#sheetList .tab-sheet-selected{background:#edf3ff;box-shadow:inset 3px 0 #3265e8}#sheetList [data-sheet][aria-current=page]{font-weight:600}
+      .plan-tabs-choices{max-height:min(460px,50vh);overflow:auto;border:1px solid #dce3ec;border-radius:5px;margin-top:10px}.plan-tabs-choices>label{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #e8edf4;cursor:pointer}.plan-tabs-choices input{width:16px;flex:none}.plan-tabs-choices span{min-width:0;display:grid;gap:3px;overflow-wrap:anywhere}.plan-tabs-choices small{color:#5d6c7e}.plan-tabs-picker>label{display:block;margin-bottom:6px}
+      @media(max-width:780px){.plan-tab{max-width:150px}.document-with-tabs .pages{gap:2px}#planTabs{flex:1}.document-with-tabs .pages button{min-width:22px}}
+    `;document.head.append(style);sync();
+  }
+  return {install,sync,rememberCurrent,renderSelection,chooser,activate,close,
+    openFromLibrary:context=>open(targets(context)),
+    menuLabel:(kind,id)=>targets({kind,id}).length>1?'Ouvrir les feuilles sélectionnées dans des onglets':'Ouvrir dans un nouvel onglet',
+    navigateSheet:page=>{const s=getCurrent();return preview({documentKey:s.documentKey,page,title:getSheetLabel(s.documentKey,page),documentName:s.documentName});},
+    previewDocument:id=>{const target=targets({kind:'document',id})[0];return preview(target);}};
 });
 const planComparison = (function createPlanComparison() {
   function bootViewer() {
@@ -11838,7 +12071,8 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   const key='aite-workspace-appearance-v1',find=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=value=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:1}).format(value);
-  let preferences={collapsed:false,view:'finishes',closed:[],opened:[]},installed=false,focusSnapshot=null,lastRender='';
+  let preferences={collapsed:false,view:'finishes',closed:[],opened:[],toolbarPosition:null},installed=false,focusSnapshot=null,lastRender='';
+  let toolbarDrag=null;
   let drawerPinned=false,drawerAnchor=null,drawerTimer=null,lastSelected='';
   const sectionOpen=new Map();
   const save=()=>{try{window.localStorage.setItem(key,JSON.stringify({...preferences,collapsed:focusSnapshot?focusSnapshot.collapsed:preferences.collapsed}));}catch{}};
@@ -11862,10 +12096,12 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   }
   function positionNavigation(){
     const canvas=find('planCanvas'),nav=find('floatingPlanNavigation');if(!canvas||!nav)return;
-    const r=canvas.getBoundingClientRect();nav.style.left=Math.round(r.left-50)+'px';nav.style.top=Math.round(r.top+10)+'px';
-    const vertical=true;nav.setAttribute('aria-orientation','vertical');
-    document.querySelector('.app').style.setProperty('--aite-plan-tool-inset',vertical?'64px':'16px');
-    nav.style.maxWidth=vertical?'44px':Math.max(44,r.width-20)+'px';nav.style.maxHeight=vertical?Math.max(44,r.height-20)+'px':'';
+    const r=canvas.getBoundingClientRect();nav.setAttribute('aria-orientation','vertical');
+    nav.style.maxWidth='44px';nav.style.maxHeight=Math.max(44,r.height-74)+'px';
+    const n=nav.getBoundingClientRect(),position=preferences.toolbarPosition||{x:0,y:0};
+    const width=Math.max(0,r.width-n.width-20),height=Math.max(0,r.height-n.height-20);
+    nav.style.left=Math.round(r.left+10+position.x*width)+'px';nav.style.top=Math.round(r.top+10+position.y*height)+'px';
+    document.querySelector('.app').style.setProperty('--aite-plan-tool-inset','16px');
     if(focusSnapshot){
       const drawer=find('focusMeasureDrawer'),panel=find('layoutPanel-measures');
       if(panel.parentElement!==find('focusMeasureBody'))find('focusMeasureBody').append(panel);
@@ -11873,6 +12109,19 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
       document.querySelector('.app').style.setProperty('--aite-focus-top',Math.round(r.top+8)+'px');
       document.querySelector('.app').style.setProperty('--aite-focus-height',Math.max(120,r.height-16)+'px');
     }
+  }
+  function installToolbarGrip(nav){
+    const grip=document.createElement('div');grip.id='planToolbarGrip';grip.tabIndex=0;grip.setAttribute('role','button');grip.setAttribute('aria-label','Déplacer les outils du plan');grip.title='Déplacer les outils · Alt + flèches · double-clic pour réinitialiser';
+    grip.innerHTML='<svg viewBox="0 0 24 12" width="20" height="12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="3" r="1"/><circle cx="12" cy="3" r="1"/><circle cx="18" cy="3" r="1"/><circle cx="6" cy="9" r="1"/><circle cx="12" cy="9" r="1"/><circle cx="18" cy="9" r="1"/></svg>';nav.prepend(grip);
+    const reset=()=>{preferences.toolbarPosition=null;save();positionNavigation();};
+    const move=(left,top)=>{const c=find('planCanvas').getBoundingClientRect(),n=nav.getBoundingClientRect(),w=Math.max(0,c.width-n.width-20),h=Math.max(0,c.height-n.height-20);preferences.toolbarPosition={x:w?Math.max(0,Math.min(1,(left-c.left-10)/w)):0,y:h?Math.max(0,Math.min(1,(top-c.top-10)/h)):0};positionNavigation();};
+    const finish=cancel=>{if(!toolbarDrag)return;const drag=toolbarDrag;toolbarDrag=null;nav.classList.remove('is-dragging');if(cancel){preferences.toolbarPosition=drag.before;positionNavigation();}else save();if(grip.hasPointerCapture(drag.pointer))grip.releasePointerCapture(drag.pointer);};
+    grip.onpointerdown=event=>{if(event.button!==0||toolbarDrag)return;const box=nav.getBoundingClientRect();toolbarDrag={pointer:event.pointerId,x:event.clientX,y:event.clientY,left:box.left,top:box.top,before:preferences.toolbarPosition?{...preferences.toolbarPosition}:null};grip.setPointerCapture(event.pointerId);nav.classList.add('is-dragging');event.preventDefault();event.stopPropagation();};
+    grip.onpointermove=event=>{if(!toolbarDrag||event.pointerId!==toolbarDrag.pointer)return;move(toolbarDrag.left+event.clientX-toolbarDrag.x,toolbarDrag.top+event.clientY-toolbarDrag.y);event.preventDefault();event.stopPropagation();};
+    grip.onpointerup=event=>{if(!toolbarDrag||event.pointerId!==toolbarDrag.pointer)return;finish(false);event.preventDefault();event.stopPropagation();};
+    grip.onpointercancel=()=>finish(true);grip.onlostpointercapture=()=>finish(true);grip.ondblclick=reset;
+    grip.onkeydown=event=>{if(event.altKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key)){event.preventDefault();event.stopPropagation();if(event.key==='Home')reset();else{const box=nav.getBoundingClientRect();move(box.left+(event.key==='ArrowRight'?12:event.key==='ArrowLeft'?-12:0),box.top+(event.key==='ArrowDown'?12:event.key==='ArrowUp'?-12:0));save();}}};
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&toolbarDrag){event.preventDefault();event.stopImmediatePropagation();finish(true);grip.focus({preventScroll:true});}},true);
   }
   function syncPanels(){
     const app=document.querySelector('.app'),left=find('togglePages'),right=find('workspaceRightToggle');
@@ -11969,7 +12218,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   }
   function install(){
     if(installed)return;installed=true;
-    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.view=saved.view==='folders'?'folders':'finishes';for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];}}catch{}
+    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.view=saved.view==='folders'?'folders':'finishes';for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
     const app=document.querySelector('.app'),ribbon=find('manualRibbon'),main=ribbon.querySelector('.manual-ribbon-main');app.classList.add('aite-workspace');main.id='aiteRibbonTools';
     for(const [id,label]of [['layoutPanel-plans','Projet et pages'],['layoutPanel-measures','Mesures du plan']]){const title=find(id)?.querySelector('.pane-title>span');if(title&&!title.classList.contains('layout-panel-actions'))title.innerHTML=(icons?.svg(id==='layoutPanel-plans'?'folder':'area')||folderIcon)+esc(label);}
     const heading=document.createElement('div');heading.className='aite-ribbon-heading';heading.innerHTML='<strong>Relevé</strong><div><button type="button" id="workspaceFocus" aria-pressed="false" title="Agrandir le plan puis retrouver la disposition précédente"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg><span>Focus</span></button><button type="button" id="toggleAiteRibbon" aria-controls="aiteRibbonTools" aria-expanded="true"><span>Replier le ruban</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button></div>';ribbon.prepend(heading);
@@ -11990,6 +12239,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     const nav=document.createElement('div');nav.id='floatingPlanNavigation';nav.className='floating-plan-navigation';nav.setAttribute('role','toolbar');nav.setAttribute('aria-label','Outils du plan');ribbon.append(nav);
     parkNavigation(nav);
     installAtelierIcons();
+    installToolbarGrip(nav);
     const navigationGroup=nav.querySelector('[data-plan-tool-group="navigation"]')||nav;
     const measures=document.createElement('button');measures.type='button';measures.id='focusMeasuresToggle';measures.className='manual-button focus-rail-action';measures.hidden=true;measures.dataset.focusOnly='true';measures.setAttribute('aria-label','Ouvrir les mesures du plan');measures.setAttribute('aria-controls','focusMeasureDrawer');measures.setAttribute('aria-expanded','false');measures.title='Mesures du plan · survol pour voir, clic pour garder ouvert';measures.innerHTML=folderIcon+'<span>Mesures</span>';navigationGroup.insertBefore(measures,navigationGroup.children[2]||null);
     const focusActions=document.createElement('div');focusActions.className='floating-plan-tools-group';focusActions.setAttribute('role','group');focusActions.setAttribute('aria-label','Actions Focus');focusActions.dataset.focusOnly='true';focusActions.hidden=true;nav.append(focusActions);
@@ -12066,16 +12316,17 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-ribbon-heading{min-height:28px;padding:2px 10px 2px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--aite-sky);border-bottom:1px solid var(--aite-line)}.aite-ribbon-heading>strong{font-size:12px;font-weight:600;color:var(--aite-blue)}.aite-ribbon-heading>div{display:flex;align-items:center;gap:6px}
     .aite-ribbon-heading button{display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:2px 8px;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--aite-ink);font-size:11px}.aite-ribbon-heading button:hover,.aite-ribbon-heading button[aria-pressed=true]{background:#e5eeff;border-color:var(--aite-border)}
     .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main{min-height:48px;padding:5px 10px}.aite-workspace .manual-ribbon-scroll{gap:3px;background:transparent}.aite-workspace .manual-group{border-color:var(--aite-line);padding-inline:6px}.aite-workspace .manual-ribbon-main .manual-group-label{display:none}.aite-workspace .manual-group-label{font-size:9px;letter-spacing:.02em;color:var(--aite-muted)}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:36px;min-height:36px;width:auto;min-width:36px;max-width:none;flex:0 0 auto;padding:6px 8px;gap:6px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px;color:var(--aite-muted)}
+    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:36px;min-height:36px;width:auto;min-width:36px;max-width:none;flex:0 0 auto;padding:6px;gap:6px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px;color:var(--aite-muted)}
+    .aite-workspace #aiteRibbonTools #manualUndo span,.aite-workspace #aiteRibbonTools #manualRedo span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace.layout-compact #manualRibbon .manual-button:hover:not(:disabled){background:#edf3ff;border-color:var(--aite-border)}.aite-workspace.layout-compact #manualRibbon .manual-button[aria-pressed=true]{background:#e5eeff;border-color:var(--aite-border);color:#084c9a}.aite-workspace .manual-button:disabled{opacity:.45}
     .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:white;color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:11px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:white;border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded .advanced-tools{display:none}
-    .aite-workspace .floating-plan-navigation{position:fixed;z-index:4;display:flex;gap:2px;align-items:center;padding:3px;border:1px solid #dce3eb99;border-radius:7px;background:#ffffff88;transition:background-color .12s,border-color .12s;overflow:auto}
-    .aite-workspace .floating-plan-tools-group{display:flex;align-items:center;gap:2px;flex:none;min-width:0}.aite-workspace .floating-plan-tools-group+.floating-plan-tools-group{border-left:1px solid var(--aite-line);padding-left:6px;margin-left:3px}.aite-workspace .floating-plan-tools-group[hidden],.aite-workspace .floating-plan-tools-group:empty{display:none}
+    .aite-workspace .floating-plan-navigation{position:fixed;z-index:4;display:flex;gap:2px;align-items:center;padding:3px;border:1px solid #dce3eb99;border-radius:7px;background:#ffffff55;opacity:.32;transition:opacity .12s,background-color .12s,border-color .12s;overflow:auto;pointer-events:none}
+    .aite-workspace .floating-plan-navigation button{pointer-events:auto}.aite-workspace #planToolbarGrip{position:sticky;top:0;display:grid;place-items:center;width:32px;height:20px;flex:0 0 20px;cursor:grab;touch-action:none;pointer-events:auto;color:var(--aite-muted);z-index:1;border-radius:3px}.aite-workspace #planToolbarGrip:focus-visible{outline:2px solid var(--aite-blue);outline-offset:-2px}.aite-workspace .is-dragging #planToolbarGrip{cursor:grabbing}.aite-workspace .floating-plan-tools-group{display:flex;align-items:center;gap:2px;flex:none;min-width:0}.aite-workspace .floating-plan-tools-group+.floating-plan-tools-group{border-left:1px solid var(--aite-line);padding-left:6px;margin-left:3px}.aite-workspace .floating-plan-tools-group[hidden],.aite-workspace .floating-plan-tools-group:empty{display:none}
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button{display:flex;align-items:center;justify-content:center;min-width:30px;width:30px;min-height:30px;height:30px;padding:5px;border:1px solid transparent;border-radius:4px;background:transparent;color:#526174;gap:0}
-    .aite-workspace .floating-plan-navigation .manual-button span{display:none}.aite-workspace .floating-plan-navigation svg{width:18px;height:18px}.aite-workspace .floating-plan-navigation:hover,.aite-workspace .floating-plan-navigation:focus-within{background:white;border-color:var(--aite-border);box-shadow:0 2px 8px #24324410}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:hover,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{background:#edf3ff;color:var(--aite-blue)}
+    .aite-workspace .floating-plan-navigation .manual-button span{display:none}.aite-workspace .floating-plan-navigation svg{width:18px;height:18px}.aite-workspace .floating-plan-navigation:hover,.aite-workspace .floating-plan-navigation:focus-within,.aite-workspace .floating-plan-navigation.is-dragging{opacity:1;background:white;border-color:var(--aite-border);box-shadow:0 2px 8px #24324410}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:hover,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible,.aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{background:#edf3ff;color:var(--aite-blue)}
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{border-color:var(--aite-blue)}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible{outline:2px solid var(--aite-blue);outline-offset:-2px}
     .aite-workspace .workspace{gap:0;background:var(--aite-sky);min-width:0}.aite-workspace .stage{background:var(--aite-sky);min-width:0}.aite-workspace.layout-compact .stagebar{height:36px;min-height:36px;flex-basis:36px;background:white;border-bottom:1px solid var(--aite-line);gap:4px;padding-inline:8px}.aite-workspace .stagebar .document{min-width:0;flex:1}.aite-workspace.layout-compact .stagebar .document strong{font-size:12px;max-width:370px}.aite-workspace .stagebar button{flex-shrink:0}.aite-workspace .stagebar .scale{font-size:10px}
-    .aite-workspace .colorbar{background:var(--aite-surface);border-color:var(--aite-line);font-size:10px}.aite-workspace .canvas-wrap{background:var(--aite-sky);padding-left:54px}.aite-workspace .zoom{left:var(--aite-plan-tool-inset,16px);box-shadow:0 2px 8px #24324410;border-color:var(--aite-line);border-radius:5px}
+    .aite-workspace .colorbar{background:var(--aite-surface);border-color:var(--aite-line);font-size:10px}.aite-workspace .canvas-wrap{background:var(--aite-sky)}.aite-workspace .zoom{left:var(--aite-plan-tool-inset,16px);box-shadow:0 2px 8px #24324410;border-color:var(--aite-line);border-radius:5px}
     .aite-workspace .sidebar.layout-sidebar{background:var(--aite-surface);border-color:var(--aite-line)}.aite-workspace .layout-panel{background:var(--aite-surface);color:var(--aite-ink)}.aite-workspace .layout-panel .pane-title{min-height:40px;padding:8px 10px;font-size:13px;letter-spacing:0;background:var(--aite-paper);color:var(--aite-ink);border-bottom:1px solid var(--aite-line)}
     .aite-workspace .layout-panel-actions button{border-color:transparent;background:transparent;color:var(--aite-muted)}.aite-workspace .layout-panel-actions button:hover{background:#e5eeff;border-color:var(--aite-border)}.aite-workspace .layout-height-divider,.aite-workspace .layout-width-divider{background:var(--aite-line);flex-basis:4px}.aite-workspace .layout-height-divider{min-height:4px}.aite-workspace .layout-width-divider{width:4px}.aite-workspace .layout-floating{border-color:var(--aite-border);border-radius:7px}
     .aite-workspace .side-search input{border-color:var(--aite-border);border-radius:5px;background:white;height:29px}.aite-workspace .sheet-row{border-radius:4px;margin:1px 4px}.aite-workspace .sheet-row[aria-current=page],.aite-workspace .source-document.active{background:#e5eeff;border-left-color:var(--aite-blue)}.aite-workspace .source-folder{border-color:var(--aite-line)}.aite-workspace .source-folder summary{font-size:12px;min-height:32px;padding:6px 8px}.aite-workspace .source-document{font-size:12px;min-height:30px;padding:6px 10px}
@@ -12119,7 +12370,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
 
 
     .aite-workspace .stage>#manualRibbon{flex:0 0 auto;min-width:0;width:100%}
-    .aite-workspace #manualRibbon .manual-group[aria-label="Mesurer"]{order:1}.aite-workspace #manualRibbon .manual-group[aria-label="Relevé manuel"]{order:2}.aite-workspace #manualRibbon .manual-group[aria-label="Projet"]{order:3}.aite-workspace #manualRibbon .manual-group[aria-label="Corriger"]{order:4}.aite-workspace #manualRibbon .manual-group[aria-label="Analyse des plans"]{order:5}
+    .aite-workspace #manualRibbon .manual-group[aria-label="Mesurer"]{order:1}.aite-workspace #manualRibbon .manual-group[aria-label="Relevé manuel"]{order:2}.aite-workspace #manualRibbon .manual-group[aria-label="Projet"]{order:3}.aite-workspace #manualRibbon .manual-group[aria-label="Corriger"]{order:4}.aite-workspace #manualRibbon .manual-group[aria-label="Analyse des plans"]{order:5}.aite-workspace #manualRibbon .manual-group[aria-label="Calepinage"]{order:6}
     .aite-workspace .stagebar .project-command-bar{flex:0 0 auto;gap:5px;margin-left:8px}.aite-workspace .stagebar .project-measure-count{display:none}.aite-workspace .stagebar .plan-angle-control{padding-left:5px;border-color:var(--aite-line)}
     .aite-workspace .atelier-command-rail #workspaceTools>button{position:relative}.aite-workspace .atelier-command-rail #workspaceTools>button>span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.aite-workspace .atelier-command-rail #reviewCount{position:absolute;right:0;top:0;background:var(--aite-blue);color:white;border-radius:4px;font:10px/1.2 'Segoe UI',Arial,sans-serif;padding:1px 3px}
     .aite-workspace .atelier-command-rail svg,.aite-workspace .manual-button svg{stroke-width:1.5}
@@ -12152,6 +12403,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     @media(max-width:900px){.aite-workspace.layout-compact .topbar .top-actions{max-width:none}.aite-workspace.layout-compact .project-command-bar{flex:0 0 auto;width:auto;order:0}.aite-workspace .atelier-view-controls{margin-left:auto}}
     @media(max-width:779px){.aite-workspace .atelier-command-rail{flex-basis:36px;padding:7px 2px}.aite-workspace .atelier-command-rail #workspaceTools button{width:30px;height:30px;padding:6px}.aite-workspace .atelier-view-controls button{font-size:11px;padding-inline:5px}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{padding-inline:7px}.aite-workspace.layout-compact .topbar .top-actions{order:3;flex:1 1 auto}.aite-workspace .top-actions #devisToolBtn span{display:none}}
 
+    @media(hover:none){.aite-workspace .floating-plan-navigation{opacity:.75}}
     @media(prefers-reduced-motion:reduce){.aite-workspace *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
   `;}
   return {install,render,setView,organizeInspector};
@@ -14652,7 +14904,7 @@ $('#root').innerHTML=`<div class="app">
 $('#tools').innerHTML=TOOLS.map(([id,icon,label,key])=>`<button data-tool="${id}" title="${label} (${key})"><i data-lucide="${icon}"></i><span>${label}</span><kbd>${key}</kbd></button>`).join('')+'<small>Mesurer et naviguer</small>';
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
 const canvas=$('#planCanvas'), ctx=canvas.getContext('2d');
-let specificationUI=null,pdfIntelligenceUI=null,planOverlayUI=null;
+let specificationUI=null,pdfIntelligenceUI=null,planOverlayUI=null,planTabsUI=null;
 const pdfNavigationHistory=[];
 let workspaceAppearance=null;
 const specificationEntryIndexes=new WeakMap();
@@ -14942,6 +15194,7 @@ async function checkOriginalIdentity(key,bytes) {
 }
 async function loadFile(file,options={}) {
   if (!file) return;
+  planTabsUI?.rememberCurrent();
   const token = ++S.loadVersion; ++S.renderVersion; S.loading = true; refresh();
   try {
     if (file.size > documents.maxBytes) throw new Error('Le plan dépasse la limite de '+Math.round(documents.maxBytes/1024/1024)+' Mo.');
@@ -14956,7 +15209,9 @@ async function loadFile(file,options={}) {
       const key = documentIdentity(file,pdf);
       try{await checkOriginalIdentity(key,data);}catch(error){await pdf.destroy();throw error;}
       if(token!==S.loadVersion){await pdf.destroy();return false;}
-      openDocument(key,file.name,pdf,pdf.numPages);await showPage(1,options);
+      const target=options.page??1;
+      if(!Number.isSafeInteger(target)||target<1||target>pdf.numPages){await pdf.destroy();throw new Error('La feuille demandée est absente de ce PDF.');}
+      openDocument(key,file.name,pdf,pdf.numPages);await showPage(target,options);
       if(token===S.loadVersion&&S.pdf===pdf) {
         const task=indexDocument(pdf,options),indexToken=S.indexToken;
         S.indexTask=task.catch(()=>{if(token===S.loadVersion&&S.pdf===pdf&&S.documentKey===key&&S.indexToken===indexToken){S.indexing=false;refresh();}});
@@ -14966,6 +15221,7 @@ async function loadFile(file,options={}) {
       let image; try { image = await decodeImage(objectUrl); } finally { URL.revokeObjectURL(objectUrl); }
       if (token !== S.loadVersion) return;
       const key=documentIdentity(file);await checkOriginalIdentity(key,data);if(token!==S.loadVersion)return false;
+      if(options.page!==undefined&&options.page!==1)throw new Error('Une image ne contient qu’une feuille.');
       openDocument(key,file.name,null,1);
       S.plan = image; S.scale = S.scales[1] || null; fitPlan(image); S.loading = false; refresh();
     }
@@ -14983,6 +15239,7 @@ async function loadFile(file,options={}) {
 }
 async function showPage(number,options={}) {
   if (!S.pdf || number < 1 || number > S.pages) return;
+  planTabsUI?.rememberCurrent();
   const token = ++S.renderVersion, document = S.pdf,previousView=options.preserveView?{zoom:S.zoom,pan:{...S.pan}}:null;
   S.loading = true; refresh();
   try {
@@ -15232,8 +15489,9 @@ function renderPages() {
     return `<button class="sheet-row ${n===S.page?'active':''}" type="button" data-sheet="${n}" aria-current="${n===S.page?'page':'false'}" title="${esc(pageName(n))}"><span class="sheet-number">${n}</span><span><b>${esc(pageName(n))}</b><small>${scale?esc(meta?.label||'Cote manuelle')+(meta?.verified?' · vérifiée':' · à vérifier'):S.pageInfo[n]?.ambiguous?'Échelles multiples':S.indexing&&!S.pageInfo[n]?'Lecture…':'Échelle à régler'}</small></span></button>`;
   }).join('');
   if(!host.innerHTML)host.innerHTML='<p class="selection-help">'+(!S.plan&&S.documentKey==='legacy'?'Ajoutez un plan pour afficher ses feuilles.':'Aucune feuille correspondante.')+'</p>';
-  $$('[data-sheet]',host).forEach(button=>button.onclick=()=>{if(S.pdf&&!S.loading)showPage(+button.dataset.sheet);});
+  $$('[data-sheet]',host).forEach(button=>button.onclick=()=>{if(S.pdf&&!S.loading){if(planTabsUI)planTabsUI.navigateSheet(+button.dataset.sheet);else showPage(+button.dataset.sheet);}});
   const status=$('#sheetIndexStatus');if(status)status.textContent=!S.plan&&S.documentKey==='legacy'?'Aucune feuille':S.indexing?`Lecture des feuilles ${S.indexedPages||0} / ${S.pages}`:`${S.pages} feuille${S.pages>1?'s':''}`;
+  planTabsUI?.renderSelection();
 }
 function renameSelectedMeasure() {
   const items=S.items.filter(item=>item.page===S.page&&S.selection.has(item.id));
@@ -15651,7 +15909,7 @@ function keyboard(event) {
     if(['+','='].includes(key))zoomAt(S.zoom*1.2);else if(['-','_'].includes(key))zoomAt(S.zoom/1.2);
     else if(key==='1')zoomAt(1);else if(key==='z')zoomSelection();else fitPlan();refresh();return;
   }
-  if(key==='pageup'||key==='pagedown'){event.preventDefault();if(S.pdf)showPage(S.page+(key==='pageup'?-1:1));return;}
+  if(key==='pageup'||key==='pagedown'){event.preventDefault();if(S.pdf){const page=S.page+(key==='pageup'?-1:1);if(planTabsUI)planTabsUI.navigateSheet(page);else showPage(page);}return;}
   if(key==='f2'){event.preventDefault();renameSelectedMeasure();return;}
   if(key==='g'){event.preventDefault();S.tileGrid=!S.tileGrid;refresh();return;}
   if(key==='o'){event.preventDefault();rotateTile(event.shiftKey?-90:90);return;}
@@ -15838,6 +16096,7 @@ function refresh() {
   draw();
   refreshBase();renderPages();$('#stageFile').textContent=S.plan?pageName(S.page):S.fileName;
   if($('#planSourceFolders'))workspaceUI.renderSourceFolders();
+  planTabsUI?.sync();
   refreshPlanAngles();
   if($('#detachPlanView'))$('#detachPlanView').disabled=!S.plan||S.loading;
   $('#stageFile').title=S.fileName;$('#fitView')?.setAttribute('title','Afficher toute la feuille · 0');
@@ -16394,6 +16653,59 @@ function estimateLines(state=S) {
 function orderGroup(line,group=S.estimation.group) { return quantities.groupKey(line,group,profile); }
 function orderGroupLabel(key) { const line=estimateProjectLines().find(line=>orderGroup(line)===key);return quantities.groupLabel(key,line); }
 function projectStates(options) { return projectSession.states(S,options); }
+function planTabCurrent() {
+  return {projectId:S.estimation.workspace?.project.id||null,documentKey:S.documentKey,page:S.page,
+    title:S.plan?pageName(S.page):S.fileName,documentName:S.fileName,ready:!!S.plan&&!S.loading,loading:S.loading,
+    view:{zoom:S.zoom,pan:{...S.pan},width:canvas.clientWidth,height:canvas.clientHeight}};
+}
+function planTabDocuments(includeSheets=false) {
+  const states=includeSheets?projectStates():[],docs=(S.estimation.workspace?.documents||[]).filter(d=>!d.excluded&&d.fingerprint&&d.pageCount>0).map(d=>({id:d.id,key:d.fingerprint,name:d.name||d.fileName,pages:d.pageCount}));
+  if(S.plan&&S.documentKey!=='legacy'&&!docs.some(d=>d.key===S.documentKey)&&!(S.estimation.workspace?.documents||[]).some(d=>d.fingerprint===S.documentKey&&d.excluded))docs.push({key:S.documentKey,name:S.fileName,pages:S.pages});
+  if(includeSheets)for(const d of docs){const state=d.key===S.documentKey?S:states.find(p=>p.documentKey===d.key);d.sheets=Object.fromEntries(Object.entries(state?.sheetNames||{}).map(([page,n])=>[page,n.custom||[n.code,n.title].filter(Boolean).join(' · ')||'Feuille '+page]));}
+  return docs;
+}
+function planTabNavigationBlock(target) {
+  if(S.loading)return 'Attendez l’ouverture de la feuille.';
+  if(S.detectJob&&!S.detectJob.cancelled)return 'Attendez la fin de l’analyse avant de changer de feuille.';
+  if(S.reviewOpen&&(!S.pdf||target?.documentKey!==S.documentKey))return 'Fermez la révision avant de changer de document.';
+  if(S.draft?.length||S.fixtureDrawing||S.sanitaryDraft||S.dragging||S.panning||S.selectionBox)return 'Terminez le tracé avec Entrée ou annulez avec Échap avant de changer de feuille.';
+  if(S.fixtureEditing)return 'Terminez la correction de l’appareil avec Échap avant de changer de feuille.';
+  if(document.querySelector('#planOverlayAlignmentBar:not([hidden])'))return 'Terminez ou annulez l’ajustement des plans avant de changer de feuille.';
+  return null;
+}
+function restorePlanTabView(saved) {
+  const v=planTabs.view(saved);if(!v)return;
+  S.zoom=v.zoom;S.pan={x:v.pan.x+(v.width?(canvas.clientWidth-v.width)/2:0),y:v.pan.y+(v.height?(canvas.clientHeight-v.height)/2:0)};
+  refresh();
+}
+async function navigatePlanTab(target,savedView) {
+  const before=planTabCurrent();let loadToken=S.loadVersion,renderToken=S.renderVersion;
+  const matches=(key,page)=>S.documentKey===key&&S.page===page&&!!S.plan&&!S.loading;
+  const available=source=>planTabDocuments().some(d=>d.key===source.documentKey&&source.page>=1&&source.page<=d.pages);
+  const open=async(source)=>{
+    if(source.documentKey===S.documentKey&&S.pdf){const task=showPage(source.page,{preserveQuantities:true});renderToken=S.renderVersion;await task;}
+    else {
+      const original=await documents.get(source.documentKey);
+      if(S.loadVersion!==loadToken||(S.estimation.workspace?.project.id||null)!==before.projectId)throw new Error('Navigation interrompue : un autre plan ou projet a été ouvert.');
+      if(!available(source))throw new Error('Cette feuille a été retirée des plans actifs du projet.');
+      if(!original)throw new Error('Copie locale absente. Réimportez le fichier original.');
+      const task=loadFile(new File([original.bytes],original.name,{type:original.type,lastModified:original.lastModified}),{preserveQuantities:true,readOnly:true,page:source.page});
+      loadToken=S.loadVersion;renderToken=S.renderVersion;await task;renderToken=S.renderVersion;
+    }
+  };
+  try {
+    if(!available(target))throw new Error('Cette feuille ne fait plus partie des plans actifs du projet.');
+    await open(target);
+    if(S.loadVersion!==loadToken||!matches(target.documentKey,target.page))throw new Error('La feuille demandée n’a pas pu être affichée.');
+    if(!available(target))throw new Error('Cette feuille a été retirée des plans actifs du projet.');
+    restorePlanTabView(savedView);return {ok:true};
+  } catch(error) {
+    if(before.ready&&available(before)&&S.loadVersion===loadToken&&S.renderVersion===renderToken&&(S.estimation.workspace?.project.id||null)===before.projectId){
+      try{if(!matches(before.documentKey,before.page))await open(before);if(matches(before.documentKey,before.page))restorePlanTabView(before.view);}catch(_){return {ok:false,reason:error.message+' Rouvrez la feuille précédente depuis la bibliothèque ; ses relevés sont conservés.'};}
+    }
+    return {ok:false,reason:error.message};
+  }
+}
 function closeCurrentPlan() {
   const estimation=S.estimation,previous=S.pdf;++S.loadVersion;++S.renderVersion;
   openDocument('legacy','Aucun plan',null,1);
@@ -16695,7 +17007,7 @@ const quantityTransferUI=quantityTransferUIFactory({document,getReport:quantityT
 $('#quantityTransferBtn').onclick=quantityTransferUI.open;
 $('#takeoffBtn').onclick=takeoffDrawer;$('#exportBtn').onclick=exportExcel;
 $('#aiAnalyze').onclick=analyzeAll;$('#aiReview').onclick=takeoffDrawer;
-$('#prevPage').onclick=()=>showPage(S.page-1);$('#nextPage').onclick=()=>showPage(S.page+1);
+$('#prevPage').onclick=()=>planTabsUI?planTabsUI.navigateSheet(S.page-1):showPage(S.page-1);$('#nextPage').onclick=()=>planTabsUI?planTabsUI.navigateSheet(S.page+1):showPage(S.page+1);
 $('#undo').onclick=undoChange;$('#redo').onclick=redoChange;$('#deleteSelection').onclick=deleteSelection;
 $('#scaleStatus').onclick=()=>calibrationModal();
 $('#scaleStatus').onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();event.stopPropagation();calibrationModal();}};
@@ -16715,9 +17027,13 @@ $('.canvas-wrap').after($('#takeoffSummary'));
 initEstimationUI();initV7();initManualUI();initFoldersUI();
 const workspaceUI=workspaceUIFactory({getState:()=>S,remember,save,refresh,openDialog,closeDialog,toast,esc,uid,
   planLibrary,planLibraryUIFactory,projectSession,openComparison:openPlanComparison,closeCurrentPlan,renamePage:renameSheet,pageName,
+  openPlanTabs:context=>planTabsUI?.openFromLibrary(context),planTabsMenuLabel:(kind,id)=>planTabsUI?.menuLabel(kind,id),navigatePlanDocument:id=>planTabsUI?.previewDocument(id),
   getPurchaseRows:lines=>purchasing.purchaseRows(lines??estimateProjectLines(),profile,orderGroup),getEstimateLines:estimateProjectLines,getQuoteLines:manualCosts=>calculateProjectOrders(manualCosts).quoteLines,getMeasurementState:measurementState,getWork:item=>workOf(item,measurementState(item)),setMeasurementWork:setWork,setMeasurementProduct,setRoomBoundary,geometry,rolls,quotation,projects,documents,offcuts,branding,getProjectStates:projectStates,isMeasurementIncluded:(item,state)=>estimateLines(state).some(line=>line.id===item.id&&line.category==='Sol'),
   openFile:loadFile,downloadBlob,downloadWorkbook:async(sheets,name,options)=>downloadBlob(await workbooks.encode(sheets,options),name)});
 workspaceUI.install();
+planTabsUI=planTabsUIFactory({document,window,model:planTabs,getCurrent:planTabCurrent,getDocuments:()=>planTabDocuments(true),getDocumentKeys:()=>planTabDocuments(),
+  getSheetLabel:(key,page)=>key===S.documentKey?pageName(page):null,onNavigate:navigatePlanTab,onCloseLast:closeCurrentPlan,canNavigate:planTabNavigationBlock,toast,openDialog,closeDialog});
+planTabsUI.install();
 const revisionUI=revisionUIFactory({revisions,documents,getState:()=>S,save,remember,openDialog,closeDialog,toast,esc,uid,
   getPreview:async(id,page)=>{
     const original=await documents.get(id);if(!original)throw new Error('Original absent de ce navigateur.');
@@ -16831,8 +17147,11 @@ workspaceAppearance=workspaceAppearanceFactory({document,window,
     const navigation=['manualSelect','manualPan','manualFit','manualZoomIn','manualZoomOut'],commands=['stepOpen','saveProjectBtn','stepReview'],ids=new Set([...navigation,...commands]);
     for(const id of navigation)floatingPlanToolGroup(host,'navigation','Navigation').append($('#'+id));
     $('#workspaceProjectBtn').after(...commands.map(id=>$('#'+id)));
-    ribbonOverflowState.entries=ribbonOverflowState.entries.filter(entry=>!ids.has(entry.button.id));
-    ribbonOverflowState.order=ribbonOverflowState.order.filter(entry=>!ids.has(entry.button.id));
+    const corrections=ribbonOverflowState.entries.filter(entry=>['manualExclude','deleteSelection'].includes(entry.button.id)||['edit','split'].includes(entry.button.dataset.tool));
+    for(const entry of corrections)floatingPlanToolGroup(host,'correction','Corriger').append(entry.button);
+    const parked=new Set(corrections.map(entry=>entry.button));
+    ribbonOverflowState.entries=ribbonOverflowState.entries.filter(entry=>!ids.has(entry.button.id)&&!parked.has(entry.button));
+    ribbonOverflowState.order=ribbonOverflowState.order.filter(entry=>!ids.has(entry.button.id)&&!parked.has(entry.button));
     layoutRibbonOverflow();
   }
 });workspaceAppearance.install();
