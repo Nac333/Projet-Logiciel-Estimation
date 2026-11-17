@@ -738,12 +738,13 @@ function roomCandidate(model,room,info,material,settings,scale,page=S.page) {
   const openLiving=spaceNames.every(name=>isOpenLivingName(name)||isDwellingName(name)||dwellingLabels===1&&isPrivateStorageName(name)),allCirculation=types.length===1&&types[0]==='circulation';
   const bathroom=!!baths.length&&!mixed,needsSeparation=mixed||dwellingLabels>1||spaceNames.length>1&&!openLiving&&!allCirculation;
   let spaceType=baths.length&&!mixed?'bathroom':dwellingLabels===1&&openLiving?'dwelling':types.length===1?types[0]:'room';
+  const automaticFloorReviewReason=!names.length?model.wallClassification?.roomKinds[room.id]?.automaticFloorReviewReason:null;
   if(!names.length&&model.wallClassification?.roomKinds[room.id]?.kind==='circulation')spaceType='circulation';
   const holes=rings.slice(1).filter(r=>area(r)*scale*scale>=.01);
   const finishCodes=[...new Set((info?.texts||[]).filter(text=>componentAt(model,{x:text.cx,y:text.cy},model.factor,0)?.id===room.id).flatMap(text=>MATERIALS.filter(finish=>normalizeName(text.text)===normalizeName(finish.code)).map(finish=>finish.code)))];
   const item={kind:'area',points:outer,holes,name:names.join(' / ')||'Pièce détectée',material:finishCodes.length===1?finishCodes[0]:material,bathroom,spaceType,...(laundry?{laundry:true,laundryInBathroom:bathroom}:{}),
     ...detectionFinishes.propose({finishCodes,activeMaterial:material,bathroom,mixedBathroom:mixed,needsSeparation,spaceType,name:names.join(' / '),page,...(laundry?{laundry:true,laundryInBathroom:bathroom}:{})},MATERIALS.map(entry=>entry.code),settings.detectionFinishes),
-    status:'à valider',method:'Contours intérieurs',...(finishCodes.length?{detectedFinishCodes:finishCodes}:{}),mixedBathroom:mixed,needsSeparation,selected:!needsSeparation,unnamed:!names.length,sourceRoomId:room.id,...(model.floorEvidence?.has(room.id)?{floorEvidence:{...model.floorEvidence.get(room.id)}}:{}),...(model.unitEvidence?.has(room.id)?{detectedUnit:{...model.unitEvidence.get(room.id)}}:{})};
+    status:'à valider',method:'Contours intérieurs',...(finishCodes.length?{detectedFinishCodes:finishCodes}:{}),...(automaticFloorReviewReason?{automaticFloorReviewReason}:{}),mixedBathroom:mixed,needsSeparation,selected:!needsSeparation&&!automaticFloorReviewReason,unnamed:!names.length,sourceRoomId:room.id,...(model.floorEvidence?.has(room.id)?{floorEvidence:{...model.floorEvidence.get(room.id)}}:{}),...(model.unitEvidence?.has(room.id)?{detectedUnit:{...model.unitEvidence.get(room.id)}}:{})};
   if(item.bathroom)applyRecognizedFixtures(item,info||{},scale);
   item.qty=netArea(item)*scale*scale;if(settings.minArea&&area(item.points)*scale*scale<settings.minArea)return null;return item;
 }
@@ -999,6 +1000,7 @@ function validateWallSamples(settings,pages=S.pages) {
 
 function classifyWallBoundaries(model,info,scale,settings={}) {
   const outside=new Set([0]),boundaries=[],roomLabels=new Map(),rooms=[];
+  const physicalLabels=distinctRoomLabels(info?.labels||[]).filter(label=>label.physicalUnit&&isDwellingName(label.text));
   const edgePixel=point=>{if(!model.mask[point]&&model.labels[point])outside.add(model.labels[point]);};
   for(let x=0;x<model.width;x++){edgePixel(x);edgePixel((model.height-1)*model.width+x);}
   for(let y=0;y<model.height;y++){edgePixel(y*model.width);edgePixel(y*model.width+model.width-1);}
@@ -1009,7 +1011,9 @@ function classifyWallBoundaries(model,info,scale,settings={}) {
     if(labels.length)descriptor.spaceType=circulation?'circulation':units.length===1?'dwelling':'room';
     if(units.length===1)descriptor.unitId=model.unitEvidence?.get(room.id)?.id||'unit-region:'+room.id;
     else if(!circulation&&model.unitEvidence?.has(room.id))descriptor.unitId=model.unitEvidence.get(room.id).id;
-    for(const ring of componentRings(model,room,1))for(let index=0;index<ring.length;index++) {
+    const rings=componentRings(model,room,1);
+    descriptor.enclosedUnitCount=new Set(physicalLabels.filter(label=>rings.slice(1).some(ring=>inside({x:label.cx*model.factor,y:label.cy*model.factor},ring))).map(label=>physicalUnits.identity(label).id)).size;
+    for(const ring of rings)for(let index=0;index<ring.length;index++) {
       const a=ring[index],b=ring[(index+1)%ring.length],length=dist(a,b);if(!length)continue;
       descriptor.perimeter+=length/model.factor;
       const nx=(b.y-a.y)/length,ny=-(b.x-a.x)/length,middle={x:(a.x+b.x)/2,y:(a.y+b.y)/2};let neighbor=null;
@@ -1493,9 +1497,12 @@ function refreshAutomaticContours(candidates,modelsByPage=null) {
   }
   return plan;
 }
-function synchronizeDetected(candidates) {
+function synchronizeDetected(candidates,{automatic=false}={}) {
   const accepted=[],skipped=[];
   for(const source of candidates){const existing=linkedDetectedItem(source);
+    if(automatic&&!source.selected&&existing&&source.automaticFloorReviewReason&&
+        !(S.settings.detectionChoices||[]).some(choice=>choice.key===detectionChoiceKey(S.documentKey,source.page,source)&&choice.selected===false)&&
+        !automaticContourRefresh.retractable(existing,{source,documentKey:S.documentKey,version:LOCAL_ROOM_ENGINE_VERSION,items:S.items,choices:S.settings.detectionChoices||[]}))source.selected=true;
     if(!source.selected){if(existing&&existing.status!=='confirmée'){forgetAutomaticMeasures(new Set([existing.id]));delete source.autoSavedId;}else if(existing)source.selected=true;continue;}
     if(source.mixedBathroom||source.needsSeparation)continue;
     if(existing){
@@ -1999,7 +2006,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-16-dimension-passages';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-17-enclosure-review';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -2013,7 +2020,8 @@ function getLocalRoomEngine() {
     const {image,info,settings,material,dividers,bounds}=input,scale=context.calibration.feetPerPixel;
     const model=input.model||makeWallModel(image,info,{...settings,detectionPage:context.page},scale,dividers,bounds),rooms=input.point?[componentAt(model,input.point,model.factor,4)].filter(Boolean):model.rooms;
     const candidates=rooms.map(room=>roomCandidate(model,room,info,material,settings,scale,context.page)).filter(Boolean).map(item=>({...item,page:context.page}));
-    const warnings=[...(model.wallDiagnostics?.doorWarnings||[]),...(model.wallDiagnostics?.furnitureWarnings||[]),...(model.rooms.length>3000?['Limite de 3000 propositions atteinte : analyser les zones séparément.']:[])];
+    const enclosing=candidates.filter(item=>item.automaticFloorReviewReason).length;
+    const warnings=[...(model.wallDiagnostics?.doorWarnings||[]),...(model.wallDiagnostics?.furnitureWarnings||[]),...(enclosing?[enclosing+' zone(s) sans libellé entourant plusieurs logements : non sélectionnée(s), contour et usage à vérifier.']:[]),...(model.rooms.length>3000?['Limite de 3000 propositions atteinte : analyser les zones séparément.']:[])];
     return {requestId:context.requestId,documentKey:context.documentKey,page:context.page,proposals:candidates.slice(0,3000),source:model.source,warnings,diagnostics:{model}};
   }});
   return localRoomEngine;
@@ -2077,7 +2085,7 @@ async function runDetectionPages(pages) {
   const batch=reviewBatchCandidates(),refreshed=refreshAutomaticContours(batch,modelsByPage);
   if(refreshed.updates.length)notes.push({page:S.page,message:refreshed.updates.length+' ancien(s) contour(s) automatique(s) actualisé(s) · brouillons à valider'});
   for(const message of refreshed.warnings)notes.push({page:S.page,message});
-  synchronizeDetected(batch);if(kitchen.items.length)addKitchenItems(kitchen.items);S.reviewOpen=true;renderDetectionPanel();refresh();save();
+  synchronizeDetected(batch,{automatic:true});if(kitchen.items.length)addKitchenItems(kitchen.items);S.reviewOpen=true;renderDetectionPanel();refresh();save();
   if(kitchen.items.length)openKitchenBacksplashReview();
   if(job.cancelled)toast('Analyse arrêtée. Les propositions obtenues sont conservées.');
 }
@@ -5755,6 +5763,23 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       !work.type && !(work.repeat>1) && !work.baseboard?.enabled && !item.tiling && !(item.waste>0) && item.wasteConfirmed!==true &&
       item.takeoffFiling?.mode === 'auto' && item.folderId === item.takeoffFiling.folderId;
   }
+  function retractable(item, options={}) {
+    const {source,choices=[],documentKey,version}=options,work=item.work||{};
+    if(source?.automaticFloorReviewReason!=='unlabelled-surrounds-dwellings'||source.selected!==false||
+        source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version||
+        source.page!==item.page||!pristine(item,options)||item.detectedUnit||item.bathroom||item.laundry||
+        !['room','circulation'].includes(item.spaceType)||item.unnamed!==true||!/^Pièce détectée(?: \d+)?$/.test(item.name)||
+        item.fixturePending?.length||item.sanitaryEvidence?.length||item.bathroomGrouping||
+        item.materialNeedsReview!==true||['choix estimateur','localisation choisie','code du plan'].includes(item.materialSource)||work.included===false||
+        work.productId||work.productSignature||work.specificationId||work.specificationSignature||work.roomId||work.unitId||work.unit||work.block||work.level||work.type||work.blockId||work.floorId||work.revisionMatchId||
+        work.repeat>1||work.baseboard?.enabled||item.tiling||item.waste>0||item.wasteConfirmed===true||
+        item.takeoffFiling?.mode!=='auto'||item.folderId!==item.takeoffFiling.folderId||
+        frameKey(item.autoTakeoff?.provenance?.context?.frame)!==frameKey(source.detectionProvenance?.context?.frame))return false;
+    try {
+      const key=shapeKey(documentKey,source);
+      return key===item.autoTakeoff.key&&!choices.some(choice=>choice.key===key&&choice.selected===true);
+    }catch{return false;}
+  }
   function plan({items=[],candidates=[],choices=[],documentKey,version,raster=null}={}) {
     const output={updates:[],removeIds:[],links:[],refusals:[],deferred:[],warnings:[]};
     const warn=message=>{if(!output.warnings.includes(message))output.warnings.push(message);};
@@ -5870,7 +5895,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       return {updates:[],removeIds:[],links:[],refusals:[],deferred:[],aborted:true,warnings:['Budget d’actualisation atteint : anciens relevés conservés.']};
     }
   }
-  return {plan,pristine};
+  return {plan,pristine,retractable};
 })(geometry, detectionDecisions);
 const detectionEngineFactory = (function createDetectionEngine({id,version,analyze}={}) {
   if(typeof id!=='string'||!/^[a-z][a-z0-9-]{0,60}$/.test(id)||typeof version!=='string'||!version||version.length>120||typeof analyze!=='function')throw new Error('Moteur de détection invalide.');
@@ -8156,11 +8181,18 @@ const wallTopology = (function createWallTopology() {
       if (room.spaceType !== undefined && !spaceTypes.has(room.spaceType)) throw new Error('Le type d’espace est inconnu.');
       dimension(room.area, 'L’aire', 1e18);
       dimension(room.perimeter, 'Le périmètre', 1e12);
+      if(room.enclosedUnitCount!==undefined&&(!Number.isInteger(room.enclosedUnitCount)||room.enclosedUnitCount<0||room.enclosedUnitCount>maxRooms))
+        throw new Error('Le nombre de logements entourés doit être un entier de 0 à '+maxRooms+'.');
       const unitId = room.unitId && room.unitId.trim() ? room.unitId : null;
-      roomById.set(room.id, { id: room.id, unitId, spaceType: room.spaceType, area: room.area, perimeter: room.perimeter });
+      roomById.set(room.id, { id: room.id, unitId, spaceType: room.spaceType, area: room.area, perimeter: room.perimeter, enclosedUnitCount:room.enclosedUnitCount });
       roomKinds[room.id] = {
         kind: room.spaceType || 'unknown', provenance: room.spaceType ? 'label' : 'unknown', proposed: false, unitId,
       };
+      // A drafting frame can enclose the outside around an entire building.
+      // Its long perimeter and many apartment neighbours do not prove a floor.
+      // Keep the contour reviewable; an explicit label or physical owner wins.
+      if(!room.spaceType&&!unitId&&room.enclosedUnitCount>=2)
+        roomKinds[room.id].automaticFloorReviewReason='unlabelled-surrounds-dwellings';
     }
 
     // Copier chaque entrée; les doublons et les deux côtés éventuellement fournis
@@ -8195,7 +8227,7 @@ const wallTopology = (function createWallTopology() {
     for (const room of roomById.values()) {
       // Physical ownership outranks a corridor guess from shape/adjacency.
       // Explicit circulation labels have already been applied above.
-      if (room.unitId || room.spaceType !== undefined || outside.has(room.id) || !(room.area > 0) || room.perimeter === undefined) continue;
+      if (room.unitId || room.spaceType !== undefined || outside.has(room.id) || roomKinds[room.id].automaticFloorReviewReason || !(room.area > 0) || room.perimeter === undefined) continue;
       const elongation = room.perimeter * room.perimeter / (16 * room.area);
       const adjacentUnitCount = adjacentUnits.get(room.id)?.size || 0;
       if (Number.isFinite(elongation) && elongation >= 2 && adjacentUnitCount >= 3) {
@@ -8826,7 +8858,8 @@ const detectionReviewUI = (function createDetectionReviewUI() {
   function areaRow({ item, index }, input, mode) {
     const pending = !!item.fixturePending?.length;
     const materialReview = item.materialNeedsReview ? `<small class="review-warning">Fini à confirmer <button type="button" data-confirm-material="${index}" aria-label="Confirmer le fini de ${esc(item.name)}">Confirmer ce fini</button></small>` : `<small class="review-ok">${item.materialSource === 'choix estimateur' ? 'Fini choisi' : 'Fini renseigné'} · contour à valider</small>`;
-    const controls = mode === 'baseboard' ? `<label class="sr-only" for="candidateBaseboard${index}">Plinthe de ${esc(item.name)}</label><select id="candidateBaseboard${index}" data-candidate-baseboard="${index}" ${item.duplicate ? 'disabled' : ''}><option value="" ${!input.baseboardChoices?.[index] ? 'selected' : ''}>Sans plinthe</option>${(input.baseboardProducts || []).map(product => `<option value="${esc(product.code)}" ${input.baseboardChoices?.[index] === product.code ? 'selected' : ''}>${esc(product.name)} · ${esc(product.code)}</option>`).join('')}</select><small>Brut · déductions à vérifier</small>` : materialSelect(item, index, input.materials || []) + materialReview;
+    let controls = mode === 'baseboard' ? `<label class="sr-only" for="candidateBaseboard${index}">Plinthe de ${esc(item.name)}</label><select id="candidateBaseboard${index}" data-candidate-baseboard="${index}" ${item.duplicate ? 'disabled' : ''}><option value="" ${!input.baseboardChoices?.[index] ? 'selected' : ''}>Sans plinthe</option>${(input.baseboardProducts || []).map(product => `<option value="${esc(product.code)}" ${input.baseboardChoices?.[index] === product.code ? 'selected' : ''}>${esc(product.name)} · ${esc(product.code)}</option>`).join('')}</select><small>Brut · déductions à vérifier</small>` : materialSelect(item, index, input.materials || []) + materialReview;
+    if(item.automaticFloorReviewReason==='unlabelled-surrounds-dwellings')controls+='<small class="review-warning">Zone entourant plusieurs logements : vérifiez son contour et son usage.</small>';
     const quantity = mode === 'baseboard' ? input.baseboardLengths?.[index] : item.qty;
     return `<article class="review-measure" data-review-candidate="${index}"><div class="review-check"><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected ? 'checked' : ''} ${item.duplicate || item.needsSeparation ? 'disabled' : ''}></div><div class="review-measure-body"><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index === input.focus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button>${controls}
       ${item.unitGrouping ? `<small>${item.unitGrouping.sourceRoomIds.length} zones réunies · un seul sol de logement.</small>` : ''}${item.bathroomGrouping ? '<small>Salle de bain et lavage réunis.</small>' : ''}${item.autoSavedId ? '<small class="review-ok">Enregistré · à valider</small>' : item.duplicate ? '<small class="review-ok">Déjà mesurée</small>' : ''}${item.importIssue && !item.duplicate ? `<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>` : ''}${item.needsSeparation ? '<small class="review-warning">Séparation à corriger avant ajout.</small>' : ''}${item.unnamed ? '<small>Zone sans nom · rattachement à vérifier.</small>' : ''}${pending ? '<small class="review-warning">Équipement à délimiter avant commande.</small>' : ''}${item.fixtureCuts?.length ? `<small>${item.fixtureCuts.length} emprise(s) à contrôler.</small>` : ''}${item.sanitaryEvidence?.length ? `<details class="review-row-details"><summary>Indice sanitaire à vérifier</summary><p>Vérifiez le sol et l’emprise extérieure.</p><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button></details>` : ''}</div><div class="review-measure-quantity">${number(quantity)}<small>${mode === 'baseboard' ? 'pi lin.' : 'pi²'}</small></div></article>`;
