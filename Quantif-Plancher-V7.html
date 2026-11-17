@@ -3043,9 +3043,8 @@ const persistence = (function createPersistence(getStorage) {
     catch { return fallback; }
   }
 
-  function save(state) {
-    try {
-      const record = {
+  function recordOf(state) {
+    return {
         items: state.items,
         folders: state.folders || [],
         scales: state.scales,
@@ -3056,7 +3055,11 @@ const persistence = (function createPersistence(getStorage) {
         dividers: state.dividers,
         detectBounds: state.detectBounds,
         estimation: state.estimation,
-      };
+    };
+  }
+  function save(state) {
+    try {
+      const record=recordOf(state);
       // Conserver l'ordre historique et l'arrêt à la première erreur : cette
       // extraction n'introduit ni transaction ni migration de données.
       if (state.documentKey === 'legacy') {
@@ -3068,7 +3071,7 @@ const persistence = (function createPersistence(getStorage) {
     } catch { return false; }
   }
 
-  return { readSaved, save };
+  return { readSaved, save, record:recordOf };
 })(() => localStorage);
 const geometry = (function createGeometry() {
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -13288,6 +13291,318 @@ const projectSession = (function createProjectSession(getStorage) {
 
   return { save, saveWorkspace, attach, states, assertRestorable };
 })(() => localStorage);
+const projectDashboard = (function createProjectDashboard(getStorage, projects, options={}) {
+  const prefix='estimation-project-v1:',activeKey='estimation-active-project-v1',viewPrefix='estimation-project-view-v1:';
+  const now=options.now||(()=>new Date().toISOString());
+  const metadataEdits=new Map();
+  const statuses={not_started:'À commencer',in_progress:'En cours',to_review:'À vérifier',done:'Terminé'};
+  const copy=value=>JSON.parse(JSON.stringify(value));
+  const fail=message=>{throw new Error('Projet : '+message);};
+  const id=value=>{if(typeof value!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(value))fail('identifiant invalide.');return value;};
+  const fields=['name','client','estimator','deadline','generalContractor','address','reference','notes','status','statusSource','favorite','archived'];
+  function metadata(input,required=false) {
+    const result={};
+    for(const field of fields)if(Object.hasOwn(input,field)) {
+      const value=input[field];
+      if(['favorite','archived'].includes(field)){if(typeof value!=='boolean')fail('classement invalide.');result[field]=value;}
+      else {if(typeof value!=='string'||value.length>(field==='notes'?4000:200))fail('champ '+field+' invalide.');result[field]=value.trim();}
+    }
+    if(required)for(const field of ['name','client','estimator'])if(!result[field])fail('renseignez le nom du projet, le client et l’estimateur.');
+    if(result.name!==undefined&&!result.name)fail('nom du projet requis.');
+    if(result.status!==undefined&&!statuses[result.status])fail('état du dossier invalide.');
+    if(result.statusSource!==undefined&&!['automatic','manual'].includes(result.statusSource))fail('origine de l’état invalide.');
+    if(result.deadline&&!/^\d{4}-\d{2}-\d{2}$/.test(result.deadline))fail('échéance invalide.');
+    if(result.deadline){const d=new Date(result.deadline+'T00:00:00Z');if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==result.deadline)fail('échéance invalide.');}
+    return result;
+  }
+  function validate(estimation) {
+    if(!estimation||typeof estimation!=='object'||Array.isArray(estimation)||!estimation.workspace)fail('fiche absente ou illisible.');
+    projects.validate(estimation.workspace);id(estimation.workspace.project.id);
+    if(estimation.workspace.project.dashboardVersion!==undefined){if(estimation.workspace.project.dashboardVersion!==1)fail('version de fiche non prise en charge.');metadata(estimation.workspace.project,true);}
+    return estimation;
+  }
+  function read(projectId) {
+    const raw=getStorage().getItem(prefix+id(projectId));if(raw===null)return null;
+    const record=JSON.parse(raw);
+    if(record?.version!==1||record.projectId!==projectId||!Array.isArray(record.members)||record.estimation?.workspace?.project.id!==projectId)fail('index du projet illisible.');
+    validate(record.estimation);
+    const keys=new Set();
+    for(const m of record.members){if(typeof m.key!=='string'||!m.key.trim()||m.key==='legacy'||typeof m.fileName!=='string'||!m.fileName.trim()||!Number.isSafeInteger(m.pages)||m.pages<1||keys.has(m.key))fail('référence de plan invalide.');keys.add(m.key);}
+    return record;
+  }
+  function atomic(entries) {
+    const storage=getStorage(),before=entries.map(([key])=>[key,storage.getItem(key)]);
+    try{for(const [key,value] of entries)storage.setItem(key,value);}
+    catch(error){for(const [key,value] of before)try{if(value===null)storage.removeItem(key);else storage.setItem(key,value);}catch{}throw new Error('Impossible d’enregistrer le projet. Libérez de l’espace ou exportez une sauvegarde.',{cause:error});}
+  }
+  function store(estimation,{activate=false,createOnly=false}={}) {
+    validate(estimation);const projectId=estimation.workspace.project.id,previous=read(projectId);
+    if(createOnly&&previous)fail('ce projet existe déjà ; il n’a pas été remplacé.');
+    const entries=[[prefix+projectId,JSON.stringify({version:1,projectId,estimation,members:previous?.members||[]})]];
+    if(activate)entries.push([activeKey,projectId]);atomic(entries);return copy(estimation);
+  }
+  function create(projectId,input) {
+    const timestamp=now(),project={id:id(projectId),...metadata(input,true),dashboardVersion:1,status:'not_started',statusSource:'automatic',favorite:false,archived:false,createdAt:timestamp,updatedAt:timestamp};
+    const workspace=projects.create(project);
+    workspace.planLibrary={types:[{id:'architecture',name:'Architecture',discipline:'architecture'},{id:'design',name:'Design',discipline:'design'},{id:'other',name:'Autres',discipline:'other'}],folders:[{id:'architecture',name:'Architecture',typeId:'architecture'},{id:'design',name:'Design',typeId:'design'},{id:'addenda',name:'Addenda',typeId:'other'}]};
+    return {catalog:{},group:'project',workspace:projects.validate(workspace)};
+  }
+  function update(projectId,patch) {
+    const record=read(projectId);if(!record)fail('fiche introuvable.');
+    const estimation=record.estimation,project=estimation.workspace.project;
+    estimation.workspace=projects.update(estimation.workspace,'project',projectId,{...metadata(patch),updatedAt:now()});
+    if(project.dashboardVersion===1)metadata(estimation.workspace.project,true);
+    else if(patch.client?.trim()&&patch.estimator?.trim())Object.assign(estimation.workspace.project,{dashboardVersion:1,status:statuses[project.status]?project.status:'not_started',statusSource:project.statusSource||'automatic',createdAt:project.createdAt||now()});
+    const saved=store(estimation);metadataEdits.set(projectId,copy(saved.workspace.project));return saved;
+  }
+  function summary(record) {
+    const p=record.estimation.workspace.project,excluded=new Set(record.estimation.workspace.documents.filter(d=>d.excluded).map(d=>d.fingerprint));
+    const members=record.members.filter(m=>!excluded.has(m.key));
+    const client=typeof p.client==='string'?p.client:'',estimator=typeof p.estimator==='string'?p.estimator:'';
+    return {...p,client,estimator,status:statuses[p.status]?p.status:'unassigned',favorite:p.favorite===true,archived:p.archived===true,incomplete:!client.trim()||!estimator.trim(),documentCount:members.length,pageCount:members.reduce((n,m)=>n+m.pages,0)};
+  }
+  function list(current=null) {
+    const result=[],issues=[],seen=new Set(),indexedDocuments=new Set();let storage;
+    try{storage=getStorage();for(let i=0;i<storage.length;i++){
+      const key=storage.key(i);if(!key?.startsWith(prefix))continue;
+      try{const record=read(key.slice(prefix.length));result.push(summary(record));seen.add(record.projectId);for(const member of record.members)indexedDocuments.add(member.key);}catch{issues.push('Une fiche de projet est illisible. Sa sauvegarde a été conservée.');}
+    }}catch{issues.push('Le stockage local est inaccessible. Les projets ne peuvent pas être affichés.');}
+    // Recover metadata from an old document without silently writing an index.
+    if(storage)for(let i=0;i<storage.length;i++){
+      const key=storage.key(i);if(!key?.startsWith('quantif-document-v3:'))continue;
+      if(indexedDocuments.has(key.slice('quantif-document-v3:'.length)))continue;
+      try{const value=JSON.parse(storage.getItem(key)),projectId=value?.estimation?.workspace?.project.id;if(!projectId||seen.has(projectId))continue;
+        validate(value.estimation);const docs=value.estimation.workspace.documents||[];
+        result.push(summary({estimation:value.estimation,members:docs.filter(d=>d.fingerprint&&!d.excluded).map(d=>({key:d.fingerprint,fileName:d.fileName,pages:d.pageCount}))}));seen.add(projectId);
+      }catch{}
+    }
+    if(current?.estimation?.workspace&&!seen.has(current.estimation.workspace.project.id))try{validate(current.estimation);result.push(summary({estimation:current.estimation,members:current.documentKey!=='legacy'?[{key:current.documentKey,fileName:current.fileName,pages:current.pages}]:[]}));}catch{}
+    result.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')||a.name.localeCompare(b.name,'fr'));
+    return {projects:result,issues};
+  }
+  function search(entries,{query='',client='',estimator='',status='',filter='all'}={}) {
+    const text=query.trim().toLocaleLowerCase('fr');
+    return entries.filter(p=>(filter==='archived'?p.archived:!p.archived)&&(filter!=='favorites'||p.favorite)&&(!client||p.client===client)&&(!estimator||p.estimator===estimator)&&(!status||p.status===status)&&(!text||[p.name,p.client,p.estimator,p.reference,p.address].some(s=>String(s||'').toLocaleLowerCase('fr').includes(text))));
+  }
+  function prepareSave(state) {
+    const e=state.estimation;let p=e?.workspace?.project;if(p?.dashboardVersion!==1)return e;
+    // Undo of a measurement must not roll back a newer client identity/status.
+    const current=metadataEdits.get(p.id);if(current?.updatedAt>p.updatedAt){const retained={};for(const key of [...fields,'dashboardVersion','createdAt','updatedAt'])if(Object.hasOwn(current,key))retained[key]=current[key];p={...p,...retained};}
+    const next={...p,updatedAt:now()};
+    if(p.statusSource!=='manual'&&p.status==='not_started'&&state.items.some(i=>!i.measureOnly))next.status='in_progress';
+    return {...e,workspace:{...e.workspace,project:next}};
+  }
+  function checkedView(value) {
+    if(!value||typeof value.documentKey!=='string'||!value.documentKey||value.documentKey==='legacy'||!Number.isSafeInteger(value.page)||value.page<1||!Number.isFinite(value.zoom)||value.zoom<=0||!value.pan||![value.pan.x,value.pan.y].every(Number.isFinite))fail('vue de reprise invalide.');
+    return {documentKey:value.documentKey,page:value.page,zoom:value.zoom,pan:{x:value.pan.x,y:value.pan.y},width:Number.isFinite(value.width)?value.width:0,height:Number.isFinite(value.height)?value.height:0};
+  }
+  function rememberView(projectId,value){getStorage().setItem(viewPrefix+id(projectId),JSON.stringify(checkedView(value)));}
+  function view(projectId){try{const raw=getStorage().getItem(viewPrefix+id(projectId));return raw?checkedView(JSON.parse(raw)):null;}catch{return null;}}
+  function canonical(value){if(Array.isArray(value))return value.map(canonical);if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])]));return value;}
+  function recovery(projectId){
+    id(projectId);const storage=getStorage(),records=[];
+    for(let i=0;i<storage.length;i++){
+      const key=storage.key(i);if(!key?.startsWith('quantif-document-v3:')||key==='quantif-document-v3:legacy')continue;
+      let record;try{record=JSON.parse(storage.getItem(key));}catch{continue;}
+      if(record?.estimation?.workspace?.project.id!==projectId)continue;
+      validate(record.estimation);if(!Array.isArray(record.items))fail('relevé ancien invalide.');records.push({key:key.slice('quantif-document-v3:'.length),record});
+    }
+    if(!records.length)fail('les relevés de ce projet sont absents. Restaurez sa sauvegarde.');
+    const estimation=records[0].record.estimation,signature=JSON.stringify(canonical(estimation));
+    if(records.some(r=>JSON.stringify(canonical(r.record.estimation))!==signature))fail('les documents contiennent des versions différentes des paramètres. Restaurez une sauvegarde du projet.');
+    for(const doc of estimation.workspace.documents)if(doc.fingerprint&&!records.some(r=>r.key===doc.fingerprint))fail('un relevé du projet est manquant ou illisible. Restaurez sa sauvegarde.');
+    return {estimation,keys:records.map(r=>r.key)};
+  }
+  function recover(projectId,references){
+    const existing=read(projectId);if(existing)return existing;
+    const recovered=recovery(projectId),keys=new Set(recovered.keys),seen=new Set();
+    if(!Array.isArray(references)||references.length!==keys.size)fail('les références des anciens plans sont incomplètes.');
+    for(const m of references){if(!keys.has(m.key)||seen.has(m.key)||typeof m.fileName!=='string'||!m.fileName.trim()||!Number.isSafeInteger(m.pages)||m.pages<1)fail('référence de plan invalide.');seen.add(m.key);}
+    atomic([[prefix+projectId,JSON.stringify({version:1,projectId,estimation:recovered.estimation,members:references.map(m=>({key:m.key,fileName:m.fileName,pages:m.pages}))})]]);
+    return read(projectId);
+  }
+  return {create,store,read,update,list,search,prepareSave,rememberView,view,validate,statuses,recovery,recover};
+})(() => localStorage,projects);
+const projectDashboardUIFactory = (function createProjectDashboardUI(options) {
+  const {model,getState,esc}=options;
+  const $=selector=>host.querySelector(selector);
+  let host,visible=false,busy=false,selected=null,editing=null,queue=[],all=[],filter={query:'',client:'',estimator:'',status:'',filter:'all'},origin=null;
+  const paths={home:'m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9',layers:'m3 7 9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4',folder:'M3 6h7l2 2h9v12H3z',grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',star:'m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z',archive:'M3 3h18v5H3zM5 8v13h14V8M9 12h6',search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',plus:'M12 4v16M4 12h16',user:'M20 21v-3a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v3M16 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0',calendar:'M4 5h16v16H4zM4 10h16M8 3v5M16 3v5',file:'M14 3H5v18h14V8zM14 3v5h5',back:'m11 4-8 8 8 8M3 12h18',chevron:'m9 5 7 7-7 7',upload:'M12 17V3m-5 5 5-5 5 5M4 16v5h16v-5',download:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',edit:'m4 16 12-12 4 4-12 12-5 1z',close:'m5 5 14 14M19 5 5 19',play:'m8 4 12 8-12 8z',table:'M3 3h18v18H3zM3 9h18M9 3v18',transfer:'M4 7h15m-4-4 4 4-4 4M20 17H5m4-4-4 4 4 4',drive:'m5 3-3 12v6h20v-6L19 3zM2 15h20M6 18h.1',blueprint:'M3 3h18v18H3zM3 11h8V3M15 3v12h6M11 16v5M3 17h8M15 18h6'};
+  const icon=name=>`<svg class="pd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${paths[name]||paths.file}"/></svg>`;
+  const button=(action,label,name='plus',extra='')=>`<button type="button" data-pd-action="${action}" class="pd-button ${extra}">${icon(name)}<span>${label}</span></button>`;
+  const date=value=>{if(!value)return 'Aucune échéance';const parsed=new Date(value+'T12:00:00Z');return Number.isFinite(+parsed)?parsed.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):'Échéance à compléter';};
+  const field=(name,label,value='',required=false,type='text')=>`<label class="pd-field"><span>${label}${required?' <b aria-hidden="true">*</b>':''}</span><input name="${name}" type="${type}" value="${esc(value)}" maxlength="200" ${required?'required':''}></label>`;
+  function error(failure){const node=$('#pdError');if(node){node.textContent=failure?.message||String(failure);node.hidden=false;}}
+  function progress(text){let node=$('#pdProgress');if(!node){node=document.createElement('p');node.id='pdProgress';node.className='pd-progress';node.setAttribute('role','status');$('#pdError')?.after(node);}node.textContent=text;}
+  async function run(task,label='Mise à jour du projet…'){if(busy)return;busy=true;host.setAttribute('aria-busy','true');progress(label);host.querySelectorAll('button').forEach(b=>b.disabled=true);try{await task();}catch(e){error(e);}finally{busy=false;host.removeAttribute('aria-busy');$('#pdProgress')?.remove();host.querySelectorAll('button').forEach(b=>b.disabled=false);}}
+  function nav() {
+    const active=all.filter(p=>!p.archived),clients=[...new Set(active.map(p=>p.client).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+    $('#pdNav').innerHTML=`<button type="button" data-pd-filter="all" class="pd-nav-item ${filter.filter==='all'&&!filter.client?'pd-active':''}">${icon('grid')}Tous les projets <small>${active.length}</small></button><button type="button" data-pd-filter="favorites" class="pd-nav-item ${filter.filter==='favorites'?'pd-active':''}">${icon('star')}Favoris <small>${active.filter(p=>p.favorite).length}</small></button><p class="pd-nav-heading">Clients</p>${clients.map(client=>`<details class="pd-client" ${client===filter.client?'open':''}><summary>${icon('folder')}<span>${esc(client)}</span><small>${active.filter(p=>p.client===client).length}</small></summary><button type="button" data-pd-client="${esc(client)}">Tous les projets de ce client</button>${active.filter(p=>p.client===client).map(p=>`<button type="button" data-pd-select="${esc(p.id)}" class="pd-leaf ${p.id===selected?'pd-current':''}">${esc(p.name)}</button>`).join('')}</details>`).join('')}${active.some(p=>!p.client)?'<p class="pd-nav-note">Des fiches restent à compléter.</p>':''}<button type="button" data-pd-filter="archived" class="pd-nav-item pd-archive-nav ${filter.filter==='archived'?'pd-active':''}">${icon('archive')}Archivés <small>${all.filter(p=>p.archived).length}</small></button>`;
+  }
+  function renderCards(){
+    const entries=model.search(all,filter);if(!entries.some(p=>p.id===selected))selected=entries[0]?.id||null;$('#pdResultCount').textContent=entries.length+' projet'+(entries.length>1?'s':'');
+    $('#pdCards').innerHTML=entries.length?entries.map(p=>`<article class="pd-card ${p.id===selected?'pd-selected':''}"><button type="button" class="pd-card-main" data-pd-select="${esc(p.id)}" aria-label="Afficher le projet ${esc(p.name)}" aria-pressed="${p.id===selected}"><span class="pd-card-heading"><span class="pd-plan-icon">${icon('blueprint')}</span><span><strong>${esc(p.name)}</strong><small>${esc(p.client||'Client à compléter')}</small></span></span><span class="pd-badge pd-${p.status}">${model.statuses[p.status]||'État à préciser'}</span><span class="pd-card-meta">${icon('calendar')}${esc(date(p.deadline))}</span><span class="pd-card-meta">${icon('user')}${esc(p.estimator||'Estimateur à compléter')}</span><span class="pd-card-footer">${icon('file')}${p.documentCount?p.documentCount+' plan'+(p.documentCount>1?'s':'')+' · '+p.pageCount+' feuille'+(p.pageCount>1?'s':''):'Plans à ajouter'}${p.incomplete?'<em>Fiche à compléter</em>':''}</span></button><button type="button" class="pd-star ${p.favorite?'pd-favorite':''}" data-pd-favorite="${esc(p.id)}" aria-pressed="${!!p.favorite}" aria-label="${p.favorite?'Retirer des favoris':'Ajouter aux favoris'} : ${esc(p.name)}">${icon('star')}</button></article>`).join(''):`<div class="pd-empty">${icon('folder')}<h2>${all.length?'Aucun projet ne correspond':'Votre espace de projets'}</h2><p>${all.length?'Modifiez les filtres ou effacez la recherche.':'Créez une fiche, ajoutez vos plans, puis commencez le relevé.'}</p>${all.length?button('reset','Effacer les filtres','search'):button('new','Créer un projet','plus','pd-primary')}</div>`;
+    const p=all.find(p=>p.id===selected);$('#pdPreview').innerHTML=p?`<p class="pd-eyebrow">Projet sélectionné</p><div class="pd-preview-heading"><span class="pd-plan-icon">${icon('blueprint')}</span><h2>${esc(p.name)}</h2></div><span class="pd-badge pd-${p.status}">${model.statuses[p.status]||'État à préciser'}</span><dl class="pd-info"><div><dt>Client</dt><dd>${esc(p.client||'À compléter')}</dd></div><div><dt>Estimateur</dt><dd>${esc(p.estimator||'À compléter')}</dd></div><div><dt>Remise</dt><dd>${esc(date(p.deadline))}</dd></div>${p.reference?`<div><dt>Référence</dt><dd>${esc(p.reference)}</dd></div>`:''}</dl>${button('open',p.documentCount?'Reprendre le relevé':'Ouvrir l’atelier','play','pd-primary pd-full')}<label class="pd-field pd-state-field"><span>État du dossier</span><select id="pdDetailStatus" aria-describedby="pdStateHint">${p.status==='unassigned'?'<option value="" selected disabled>Choisir un état</option>':''}${Object.entries(model.statuses).map(([id,name])=>`<option value="${id}" ${id===p.status?'selected':''}>${name}</option>`).join('')}</select></label><p id="pdStateHint" class="pd-help">Cet état ne confirme pas les quantités.</p><div class="pd-access">${button('edit','Modifier la fiche','edit')}${button('plans','Plans du projet','file')}${button('finishes','Devis & finis','layers')}${button('quantities','Quantités','table')}${button('transfer','Transfert Excel','transfer')}</div>${button('backup','Exporter une sauvegarde ZIP','download','pd-full')}${button('archive',p.archived?'Remettre dans les projets':'Archiver le projet','archive','pd-quiet pd-full')}`:`<div class="pd-empty pd-preview-empty">${icon('blueprint')}<h2>Fiche du projet</h2><p>Sélectionnez un projet pour consulter ses renseignements et reprendre le relevé.</p></div>`;
+  }
+  function readList(){const result=model.list(getState());all=result.projects;if(!all.some(p=>p.id===selected))selected=all.find(p=>!p.archived)?.id||all[0]?.id||null;return result.issues;}
+  function renderHome(){
+    const issues=readList(),estimators=[...new Set(all.map(p=>p.estimator).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+    editing=null;
+    host.innerHTML=`<div class="pd-shell"><aside class="pd-sidebar"><div class="pd-brand">${icon('layers')}<strong>AITE<span>-BN</span></strong><small>V7</small></div><details id="pdNavMenu" ${window.innerWidth>900?'open':''}><summary>Clients et projets ${icon('chevron')}</summary><nav id="pdNav" aria-label="Projets par client"></nav></details><p class="pd-sidebar-foot">Atelier de relevé<br><span>Revêtements de plancher</span></p></aside><div class="pd-stage"><header class="pd-top"><span>Projets <b> / Atelier</b></span><div>${icon('drive')}<span>Sur cet appareil</span>${button('workbench','Ouvrir l’atelier','home','pd-quiet')}</div></header><main class="pd-home"><section class="pd-projects"><div class="pd-heading"><div><h1>Mes projets</h1><p>Vos clients, vos plans et vos relevés au même endroit.</p></div><div class="pd-actions">${button('new','Nouveau projet','plus','pd-primary')}${button('import','Importer une sauvegarde','upload')}</div></div><p id="pdError" class="pd-error" role="alert" ${issues.length?'':'hidden'}>${esc(issues.join(' '))}</p><div class="pd-filters"><label class="pd-search">${icon('search')}<input id="pdSearch" type="search" value="${esc(filter.query)}" placeholder="Rechercher un projet ou un client…" aria-label="Rechercher un projet ou un client"></label><select id="pdStatusFilter" aria-label="Filtrer par état"><option value="">Tous les états</option>${Object.entries(model.statuses).map(([id,name])=>`<option value="${id}" ${id===filter.status?'selected':''}>${name}</option>`).join('')}</select><select id="pdEstimatorFilter" aria-label="Filtrer par estimateur"><option value="">Tous les estimateurs</option>${estimators.map(name=>`<option ${name===filter.estimator?'selected':''}>${esc(name)}</option>`).join('')}</select></div><div class="pd-results"><span id="pdResultCount" role="status" aria-live="polite"></span>${filter.client?`<button type="button" data-pd-action="reset">${esc(filter.client)} · Effacer</button>`:''}</div><div id="pdCards" class="pd-cards"></div><p class="pd-local-note">Les données sont conservées dans ce navigateur. Exportez une sauvegarde ZIP pour les transférer ou les protéger.</p></section><aside id="pdPreview" class="pd-preview" aria-label="Fiche du projet sélectionné"></aside></main></div></div>`;
+    nav();renderCards();
+  }
+  function renderQueue(){
+    const node=$('#pdQueue');if(!node)return;
+    node.innerHTML=queue.map((entry,i)=>`<div class="pd-file-row">${icon('file')}<span><b>${esc(entry.file.name)}</b><small>${(entry.file.size/1024/1024).toLocaleString('fr-CA',{maximumFractionDigits:1})} Mo · En attente</small></span><select data-pd-file-type="${i}" aria-label="Classer ${esc(entry.file.name)}">${['architecture','design','addenda','other'].map((type,n)=>`<option value="${type}" ${entry.type===type?'selected':''}>${['Architecture','Design','Addenda','Autres'][n]}</option>`).join('')}</select><button type="button" data-pd-remove-file="${i}" aria-label="Retirer ${esc(entry.file.name)}">${icon('close')}</button></div>`).join('');
+    $('#pdQueueCount').textContent=queue.length?queue.length+' fichier'+(queue.length>1?'s':'')+' en attente · feuilles comptées après import':'Vous pouvez aussi ajouter les plans plus tard.';
+  }
+  function addFiles(files){for(const file of files){if(queue.some(e=>e.file.name===file.name&&e.file.size===file.size&&e.file.lastModified===file.lastModified))continue;queue.push({file,type:/addend|directive|révision|revision/i.test(file.name)?'addenda':/design|fini|interieur|intérieur/i.test(file.name)?'design':/arch|structure/i.test(file.name)?'architecture':'other'});}renderQueue();}
+  function form(project=null){
+    editing=project?.id||null;queue=[];
+    const p=project||{},suggestions=[...new Set(all.map(p=>p.client).filter(Boolean))],estimator=p.estimator||getState().estimation?.workspace?.project.estimator||'';
+    host.innerHTML=`<div class="pd-form-shell"><header class="pd-top"><div class="pd-form-brand">${icon('layers')}<b>AITE-BN</b><span> / Projets</span></div>${button('home','Retour aux projets','back','pd-quiet')}</header><main class="pd-create"><div class="pd-heading"><div><h1>${editing?'Modifier la fiche':'Créer un projet'}</h1><p>${editing?'Les plans et les relevés conservent leurs identifiants.':'Identifiez le dossier, puis choisissez les plans à ajouter.'}</p></div></div><p id="pdError" class="pd-error" role="alert" hidden></p><form id="pdProjectForm"><div class="pd-form-columns"><section class="pd-form-panel"><h2>Fiche du projet</h2><p class="pd-help">* Champs requis</p>${field('name','Nom du projet',p.name||'',true)}${field('client','Client / destinataire de la soumission',p.client||'',true)}<datalist id="pdClients">${suggestions.map(c=>`<option value="${esc(c)}"></option>`).join('')}</datalist>${field('estimator','Estimateur',estimator,true)}${field('deadline','Échéance de soumission (facultatif)',p.deadline||'',false,'date')}<details class="pd-extra"><summary>Informations complémentaires</summary>${field('generalContractor','Entrepreneur général, si différent',p.generalContractor||'')}${field('address','Adresse du projet',p.address||'')}${field('reference','Référence du dossier',p.reference||'')}<label class="pd-field"><span>Notes</span><textarea name="notes" maxlength="4000" rows="3">${esc(p.notes||'')}</textarea></label></details><p class="pd-help">${editing?'État du dossier':'État initial'} : ${esc(model.statuses[p.status]||(editing?'À préciser':'À commencer'))}</p></section><section class="pd-form-panel"><h2>${editing?'Plans du projet':'Plans à ajouter'}</h2>${editing?`<p>${p.documentCount} plan(s) · ${p.pageCount} feuille(s)</p><p class="pd-help">Ajoutez ou classez les plans depuis l’atelier. Modifier cette fiche ne déplace aucun relevé.</p>`:`<label class="pd-drop" id="pdDrop">${icon('upload')}<strong>Choisir des plans</strong><span>ou glisser les fichiers ici</span><small>PDF, PNG ou JPG · jusqu’à 512 Mo par document</small><input id="pdFiles" type="file" accept=".pdf,.png,.jpg,.jpeg" multiple></label><div id="pdQueue"></div><p id="pdQueueCount" class="pd-help">Vous pouvez aussi ajouter les plans plus tard.</p><p class="pd-help">La fiche sera enregistrée avant l’ouverture des plans.</p>`}</section></div><footer class="pd-form-actions"><span>Enregistrement local · sauvegarde ZIP disponible</span>${button('home','Annuler','close','pd-quiet')}${editing?'':button('create-empty','Créer sans plans','folder')}<button class="pd-button pd-primary" type="submit" id="pdCreateSubmit">${icon(editing?'edit':'play')}${editing?'Enregistrer la fiche':'Créer et ouvrir l’atelier'}</button></footer></form></main></div>`;
+    $('[name=client]').setAttribute('list','pdClients');
+    $('#pdProjectForm').onsubmit=event=>{event.preventDefault();submit(false);};
+    $('#pdFiles')?.addEventListener('change',event=>addFiles(event.target.files));
+    const drop=$('#pdDrop');if(drop){drop.ondragover=e=>{e.preventDefault();drop.classList.add('pd-drag');};drop.ondragleave=()=>drop.classList.remove('pd-drag');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('pd-drag');addFiles(e.dataTransfer.files);};}
+    $('[name=name]').focus();
+  }
+  function submit(withoutPlans){
+    const f=$('#pdProjectForm');if(!f.reportValidity())return;
+    const data=Object.fromEntries(new FormData(f));
+    run(async()=>{if(editing){await options.onUpdate(editing,data);renderHome();}else{const result=await options.onCreate(data,withoutPlans?[]:queue);if(result===false)return;if(result?.error){selected=result.id;renderHome();error(result.error);return;}hide();}},editing?'Enregistrement de la fiche…':'Création du projet…');
+  }
+  function show(projectId=null){
+    const reason=options.canOpen?.();if(reason)return options.toast(reason);
+    origin=document.activeElement;if(projectId)selected=projectId;
+    visible=true;host.hidden=false;document.querySelector('#root .app').inert=true;document.querySelector('#root .app').setAttribute('aria-hidden','true');renderHome();$('#pdSearch').focus({preventScroll:true});
+  }
+  function hide(){visible=false;host.hidden=true;const app=document.querySelector('#root .app');app.inert=false;app.removeAttribute('aria-hidden');if(origin?.isConnected&&!origin.closest('#projectDashboard'))origin.focus({preventScroll:true});options.onHidden?.();}
+  function install(){
+    host=document.createElement('section');host.id='projectDashboard';host.hidden=true;host.setAttribute('aria-label','Accueil des projets AITE');document.body.append(host);
+    const style=document.createElement('style');style.id='projectDashboardStyle';style.textContent=styles();document.head.append(style);
+    const home=document.createElement('button');home.type='button';home.id='projectDashboardBtn';home.className='pd-workbench-home';home.title='Accueil des projets';home.setAttribute('aria-label','Accueil des projets');home.innerHTML=icon('home');home.onclick=async()=>{try{await options.beforeShow?.();show(getState().estimation?.workspace?.project.id);}catch(e){options.toast(e.message);}};
+    const rail=document.querySelector('.atelier-command-rail');if(rail)rail.prepend(home);else document.querySelector('.top-actions').prepend(home);
+    document.querySelector('.brand')?.addEventListener('dblclick',()=>home.click());
+    host.oninput=event=>{if(event.target.id==='pdSearch'){filter.query=event.target.value;renderCards();}};
+    host.onchange=event=>{const el=event.target;if(el.id==='pdStatusFilter'){filter.status=el.value;renderCards();}else if(el.id==='pdEstimatorFilter'){filter.estimator=el.value;renderCards();}else if(el.dataset.pdFileType!==undefined)queue[+el.dataset.pdFileType].type=el.value;else if(el.id==='pdDetailStatus')run(async()=>{await options.onUpdate(selected,{status:el.value,statusSource:'manual'});readList();nav();renderCards();});};
+    host.onclick=event=>{
+      const el=event.target.closest('button');if(!el||busy)return;
+      if(el.dataset.pdSelect){selected=el.dataset.pdSelect;nav();renderCards();host.querySelector('.pd-card-main[data-pd-select="'+selected+'"]')?.focus({preventScroll:true});return;}
+      if(el.dataset.pdFavorite){const p=all.find(p=>p.id===el.dataset.pdFavorite);return run(async()=>{await options.onUpdate(p.id,{favorite:!p.favorite});readList();nav();renderCards();host.querySelector('[data-pd-favorite="'+p.id+'"]')?.focus({preventScroll:true});});}
+      if(el.dataset.pdFilter){filter={...filter,filter:el.dataset.pdFilter,client:''};nav();renderCards();return;}
+      if(el.dataset.pdClient){filter={...filter,filter:'all',client:el.dataset.pdClient};renderHome();return;}
+      if(el.dataset.pdRemoveFile!==undefined){queue.splice(+el.dataset.pdRemoveFile,1);renderQueue();return;}
+      const action=el.dataset.pdAction,p=all.find(p=>p.id===selected);
+      if(action==='new')return form();if(action==='home')return renderHome();if(action==='reset'){filter={query:'',client:'',estimator:'',status:'',filter:'all'};return renderHome();}
+      if(action==='edit'&&p)return form(p);if(action==='create-empty')return submit(true);
+      if(action==='workbench'){hide();return;}
+      if(action==='import')return run(()=>options.onImport());
+      if(action==='archive'&&p)return run(async()=>{await options.onUpdate(p.id,{archived:!p.archived});renderHome();});
+      if(['open','plans','finishes','quantities','transfer','backup'].includes(action)&&p)return run(async()=>{const ok=await options.onOpen(p.id,action);if(ok!==false)hide();},'Ouverture du projet…');
+    };
+    // Keep shortcuts in the workbench from receiving dashboard editing keys.
+    document.addEventListener('keydown',event=>{if(!visible)return;event.stopImmediatePropagation();if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if($('#pdProjectForm')&&!busy)submit(false);return;}if(event.key==='Escape'&&!busy){event.preventDefault();if(editing||$('#pdProjectForm'))renderHome();else hide();}},true);
+    window.matchMedia('(min-width:901px)').addEventListener('change',event=>{const menu=$('#pdNavMenu');if(menu)menu.open=event.matches;});
+    show();
+  }
+  function styles(){return `
+    #projectDashboard{--pd-bg:#f6f7f9;--pd-surface:#fff;--pd-ink:#202938;--pd-muted:#526176;--pd-accent:#3158db;--pd-line:#e1e6ee;--pd-border:#7b8ba4;position:fixed;inset:0;z-index:1100;overflow:auto;background:var(--pd-bg);color:var(--pd-ink);font:13px/1.5 'Segoe UI',Arial,sans-serif;text-align:left}#projectDashboard[hidden]{display:none!important}#projectDashboard *{box-sizing:border-box}#projectDashboard h1,#projectDashboard h2,#projectDashboard p{margin:0}#projectDashboard button,#projectDashboard input,#projectDashboard select,#projectDashboard textarea{font:inherit;max-width:100%;color:inherit}#projectDashboard button{cursor:pointer;letter-spacing:normal;text-transform:none}#projectDashboard button:disabled{cursor:wait;opacity:.65}#projectDashboard :is(button,input,select,textarea,summary):focus-visible{outline:2px solid var(--pd-accent);outline-offset:3px}#projectDashboard .pd-sidebar :focus-visible{outline-color:#a6beff}.pd-icon{width:20px;height:20px;flex:none;vertical-align:middle}.pd-shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}.pd-shell>*{min-width:0}.pd-sidebar{background:#182334;color:#f1f5fc;padding:0 16px;display:flex;flex-direction:column}.pd-brand{height:76px;display:flex;align-items:center;gap:8px;padding:0 8px}.pd-brand>.pd-icon{width:30px;height:30px;color:#a6beff}.pd-brand strong{font-size:21px;letter-spacing:-.6px}.pd-brand strong span{font-weight:400}.pd-brand>small{margin-left:auto;border:1px solid #8496b1;padding:0 4px;border-radius:4px}.pd-sidebar details>summary{cursor:pointer;list-style:none}.pd-sidebar #pdNavMenu>summary{display:none}.pd-sidebar nav button{background:transparent;border:0;text-align:left;color:#b1bdcf;min-height:40px;border-radius:6px;white-space:normal;width:100%}.pd-nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:4px}.pd-nav-item small{margin-left:auto}.pd-sidebar nav .pd-active,.pd-sidebar nav .pd-current{background:#2b3a54;color:#f1f5fc}.pd-nav-heading{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#b1bdcf;padding:28px 12px 10px}.pd-client{color:#b1bdcf;margin-bottom:6px}.pd-client>summary{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px}.pd-client>summary span{flex:1;min-width:0;overflow-wrap:anywhere}.pd-client .pd-icon{width:16px}.pd-sidebar .pd-client button{padding:8px 10px 8px 30px;font-size:12px}.pd-sidebar .pd-client .pd-leaf{padding-left:38px}.pd-archive-nav{margin-top:24px;border-top:1px solid #506078!important;border-radius:0!important;padding-top:16px}.pd-nav-note{padding:12px;font-size:12px;color:#b1bdcf}.pd-sidebar-foot{padding:32px 12px 24px!important;font-size:12px;color:#b1bdcf;margin-top:auto!important}.pd-sidebar-foot span{font-size:11px}.pd-stage{min-width:0}.pd-top{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 32px;background:#fff;border-bottom:1px solid var(--pd-line);font-size:12px;color:var(--pd-muted)}.pd-top>div{display:flex;align-items:center;gap:12px}.pd-top b{color:var(--pd-ink);font-weight:600}.pd-home{display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:calc(100vh - 76px)}.pd-projects{padding:32px;min-width:0}.pd-heading{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:24px}.pd-heading h1{font-size:26px;font-weight:700;line-height:1.2;letter-spacing:-.6px}.pd-heading p{font-size:13px;color:var(--pd-muted);margin-top:8px!important}.pd-actions{display:flex;gap:8px;flex-wrap:wrap}.pd-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:9px 14px;border:1px solid var(--pd-border);border-radius:6px;background:#fff;font-size:12px!important;font-weight:600;white-space:normal;line-height:1.4}.pd-button .pd-icon{width:18px;height:18px}.pd-button:hover{background:#edf1ff}.pd-primary{background:var(--pd-accent)!important;border-color:var(--pd-accent)!important;color:#fff!important}.pd-primary:hover{background:#2447b8!important}.pd-quiet{border-color:transparent;background:transparent;color:var(--pd-muted)!important}.pd-full{width:100%}.pd-filters{display:flex;gap:8px}.pd-filters select,#projectDashboard .pd-field :is(input,select,textarea),.pd-file-row select{min-height:44px;padding:10px 12px;border:1px solid var(--pd-border);border-radius:6px;background:#fff;min-width:0}.pd-search{display:flex;align-items:center;gap:10px;flex:1;min-width:120px;border:1px solid var(--pd-border);background:#fff;border-radius:6px;padding:0 12px;color:var(--pd-muted)}.pd-search input{border:0!important;background:transparent;min-width:0;width:100%;height:44px;padding:8px 0;outline-offset:0!important}.pd-search input::placeholder{color:var(--pd-muted)}.pd-filters select{font-size:12px!important;max-width:190px!important}.pd-results{display:flex;align-items:center;justify-content:space-between;margin:12px 0;color:var(--pd-muted);font-size:12px}.pd-results button{border:0;background:none;text-decoration:underline}.pd-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.pd-card{position:relative;min-width:0;background:#fff;border:1px solid var(--pd-line);border-radius:10px;overflow:hidden}.pd-card.pd-selected{border-color:var(--pd-accent);box-shadow:0 0 0 1px var(--pd-accent)}.pd-card-main{display:block;width:100%;height:100%;padding:18px 16px 0;text-align:left;border:0;background:transparent}.pd-card-main:hover{background:#f8faff}.pd-card-heading{display:flex;align-items:flex-start;gap:12px;padding-right:24px;min-height:56px}.pd-card-heading>span:last-child{flex:1;min-width:0}.pd-card-heading strong{display:block;font-size:15px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}.pd-card-heading small{display:block;font-size:12px;color:var(--pd-muted);margin-top:4px}.pd-plan-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--pd-line);border-radius:5px;background:#fafbfd;color:var(--pd-muted);flex:none}.pd-plan-icon .pd-icon{width:32px;height:32px}.pd-star{position:absolute;right:8px;top:10px;width:32px;height:32px;display:grid;place-items:center;padding:6px;border:0;border-radius:5px;background:transparent;color:var(--pd-muted)!important}.pd-star .pd-icon{width:17px;height:17px}.pd-favorite .pd-icon{fill:#ffcf70;stroke:#7b4b00}.pd-badge{display:inline-block;margin:12px 0;padding:3px 7px;border-radius:4px;font-size:11px;font-weight:600;line-height:1.5;background:#edf0f5;color:#495569}.pd-in_progress{background:#edf1ff;color:#2447b8}.pd-to_review{background:#fff4df;color:#875000}.pd-done{background:#eaf6ee;color:#20673b}.pd-card-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--pd-muted);margin-bottom:6px}.pd-card-meta .pd-icon{width:15px;height:15px}.pd-card-footer{display:flex;align-items:center;gap:6px;border-top:1px solid var(--pd-line);margin-top:16px;padding:12px 0;font-size:11px;color:var(--pd-muted);flex-wrap:wrap}.pd-card-footer .pd-icon{width:14px;height:14px}.pd-card-footer em{font-style:normal;margin-left:auto}.pd-preview{background:#fff;border-left:1px solid var(--pd-line);padding:24px;min-width:0}.pd-eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--pd-muted);margin-bottom:24px!important;letter-spacing:.03em}.pd-preview-heading{display:flex;align-items:flex-start;gap:12px}.pd-preview-heading h2{font-size:18px;font-weight:650;line-height:1.4;overflow-wrap:anywhere}.pd-info{margin:12px 0 24px}.pd-info>div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;margin:12px 0;font-size:12px}.pd-info dt{color:var(--pd-muted)}.pd-info dd{margin:0;overflow-wrap:anywhere}.pd-state-field{margin-top:24px!important}.pd-access{margin:20px 0}.pd-access .pd-button{width:100%;justify-content:flex-start;border:0;border-bottom:1px solid var(--pd-line);border-radius:0;min-height:48px;font-weight:500}.pd-preview>.pd-quiet{margin-top:8px}.pd-help{font-size:12px;color:var(--pd-muted);line-height:1.6}.pd-empty{grid-column:1/-1;padding:48px 20px;background:#fff;border:1px dashed var(--pd-border);border-radius:10px;text-align:center}.pd-empty>.pd-icon{width:36px;height:36px;color:var(--pd-muted);margin-bottom:16px}.pd-empty h2{font-size:18px;line-height:1.4}.pd-empty p{margin:8px 0 20px!important;font-size:13px;color:var(--pd-muted)}.pd-preview-empty{border:0;padding:24px 0;text-align:left}.pd-local-note{font-size:11px;color:var(--pd-muted);border-top:1px solid var(--pd-line);padding-top:16px;margin-top:24px!important}.pd-progress{padding:12px 16px;margin:0 0 16px!important;border:1px solid var(--pd-border);border-radius:6px;background:#edf1ff;color:#2447b8;font-size:13px}.pd-error{border:1px solid #a73232;background:#fff4f4;color:#8c2424;padding:12px;border-radius:6px;margin-bottom:16px!important;overflow-wrap:anywhere}.pd-error[hidden]{display:none}.pd-form-shell{min-height:100%}.pd-form-brand b{font-size:18px;letter-spacing:-.3px}.pd-form-brand .pd-icon{color:var(--pd-accent);width:28px;height:28px}.pd-create{max-width:1244px;padding:32px;margin:0 auto}.pd-form-columns{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px}.pd-form-panel{padding:24px;background:#fff;border:1px solid var(--pd-line);border-radius:10px;min-width:0}.pd-form-panel h2{font-size:17px;font-weight:650;margin-bottom:20px!important}.pd-form-panel>.pd-help{margin:8px 0 16px!important}.pd-field{display:block;margin-bottom:16px;font-size:12px;font-weight:600}.pd-field>span{display:block;margin-bottom:6px}.pd-field>span>b{color:#a73232}.pd-field :is(input,select,textarea){display:block;width:100%;font-size:14px!important;font-weight:400}#projectDashboard .pd-field :is(input,select,textarea){font-weight:400}#projectDashboard .pd-button{font-weight:600}.pd-field textarea{resize:vertical}.pd-extra{margin-top:24px;padding-top:16px;border-top:1px solid var(--pd-line)}.pd-extra>summary{min-height:40px;cursor:pointer;font-size:12px;font-weight:600}.pd-drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:152px;padding:24px 16px;border:1px dashed var(--pd-border);border-radius:6px;background:#fafbfd;cursor:pointer;text-align:center;color:var(--pd-muted)}.pd-drop>strong{color:var(--pd-accent);font-size:14px}.pd-drop>small{font-size:11px}.pd-drop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.pd-drop:focus-within,.pd-drag{outline:2px solid var(--pd-accent);outline-offset:3px;background:#edf1ff}.pd-file-row{display:flex;align-items:center;gap:10px;padding:16px 0;border-bottom:1px solid var(--pd-line);min-width:0}.pd-file-row>span{flex:1;min-width:0}.pd-file-row b{display:block;font-size:12px;overflow-wrap:anywhere}.pd-file-row small{display:block;font-size:11px;color:var(--pd-muted);margin-top:4px}.pd-file-row select{font-size:12px!important;max-width:135px!important}.pd-file-row>button{border:0;background:transparent;padding:8px;min-height:40px;border-radius:6px}.pd-form-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:16px 24px;margin-top:24px;background:#fff;border:1px solid var(--pd-line);border-radius:10px}.pd-form-actions>span{margin-right:auto;font-size:11px;color:var(--pd-muted);max-width:260px}.pd-workbench-home{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:4px;background:transparent;color:inherit;cursor:pointer}.pd-workbench-home:hover{background:#2b3a54}.pd-workbench-home:focus-visible{outline:2px solid #a6beff;outline-offset:2px}
+    @media(min-width:1720px){.pd-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1439px){.pd-shell{grid-template-columns:206px minmax(0,1fr)}.pd-home{grid-template-columns:minmax(0,1fr) 280px}.pd-projects{padding:24px}.pd-heading{flex-direction:column;align-items:flex-start;gap:16px}.pd-filters{flex-wrap:wrap}.pd-search{flex-basis:100%}.pd-filters select{flex:1;max-width:100%!important}.pd-preview{padding:16px}.pd-file-row{flex-wrap:wrap}.pd-file-row>span{flex-basis:calc(100% - 40px)}.pd-file-row select{margin-left:30px;flex:1;max-width:100%!important}.pd-form-actions{flex-wrap:wrap}.pd-form-actions>span{max-width:none;flex-basis:100%}}@media(max-width:1100px){.pd-home{display:block}.pd-preview{margin:0 24px 24px;border:1px solid var(--pd-line);border-radius:10px;padding:24px}.pd-form-columns{grid-template-columns:minmax(0,1fr)}}@media(max-width:900px){.pd-shell{display:block}.pd-sidebar{padding:0 16px}.pd-brand{height:64px;max-width:220px}.pd-sidebar #pdNavMenu>summary{display:flex;justify-content:space-between;align-items:center;padding:12px 8px;min-height:44px;border-top:1px solid #506078}.pd-sidebar-foot{display:none}.pd-top{padding:12px 24px;min-height:64px}.pd-top>div>span{display:none}}@media(max-width:600px){.pd-projects,.pd-create{padding:16px}.pd-top{padding:12px 16px;gap:8px}.pd-top>div{gap:8px}.pd-cards{grid-template-columns:minmax(0,1fr)}.pd-preview{margin:0 16px 16px;padding:16px}.pd-heading h1{font-size:24px}.pd-form-panel{padding:16px}.pd-form-actions{display:block;padding:16px}.pd-form-actions>span{display:block;margin:0 0 16px}.pd-form-actions>.pd-button{width:100%;margin:6px 0}.pd-filters select{width:calc(50% - 4px);max-width:calc(50% - 4px)!important}.pd-card-main{padding:16px 16px 0}.pd-empty{padding:32px 16px}}@media(prefers-reduced-motion:reduce){#projectDashboard *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+  `;}
+  return {install,show,hide,progress,isOpen:()=>visible,isBusy:()=>busy,error,refresh:()=>{if(visible&&!$('#pdProjectForm'))renderHome();}};
+});
+const projectDashboardControllerFactory = (function createProjectDashboardController(options) {
+  const {getState,model,save,loadFile,documents,refresh,planLibrary,uid,canNavigate,getStorage}=options;
+  function allowed(){const reason=canNavigate({documentKey:''});if(reason)throw new Error(reason);}
+  function bookmark(){const s=getState(),id=s.estimation?.workspace?.project.id;if(id&&s.plan&&!s.loading&&s.documentKey!=='legacy')model.rememberView(id,{...options.getBookmark().view,documentKey:s.documentKey,page:s.page});}
+  function persist(){const s=getState();if((s.plan||s.items.length||s.estimation?.workspace)&&save()===false)throw new Error('Le projet courant n’a pas pu être enregistré. Exportez une sauvegarde avant de changer de projet.');}
+  async function beforeShow(){allowed();const id=getState().estimation?.workspace?.project.id;if(id&&!model.read(id))await ensureRecord(id);allowed();persist();bookmark();}
+  function owner(key,expected){
+    if(!expected)return;
+    const raw=getStorage().getItem('quantif-document-v3:'+key);let record;
+    try{record=raw?JSON.parse(raw):null;}catch{throw new Error('Le relevé conservé de ce plan est illisible. Restaurez sa sauvegarde avant de l’ouvrir.');}
+    const actual=record?.estimation?.workspace?.project.id;
+    if(actual&&actual!==expected)throw new Error('Ce plan appartient déjà à un autre projet. Son original et ses relevés sont conservés.');
+  }
+  function reset(estimation){
+    const s=getState();
+    Object.assign(s,{plan:null,pdf:null,documentKey:'legacy',fileName:'Aucun plan',page:1,pages:1,libraryEmpty:true,loading:false,
+      estimation,project:estimation.workspace.project.name,items:[],folders:[],scales:{},scaleMeta:{},scale:null,pageInfo:{},sheetNames:{},
+      settings:{doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'materials',surfaceLabels:true},dividers:{},detectBounds:{},
+      history:[],redo:[],draft:[],selection:new Set(),selected:null,anchorId:null,preview:null,previewFocus:null,previewSelection:new Set(),reviewByPage:{},reviewOpen:false,
+      detectorCache:null,detectJob:null,indexing:false,indexedPages:0,indexTask:null,specificationJob:null,activeSpecification:null,dragging:null,panning:null,selectionBox:null,
+      fixtureDrawing:null,fixtureEditing:null,fixturePreview:null,sanitaryDraft:null});
+    ++s.loadVersion;++s.renderVersion;++s.indexToken;
+  }
+  async function ensureRecord(projectId){
+    const existing=model.read(projectId);if(existing)return existing;
+    const candidate=model.recovery(projectId),references=[],s=getState();options.validateEstimation?.(candidate.estimation);
+    for(const key of candidate.keys){
+      const doc=candidate.estimation.workspace.documents.find(d=>d.fingerprint===key);
+      if(doc){references.push({key,fileName:doc.fileName,pages:doc.pageCount});continue;}
+      if(s.estimation?.workspace?.project.id===projectId&&s.documentKey===key){references.push({key,fileName:s.fileName,pages:s.pages});continue;}
+      const original=await documents.get(key);if(!original)throw new Error('Original absent pour un ancien plan. Restaurez la sauvegarde du projet.');
+      const descriptor=await options.describeDocument(original);references.push({key,fileName:original.name,pages:descriptor.pages});
+    }
+    return model.recover(projectId,references);
+  }
+  async function activate(projectId){
+    allowed();const s=getState();
+    const currentId=s.estimation?.workspace?.project.id;if(currentId&&!model.read(currentId))await ensureRecord(currentId);
+    const record=await ensureRecord(projectId);
+    if(s.estimation?.workspace?.project.id===projectId&&s.plan){persist();return true;}
+    const excluded=new Set(record.estimation.workspace.documents.filter(d=>d.excluded).map(d=>d.fingerprint));
+    const members=record.members.filter(m=>!excluded.has(m.key)),view=model.view(projectId);
+    const reference=members.find(m=>m.key===view?.documentKey&&view.page<=m.pages)||members[0];
+    const original=reference?await documents.get(reference.key):null;
+    if(reference&&!original)throw new Error('Copie locale absente pour '+reference.fileName+'. Rouvrez l’original ou restaurez une sauvegarde.');
+    if(reference)owner(reference.key,projectId);
+    persist();bookmark();
+    const before={...s},activeBefore=getStorage().getItem('estimation-active-project-v1');
+    model.store(record.estimation,{activate:true});
+    try{
+      reset(record.estimation);refresh();
+      if(original){
+        const page=view?.documentKey===reference.key&&view.page<=reference.pages?view.page:1;
+        const ok=await loadFile(new File([original.bytes],original.name,{type:original.type,lastModified:original.lastModified}),{preserveQuantities:true,readOnly:true,page,expectedProjectId:projectId});
+        if(!ok||getState().documentKey!==reference.key||getState().estimation.workspace?.project.id!==projectId||!getState().plan||getState().loading)throw new Error('Le plan n’a pas pu être ouvert. Le projet précédent est conservé.');
+        if(view?.documentKey===reference.key&&view.page===getState().page)options.restoreView(view);
+      }
+      if(before.pdf&&before.pdf!==s.pdf)await before.pdf.destroy().catch(()=>{});
+      return true;
+    }catch(error){
+      if(s.pdf&&s.pdf!==before.pdf)await s.pdf.destroy().catch(()=>{});
+      const version={loadVersion:s.loadVersion+1,renderVersion:s.renderVersion+1,indexToken:s.indexToken+1};
+      Object.assign(s,before,version);s.indexing=false;
+      try{if(activeBefore===null)getStorage().removeItem('estimation-active-project-v1');else getStorage().setItem('estimation-active-project-v1',activeBefore);}catch{}
+      refresh();throw error;
+    }
+  }
+  async function create(data,files){
+    allowed();const id='project-'+uid(),estimation=model.create(id,data);
+    model.store(estimation,{createOnly:true});
+    try{
+      await activate(id);
+      for(const [index,entry] of files.entries()){
+        options.onProgress?.('Ajout du plan '+(index+1)+' sur '+files.length+' : '+entry.file.name);
+        let failure;
+        const ok=await loadFile(entry.file,{expectedProjectId:id,onError:error=>{failure=error;}});
+        if(!ok||!getState().plan||getState().estimation.workspace?.project.id!==id)throw failure||new Error('Un plan n’a pas pu être ajouté. La fiche et les plans déjà ajoutés sont conservés.');
+        const s=getState(),type=['architecture','design'].includes(entry.type)?entry.type:'other',folder=entry.type==='other'?null:entry.type;
+        s.estimation.workspace=planLibrary.capture(s.estimation.workspace,{id:'doc-'+uid(),name:s.fileName,fileName:s.fileName,mediaType:s.pdf?'application/pdf':/\.png$/i.test(s.fileName)?'image/png':'image/jpeg',pageCount:s.pages,fingerprint:s.documentKey},folder,type);
+        if(save()===false)throw new Error('L’enregistrement du plan a échoué. Exportez une sauvegarde.');
+      }
+      refresh();return {id};
+    }catch(error){return {id,error:error.message};}
+  }
+  async function update(id,patch){
+    allowed();await ensureRecord(id);const next=model.update(id,patch),s=getState();
+    if(s.estimation?.workspace?.project.id===id){s.estimation={...s.estimation,workspace:{...s.estimation.workspace,project:next.workspace.project}};s.project=next.workspace.project.name;refresh();}
+    return next;
+  }
+  return {activate,create,update,beforeShow,bookmark,owner};
+});
 const orders = (function createOrders({ purchasing, quotation } = {}) {
   if (typeof purchasing?.purchaseRows !== 'function') throw new Error('Le moteur de groupes d’achat est requis.');
   if (quotation === undefined) {
@@ -13582,6 +13897,17 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
     });
   }
 
+  function projectOf(value) {
+    exactKeys(value,['estimation','view'],'Fiche de projet');
+    object(value.estimation,'Estimation du projet');
+    object(value.estimation.workspace,'Organisation du projet');
+    const project=object(value.estimation.workspace.project,'Identité du projet');
+    identifier(project.id,'Identifiant du projet');
+    if(typeof project.name!=='string'||!project.name.trim())throw new Error('Nom du projet invalide.');
+    if(value.view!==null)object(value.view,'Vue de reprise');
+    return value;
+  }
+
   function activeId(value, ids) {
     if (value === null || value === undefined) return null;
     identifier(value, 'Document actif');
@@ -13621,7 +13947,8 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
     object(input, 'Sauvegarde');
     if (!Array.isArray(input.documents) || input.documents.length > 10000) throw new Error('Liste de documents invalide.');
     const records = recordsOf(input.records);
-    const storage = new TextEncoder().encode(JSON.stringify({ records }));
+    const project=input.project===undefined?undefined:projectOf(input.project);
+    const storage = new TextEncoder().encode(JSON.stringify(project===undefined?{records}:{records,project}));
     let total = storage.byteLength;
     checkTotal(total);
     const ids = new Set(), documents = [], contents = [];
@@ -13635,7 +13962,7 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
       contents.push(bytes);
     }
     const manifest = {
-      format: 'estimation-project-archive', version: 1,
+      format: 'estimation-project-archive', version: project===undefined?1:2,
       activeDocumentId: activeId(input.activeDocumentId, ids), documents,
       storage: { path: 'storage.json', bytes: storage.byteLength, sha256: await sha256(storage) },
     };
@@ -13721,7 +14048,7 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
     const manifestBytes = await read('manifest.json');
     const manifest = parsedJSON(manifestBytes, 'Manifeste');
     exactKeys(manifest, ['format', 'version', 'activeDocumentId', 'documents', 'storage'], 'Manifeste');
-    if (manifest.format !== 'estimation-project-archive' || manifest.version !== 1 || !Array.isArray(manifest.documents) || manifest.documents.length > 10000) throw new Error('Format ou version de sauvegarde non pris en charge.');
+    if (manifest.format !== 'estimation-project-archive' || ![1,2].includes(manifest.version) || !Array.isArray(manifest.documents) || manifest.documents.length > 10000) throw new Error('Format ou version de sauvegarde non pris en charge.');
     fileDescriptor(manifest.storage, 'Stockage');
     if (manifest.storage.path !== 'storage.json') throw new Error('Chemin du stockage invalide.');
     const expected = new Set(['manifest.json', 'storage.json']), ids = new Set(), documents = [];
@@ -13734,7 +14061,8 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
     };
     const storageBytes = await verify(manifest.storage, 'storage.json');
     const storage = parsedJSON(storageBytes, 'Stockage');
-    exactKeys(storage, ['records'], 'Stockage');
+    exactKeys(storage, manifest.version===2?['records','project']:['records'], 'Stockage');
+    const project=manifest.version===2?projectOf(storage.project):undefined;
     const records = recordsOf(storage.records);
     for (const [index, document] of manifest.documents.entries()) {
       exactKeys(document, ['id', 'name', 'type', 'lastModified', 'path', 'bytes', 'sha256'], 'Document du manifeste');
@@ -13749,7 +14077,9 @@ const archives = (function createArchives(ZipConstructor, getCrypto = () => glob
       documents.push({ ...info, bytes: content.buffer });
     }
     for (const name of names) if (name === 'docs/' ? !documents.length : !expected.has(name)) throw new Error('Fichier supplémentaire non déclaré dans le manifeste.');
-    return { documents, records, activeDocumentId: activeId(manifest.activeDocumentId, ids) };
+    const result={documents,records,activeDocumentId:activeId(manifest.activeDocumentId,ids)};
+    if(project!==undefined)result.project=project;
+    return result;
   }
 
   return { encode, decode, maxTotalBytes };
@@ -14890,6 +15220,7 @@ const MATERIALS = [
 ].map(([code,name,color,waste])=>({code,name,color,waste}));
 const TOOLS = [['select','mouse-pointer-2','Sélection','V'],['auto','wand-sparkles','Pièce au clic','A'],['area','pentagon','Surface polygonale','S'],['linear','ruler','Ligne / plinthe','L'],['calibrate','maximize','Calibrer','C'],['split','scissors','Fractionner','F']];
 const S = {plan:null,pdf:null,fileName:'Aucun plan',page:1,pages:1,tool:'select',zoom:.82,pan:{x:40,y:54},scale:null,draft:[],items:readSaved('quantif-items',[]),selected:null,selection:new Set(),material:'VP-01',history:[],redo:[],project:'Projet sans titre',scales:readSaved('quantif-scales',{}),scaleMeta:{},pageInfo:{},tileGrid:true,documentKey:'legacy',loadVersion:0,renderVersion:0,loading:false};
+let dashboardUI=null,dashboardController=null;
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const fmt=(n,d=1)=>Number(n||0).toLocaleString('fr-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -15033,13 +15364,16 @@ function readSaved(key, fallback) {
   return persistence.readSaved(key, fallback);
 }
 function save() {
+  const beforeDashboardEstimation=S.estimation;S.estimation=projectDashboard.prepareSave(S);
   if(S.items.some(item=>item.sanitarySource))refreshSanitarySpecifications();
   for(const item of S.items)if(item.status==='confirmée'&&confirmationIssues(item).length)item.status='à valider';
   const saved=S.libraryEmpty?true:persistence.save(S);
   const shared=S.documentKey==='legacy'&&S.estimation.workspace?.planLibrary?projectSession.saveWorkspace(S.estimation):projectSession.save(S);
+  if(!saved||!shared)S.estimation=beforeDashboardEstimation;
   if ((!saved || !shared) && !S.storageWarning) {
     S.storageWarning = true; toast('Sauvegarde locale indisponible. Exportez vos quantités avant de fermer.');
   }
+  return saved&&shared;
 }
 function snapshot() {
   return structuredClone({items:S.items, folders:S.folders||[],scales:S.scales, scaleMeta:S.scaleMeta,
@@ -15194,6 +15528,7 @@ async function checkOriginalIdentity(key,bytes) {
 }
 async function loadFile(file,options={}) {
   if (!file) return;
+  const expectedProjectId=options.expectedProjectId??(S.estimation.workspace?.project.dashboardVersion===1?S.estimation.workspace.project.id:null);
   planTabsUI?.rememberCurrent();
   const token = ++S.loadVersion; ++S.renderVersion; S.loading = true; refresh();
   try {
@@ -15207,6 +15542,7 @@ async function loadFile(file,options={}) {
       const pdf = await pdfjsLib.getDocument({data:data.slice(0)}).promise;
       if (token !== S.loadVersion) { await pdf.destroy(); return; }
       const key = documentIdentity(file,pdf);
+      try{dashboardController?.owner(key,expectedProjectId);}catch(error){await pdf.destroy();throw error;}
       try{await checkOriginalIdentity(key,data);}catch(error){await pdf.destroy();throw error;}
       if(token!==S.loadVersion){await pdf.destroy();return false;}
       const target=options.page??1;
@@ -15220,7 +15556,7 @@ async function loadFile(file,options={}) {
       const objectUrl = URL.createObjectURL(new Blob([data],{type:file.type}));
       let image; try { image = await decodeImage(objectUrl); } finally { URL.revokeObjectURL(objectUrl); }
       if (token !== S.loadVersion) return;
-      const key=documentIdentity(file);await checkOriginalIdentity(key,data);if(token!==S.loadVersion)return false;
+      const key=documentIdentity(file);dashboardController?.owner(key,expectedProjectId);await checkOriginalIdentity(key,data);if(token!==S.loadVersion)return false;
       if(options.page!==undefined&&options.page!==1)throw new Error('Une image ne contient qu’une feuille.');
       openDocument(key,file.name,null,1);
       S.plan = image; S.scale = S.scales[1] || null; fitPlan(image); S.loading = false; refresh();
@@ -15231,9 +15567,10 @@ async function loadFile(file,options={}) {
         await documents.put({id:S.documentKey,name:file.name,type,lastModified:file.lastModified,bytes:data});save();
       } catch (storageError) { if(token === S.loadVersion)toast('Plan ouvert, mais copie locale indisponible : '+storageError.message); }
     }
+    if(token===S.loadVersion&&S.plan&&!dashboardUI?.isBusy())dashboardUI?.hide();
     return token===S.loadVersion;
   } catch (error) {
-    if (token === S.loadVersion) { S.loading = false; refresh(); toast('Impossible d’ouvrir ce plan : '+error.message); }
+    if (token === S.loadVersion) { S.loading = false; refresh(); toast('Impossible d’ouvrir ce plan : '+error.message);options.onError?.(error); }
     return false;
   }
 }
@@ -17001,7 +17338,7 @@ const openDemo=async()=>{
 };
 $('#demoBtn').onclick=openDemo;$('#emptyDemo').onclick=openDemo;
 $('#zoomIn').onclick=()=>zoomAt(S.zoom*1.2);$('#zoomOut').onclick=()=>zoomAt(S.zoom/1.2);$('#fitView').onclick=()=>{fitPlan();refresh();};
-$('#projectName').oninput=event=>{S.project=event.target.value;$('#treeProject').textContent=S.project;save();};
+$('#projectName').oninput=event=>{S.project=event.target.value;if(S.estimation.workspace?.project.dashboardVersion===1&&S.project.trim()&&S.project.length<=200)S.estimation.workspace=projects.update(S.estimation.workspace,'project',S.estimation.workspace.project.id,{name:S.project.trim()});$('#treeProject').textContent=S.project;save();};
 const quantityTransferUI=quantityTransferUIFactory({document,getReport:quantityTransferReport,transfer:quantityTransfer,
   encodeWorkbook:sheets=>workbooks.encode(sheets),downloadBlob,openDialog,closeDialog,toast,projectName:()=>S.project});
 $('#quantityTransferBtn').onclick=quantityTransferUI.open;
@@ -17162,16 +17499,20 @@ function projectArchiveDialog() {
   $('#createProjectArchive').onclick=async()=>{
     try {
       if(!S.plan&&!S.estimation.workspace)throw new Error('Ouvrez un document avant de sauvegarder le projet.');
-      save();const states=projectStates({includeExcluded:true}), originals=[],records=[];
-      if(!states.length||states.some(state=>state.documentKey==='legacy'))throw new Error('Ajoutez un plan avant de sauvegarder le projet.');
+      const savedLocally=save(),states=projectStates({includeExcluded:true}),originals=[],records=[];
+      if(states.some(state=>state.documentKey==='legacy'))throw new Error('Ajoutez un plan avant de sauvegarder le projet.');
+      if(!states.length&&S.estimation.workspace?.documents.some(d=>d.fingerprint))throw new Error('Des relevés du projet sont absents. Restaurez leurs originaux avant de sauvegarder.');
       for(const state of states){
         const original=await documents.get(state.documentKey);if(!original)throw new Error('Copie originale absente : '+state.fileName+'. Rouvrez le fichier original avant l’archive.');
         originals.push(original);
-        const key='quantif-document-v3:'+state.documentKey,raw=localStorage.getItem(key);if(!raw)throw new Error('Relevé sauvegardé absent : '+state.fileName);
-        const record=JSON.parse(raw);record.estimation=S.estimation;records.push({key,value:JSON.stringify(record)});
+        const key='quantif-document-v3:'+state.documentKey,record=persistence.record(state);record.estimation=S.estimation;
+        validateProject({format:'quantif-plancher',version:10,documentKey:state.documentKey,pages:state.pages,...record},state.documentKey,state.pages);
+        records.push({key,value:JSON.stringify(record)});
       }
-      downloadBlob(await archives.encode({documents:originals,records,activeDocumentId:states.some(state=>state.documentKey===S.documentKey)?S.documentKey:states[0].documentKey}),'estimation-projet.zip');
-      $('#projectArchiveStatus').textContent='Archive créée : '+originals.length+' document(s). Vérifiez la restauration sur une copie.';
+      const identity=S.estimation.workspace?.project,currentView=identity&&S.plan?{...planTabCurrent().view,documentKey:S.documentKey,page:S.page}:identity?projectDashboard.view(identity.id):null;
+      const project=identity&&(identity.dashboardVersion===1||!states.length)?{estimation:S.estimation,view:currentView}:null;
+      downloadBlob(await archives.encode({documents:originals,records,activeDocumentId:states.some(state=>state.documentKey===S.documentKey)?S.documentKey:states[0]?.documentKey??null,...(project?{project}:{})}),'estimation-projet.zip');
+      $('#projectArchiveStatus').textContent='Archive créée : '+originals.length+' document(s). '+(savedLocally?'Vérifiez la restauration sur une copie.':'Le stockage local est indisponible ; l’archive contient le relevé actuellement ouvert. Conservez ce fichier.');
     }catch(error){$('#projectArchiveError').textContent=error.message;}
   };
   $('#restoreProjectArchive').onsubmit=async event=>{
@@ -17179,6 +17520,12 @@ function projectArchiveDialog() {
     try {
       const file=$('#projectArchiveFile').files[0];if(!file)throw new Error('Choisissez une archive.');
       const decoded=await archives.decode(file), prepared=[];
+      if(decoded.project){
+        validateEstimation(decoded.project.estimation);projectDashboard.validate(decoded.project.estimation);
+        if(!decoded.documents.length&&decoded.project.estimation.workspace.documents.length)throw new Error('La fiche contient des plans dont les originaux sont absents de l’archive.');
+        const existing=projectDashboard.read(decoded.project.estimation.workspace.project.id);
+        if(!decoded.documents.length&&existing?.members.length)throw new Error('Ce projet contient déjà des plans. La fiche seule ne peut pas remplacer son dossier.');
+      }
       for(const original of decoded.documents){
         const entry=decoded.records.find(record=>record.key==='quantif-document-v3:'+original.id);if(!entry)throw new Error('Relevé manquant pour '+original.name);
         let pages=1, identity;
@@ -17199,22 +17546,30 @@ function projectArchiveDialog() {
         prepared.push({original,entry,record,pages,existing:!!existing});
       }
       if(prepared.length!==decoded.records.length)throw new Error('L’archive contient un relevé sans original correspondant.');
-      projectSession.assertRestorable(prepared.map(value=>value.record));
-      for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(/^(quantif-document-v3:|estimation-project-v1:|estimation-active-project-v1$)/.test(key))before.set(key,localStorage.getItem(key));}
+      if(decoded.project&&prepared.some(value=>value.record.estimation?.workspace?.project.id!==decoded.project.estimation.workspace.project.id))throw new Error('Les plans et la fiche n’appartiennent pas au même projet.');
+      projectSession.assertRestorable([...prepared.map(value=>value.record),...(decoded.project?[{estimation:decoded.project.estimation}]:[])]);
+      for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(/^(quantif-document-v3:|estimation-project-v1:|estimation-project-view-v1:|estimation-active-project-v1$)/.test(key))before.set(key,localStorage.getItem(key));}
       started=true;
       for(const value of prepared){
         await documents.put(value.original);if(!value.existing)added.push(value.original.id);
         localStorage.setItem(value.entry.key,value.entry.value);
         if(!projectSession.save({...value.record,documentKey:value.original.id,fileName:value.original.name,pages:value.pages}))throw new Error('Stockage local insuffisant pour restaurer le projet.');
       }
+      if(decoded.project){
+        if(!projectSession.saveWorkspace(decoded.project.estimation))throw new Error('Stockage local insuffisant pour restaurer la fiche.');
+        if(decoded.project.view)projectDashboard.rememberView(decoded.project.estimation.workspace.project.id,decoded.project.view);
+      }
       const active=prepared.find(value=>value.original.id===decoded.activeDocumentId)||prepared[0];
+      if(!active&&decoded.project){closeDialog();dashboardUI?.show(decoded.project.estimation.workspace.project.id);toast('Fiche du projet restaurée. Vous pouvez ajouter les plans.');return;}
       if(!active)throw new Error('Archive sans document.');
-      const restored=await loadFile(new File([active.original.bytes],active.original.name,{type:active.original.type,lastModified:active.original.lastModified}));
+      const bookmark=decoded.project?.view,restoreView=bookmark?.documentKey===active.original.id&&bookmark.page>=1&&bookmark.page<=active.pages?bookmark:null;
+      const restored=await loadFile(new File([active.original.bytes],active.original.name,{type:active.original.type,lastModified:active.original.lastModified}),{expectedProjectId:active.record.estimation?.workspace?.project.id,preserveQuantities:true,page:restoreView?.page||1});
       if(!restored)throw new Error('Le document restauré n’a pas pu être affiché.');
+      if(restoreView)restorePlanTabView(restoreView);
       closeDialog();toast('Projet restauré : plans, relevés et paramètres disponibles.');
     }catch(error){
       if(started){
-        const keys=[];for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(/^(quantif-document-v3:|estimation-project-v1:|estimation-active-project-v1$)/.test(key))keys.push(key);}
+        const keys=[];for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index);if(/^(quantif-document-v3:|estimation-project-v1:|estimation-project-view-v1:|estimation-active-project-v1$)/.test(key))keys.push(key);}
         for(const key of keys)if(!before.has(key))localStorage.removeItem(key);
         for(const [key,value]of before)localStorage.setItem(key,value);
         for(const id of added)await documents.remove(id,{confirmed:true});
@@ -17226,6 +17581,24 @@ function projectArchiveDialog() {
 canvas.tabIndex=0;canvas.setAttribute('aria-label','Plan : zoom à la molette, sélection, détection et tracé des mesures');
 if(window.innerWidth<780){$('#inspector').hidden=true;$('#reopen').hidden=false;$('.app').classList.add('pages-folded');}
 lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});refresh();
+dashboardController=projectDashboardControllerFactory({model:projectDashboard,getState:()=>S,getStorage:()=>localStorage,save,loadFile,documents,refresh,planLibrary,uid,
+  canNavigate:planTabNavigationBlock,getBookmark:planTabCurrent,restoreView:restorePlanTabView,validateEstimation,onProgress:text=>dashboardUI?.progress(text),
+  describeDocument:async original=>{if(original.type!=='application/pdf')return {pages:1};const pdf=await pdfjsLib.getDocument({data:original.bytes.slice(0)}).promise;try{return {pages:pdf.numPages};}finally{await pdf.destroy();}}});
+dashboardUI=projectDashboardUIFactory({model:projectDashboard,getState:()=>S,esc,toast,
+  canOpen:()=>planTabNavigationBlock({documentKey:''}),beforeShow:()=>dashboardController.beforeShow(),onHidden:()=>refresh(),
+  onCreate:(data,files)=>dashboardController.create(data,files),onUpdate:(id,patch)=>dashboardController.update(id,patch),
+  onImport:()=>{dashboardUI.hide();projectArchiveDialog();},
+  onOpen:async(id,action)=>{await dashboardController.activate(id);dashboardUI.hide();
+    if(action==='plans')$('#libraryAddPlans')?.click();
+    else if(action==='finishes')specificationUI.open('devis');
+    else if(action==='quantities')specificationUI.open('quantities');
+    else if(action==='transfer')$('#quantityTransferBtn').click();
+    else if(action==='backup')projectArchiveDialog();
+    return true;
+  }});
+dashboardUI.install();
+window.addEventListener('pagehide',()=>{try{dashboardController.bookmark();}catch{}});
+
 
 
 
