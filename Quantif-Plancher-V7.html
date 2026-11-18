@@ -856,30 +856,39 @@ function pairedWallSegments(paths,threshold,scale,texts=[]) {
     maximumBrightness=threshold;
   const segments=lineSegments(paths,minimum,maximumBrightness),maxThickness=1.25/scale,minThickness=Math.max(1.5,2.5/12/scale);
   const dimensions=texts.filter(t=>t.text.length<45&&/\d.*['"′″]|\d\s*(?:po|pi)\b/i.test(t.text));
-  return segments.filter((a,index)=>{
-    if(a.length<Math.max(5,.5/scale))return false;
+  return segments.flatMap((a,index)=>{
+    if(a.length<Math.max(5,.5/scale))return [];
     // La plume du dessin ne suffit pas : une porte à double trait peut avoir
     // le même trait qu’un mur. Exiger une largeur physique ou deux vraies faces.
-    if(a.width*scale>=2.5/12||threshold===215)return true;
+    if(a.width*scale>=2.5/12||threshold===215)return [a];
     if(dimensions.some(t=>{
       const vertical=t.height>t.width*1.8;
       if(vertical?Math.abs(a.uy)<.98:Math.abs(a.ux)<.98)return false;
       const dx=t.cx-a.a.x,dy=t.cy-a.a.y,along=dx*a.ux+dy*a.uy,distance=Math.abs(dx*a.uy-dy*a.ux),font=vertical?t.width:t.height;
       return along>=-font&&along<=a.length+font&&distance<Math.max(4,font*1.6);
-    }))return false;
-    return segments.some((b,j)=>{
+    }))return [];
+    const intervals=[];
+    const supported=segments.some((b,j)=>{
       if(index===j||Math.abs(a.ux*b.ux+a.uy*b.uy)<.9995)return false;
       const dx=b.a.x-a.a.x,dy=b.a.y-a.a.y,separation=Math.abs(dx*a.uy-dy*a.ux);
       const p=dx*a.ux+dy*a.uy,q=(b.b.x-a.a.x)*a.ux+(b.b.y-a.a.y)*a.uy,
         overlap=Math.min(a.length,Math.max(p,q))-Math.max(0,Math.min(p,q));
       if(a.width<.55) {
         if(b.width<.55)return false;
-        if(separation<.15/scale&&overlap>=-1/scale)return true;
-        return separation>=minThickness&&separation<=.5/scale&&overlap>=Math.min(a.length*.4,1/scale);
+        // Une longue cote peut finir près d'un mur sans être ce mur. Ne
+        // retenir que la partie réellement recouverte par un appui local.
+        if(overlap>0&&(separation<.15/scale||separation>=minThickness&&separation<=.5/scale&&overlap>=Math.min(a.length*.4,1/scale)))
+          intervals.push([Math.max(0,Math.min(p,q)),Math.min(a.length,Math.max(p,q))]);
+        return false;
       }
       if(separation<minThickness||separation>maxThickness)return false;
       return overlap>=Math.min(a.length*.5,1.5/scale);
     });
+    if(a.width>=.55)return supported?[a]:[];
+    intervals.sort((a,b)=>a[0]-b[0]);
+    const merged=[];
+    for(const interval of intervals){const last=merged[merged.length-1];if(last&&interval[0]<=last[1]+1e-7)last[1]=Math.max(last[1],interval[1]);else merged.push([...interval]);}
+    return merged.map(([start,end])=>({...a,a:{x:a.a.x+a.ux*start,y:a.a.y+a.uy*start},b:{x:a.a.x+a.ux*end,y:a.a.y+a.uy*end},length:end-start}));
   });
 }
 /* A dark outline is not sufficient evidence for a wall. Keep the connected
@@ -2006,7 +2015,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-17-enclosure-review';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-18-fixtures-jambs';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -5741,14 +5750,30 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
   const copy = value => JSON.parse(JSON.stringify(value));
   const shapeKey = (documentKey, item) => decisions.key(documentKey, item.page, {points:item.points, holes:getHoles(item)});
   const mainFloor = item => item.kind === 'area' && !item.bathroom && item.spaceType === 'dwelling' && typeof item.detectedUnit?.id === 'string';
+  const bathroomFloor = item => item.kind === 'area' && item.bathroom === true && item.spaceType === 'bathroom' &&
+    Array.isArray(item.sanitaryEvidence) && item.sanitaryEvidence.length > 0 && item.sanitaryEvidence.length <= 16 &&
+    item.sanitaryEvidence.every(proof=>proof && typeof proof.symbolId==='string' && proof.symbolId.length>0 && proof.symbolId.length<=256);
+  const documentKeyForRing = 'sanitary-geometry';
+  const ringKey = (page, points) => decisions.key(documentKeyForRing, page, {points,holes:[]});
+  const sameRing = (page,a,b) => Array.isArray(a) && Array.isArray(b) && a.length>=3 && b.length>=3 && a.length<=512 && b.length<=512 && ringKey(page,a)===ringKey(page,b);
+  const bathroomIdentity = item => bathroomFloor(item) ? JSON.stringify(item.sanitaryEvidence.map(proof=>proof.symbolId).sort()) : '';
+  const sameBathroom = (a,b) => bathroomIdentity(a) && bathroomIdentity(a)===bathroomIdentity(b) && a.sanitaryEvidence.every(proof=>
+    proof.source==='vector-shape' && b.sanitaryEvidence.some(other=>other.symbolId===proof.symbolId && other.source==='vector-shape' &&
+      other.kind===proof.kind && sameRing(a.page,proof.basinRing,other.basinRing) &&
+      (!proof.footprintRing&&!other.footprintRing||sameRing(a.page,proof.footprintRing,other.footprintRing))));
   const frameKey = value => value ? JSON.stringify([value.width,value.height,value.units,value.pdfRenderScale]) : '';
   const relatives = (item, items) => item.parentId || Object.keys(item.subzones || {}).length || items.some(other => other.parentId === item.id || other.sanitarySource?.parentId === item.id);
-  function pristine(item, {documentKey, version, items=[]}={}) {
+  function pristine(item, {documentKey, version, items=[],sanitary=false}={}) {
     const source = item.autoTakeoff, provenance = source?.provenance;
+    const automaticBathroom = sanitary && bathroomFloor(item) && !item.parentId && !Object.keys(item.subzones||{}).length &&
+      items.every(other=>other.parentId!==item.id && (other.sanitarySource?.parentId!==item.id || other.kind==='count' &&
+        other.sanitarySource.sourceKind==='vector-shape' && item.sanitaryEvidence.some(proof=>proof.symbolId===other.sanitarySource.symbolId))) &&
+      (item.fixtureCuts||[]).every(cut=>cut.source==='plan' && cut.clipToFloor===true && !cut.absorbedHoles?.length &&
+        item.sanitaryEvidence.some(proof=>proof.symbolId===cut.hintKey && proof.footprintSource==='vector-outer-outline' && sameRing(item.page,cut.points,proof.footprintRing)));
     if (item.kind !== 'area' || item.status === 'confirmée' || item.geometryEdited || item.measureOnly || item.work?.roomBoundary ||
         (item.work?.layer || 'finish') !== 'finish' || source?.documentKey !== documentKey ||
         provenance?.engineId !== 'local-rooms' || provenance.engineVersion === version ||
-        !provenance.context?.frame || relatives(item,items) || item.fixtureCuts?.length) return false;
+        !provenance.context?.frame || !automaticBathroom && (relatives(item,items) || item.fixtureCuts?.length)) return false;
     try { return source.key === shapeKey(documentKey,item); } catch { return false; }
   }
   function absorbable(item, options) {
@@ -5759,11 +5784,12 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       !item.fixturePending?.length && !item.sanitaryEvidence?.length && !item.bathroomGrouping &&
       (item.unnamed === true && /^Pièce détectée(?: \d+)?$/.test(item.name) || inheritedLaundry) &&
       item.materialNeedsReview !== false && !['choix estimateur','localisation choisie','code du plan'].includes(item.materialSource) && work.included !== false &&
-      !work.productId && !work.specificationId && !work.roomId && !work.unitId && !work.unit && !work.block && !work.level &&
+      !work.productId && !work.productSignature && !work.specificationId && !work.specificationSignature &&
+      !work.roomId && !work.unitId && !work.blockId && !work.floorId && !work.revisionMatchId && !work.unit && !work.block && !work.level &&
       !work.type && !(work.repeat>1) && !work.baseboard?.enabled && !item.tiling && !(item.waste>0) && item.wasteConfirmed!==true &&
       item.takeoffFiling?.mode === 'auto' && item.folderId === item.takeoffFiling.folderId;
   }
-  function retractable(item, options={}) {
+  function retractableDraft(item, options={}) {
     const {source,choices=[],documentKey,version}=options,work=item.work||{};
     if(source?.automaticFloorReviewReason!=='unlabelled-surrounds-dwellings'||source.selected!==false||
         source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version||
@@ -5775,10 +5801,11 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         work.repeat>1||work.baseboard?.enabled||item.tiling||item.waste>0||item.wasteConfirmed===true||
         item.takeoffFiling?.mode!=='auto'||item.folderId!==item.takeoffFiling.folderId||
         frameKey(item.autoTakeoff?.provenance?.context?.frame)!==frameKey(source.detectionProvenance?.context?.frame))return false;
-    try {
-      const key=shapeKey(documentKey,source);
-      return key===item.autoTakeoff.key&&!choices.some(choice=>choice.key===key&&choice.selected===true);
-    }catch{return false;}
+    return !choices.some(choice=>choice.key===item.autoTakeoff.key&&choice.selected===true);
+  }
+  function retractable(item, options={}) {
+    if(!retractableDraft(item,options))return false;
+    try {return shapeKey(options.documentKey,options.source)===item.autoTakeoff.key;}catch{return false;}
   }
   function plan({items=[],candidates=[],choices=[],documentKey,version,raster=null}={}) {
     const output={updates:[],removeIds:[],links:[],refusals:[],deferred:[],warnings:[]};
@@ -5791,7 +5818,11 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
     const overlap=(a,b)=>{
       const x=boundsOf(a.points),y=boundsOf(b.points);
       if(x.right<=y.x||y.right<=x.x||x.bottom<=y.y||y.bottom<=x.y)return 0;
-      const holes=[...getHoles(a),...getHoles(b)],points=a.points.length+holes.reduce((sum,ring)=>sum+ring.length,0)+b.points.length;
+      // Une exclusion entièrement hors A ne participe pas à A∩B. Écarter
+      // ces anneaux évite de comparer chaque petit rectangle à tous les
+      // contours d'un bâtiment, tout en gardant les grands trous englobants.
+      const holes=[...getHoles(a),...getHoles(b)].filter(ring=>{const h=boundsOf(ring);return h.right>x.x&&h.x<x.right&&h.bottom>x.y&&h.y<x.bottom;}),
+        points=a.points.length+holes.reduce((sum,ring)=>sum+ring.length,0)+b.points.length;
       charge(points*points);
       // (A moins les exclusions de B) moins sa partie extérieure à B.
       return Math.max(0,netArea({points:a.points,holes})-netArea({points:a.points,holes:[...holes,b.points]}));
@@ -5838,6 +5869,27 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       }
       return seen;
     };
+    const coveredByReviewRegion=(peer,source)=>{
+      const frame=source.detectionProvenance?.context?.frame,box=boundsOf(peer.points);
+      if(!rasterMatches(frame)||!Number.isInteger(source.sourceRoomId)||source.sourceRoomId<=0||
+          source.unitGrouping||source.bathroomGrouping||raster.labels?.length!==raster.width*raster.height||
+          box.x<0||box.y<0||box.right>frame.width||box.bottom>frame.height)return false;
+      const {factor,width,labels,wallMask}=raster,holes=getHoles(peer),x0=Math.floor(box.x*factor),y0=Math.floor(box.y*factor),
+        x1=Math.min(width,Math.ceil(box.right*factor)),y1=Math.min(raster.height,Math.ceil(box.bottom*factor));
+      const pointWork=peer.points.length+holes.reduce((n,ring)=>n+ring.length,0)+1;
+      let seen=false;
+      for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+        charge(pointWork);
+        const point={x:(x+.5)/factor,y:(y+.5)/factor};
+        if(!inside(point,peer.points)||holes.some(hole=>inside(point,hole)))continue;
+        seen=true;const cell=y*width+x;
+        // Le contour vectoriel ajusté peut différer au bord du pixel. Exiger
+        // néanmoins TOUTES les cellules de l'ancien sol dans ce composant à
+        // réviser, ou dans un vrai mur. Ni autre pièce ni fermeture auxiliaire.
+        if(!wallMask[cell]&&labels[cell]!==source.sourceRoomId)return false;
+      }
+      return seen;
+    };
     const options={documentKey,version,items},primary=candidates.map((item,index)=>({item,index})).filter(({item})=>mainFloor(item)),consumed=new Set();
     try {
       for(const {item:source,index} of primary){
@@ -5873,6 +5925,58 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         output.updates.push({itemId:previous.id,item:replacement,index});
         for(const id of absorbed){consumed.add(id);output.removeIds.push(id);}
       }
+      // Après le retrait de la SDB du sol principal, reprendre son propre
+      // contour par le même symbole vectoriel, jamais par un numéro de pièce.
+      const bathrooms=candidates.map((item,index)=>({item,index})).filter(({item})=>bathroomFloor(item));
+      for(const {item:source,index} of bathrooms){
+        if(bathrooms.filter(other=>other.item.page===source.page&&bathroomIdentity(other.item)===bathroomIdentity(source)).length!==1)continue;
+        const matching=items.filter(item=>item.page===source.page&&item.autoTakeoff?.documentKey===documentKey&&sameBathroom(item,source));
+        if(matching.length!==1){if(matching.length>1){output.deferred.push(index);warn('Plusieurs salles de bain portent le même symbole : anciens contours conservés.');}continue;}
+        const previous=matching[0],newFrame=source.detectionProvenance?.context?.frame;
+        if(previous.autoTakeoff?.provenance?.engineVersion===version||source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
+        if(!newFrame||frameKey(previous.autoTakeoff?.provenance?.context?.frame)!==frameKey(newFrame)){output.deferred.push(index);warn('Le repère de la salle de bain a changé : ancien contour conservé.');continue;}
+        const protectedContour=!pristine(previous,{...options,sanitary:true});
+        output.links.push({index,itemId:previous.id,protected:protectedContour});
+        if(protectedContour||!source.selected||source.mixedBathroom||source.needsSeparation)continue;
+        const replacements=new Map(output.updates.map(update=>[update.itemId,update.item])),area=netArea(source),tolerance=Math.max(1e-6,area*1e-8),absorbed=[];
+        let blocked=false;
+        for(const oldPeer of items){
+          if(oldPeer===previous||consumed.has(oldPeer.id))continue;
+          const peer=replacements.get(oldPeer.id)||oldPeer;
+          if(peer.kind!=='area'||peer.page!==source.page||peer.measureOnly||peer.work?.roomBoundary||(peer.work?.layer||'finish')!=='finish')continue;
+          const shared=overlap(peer,source);if(shared<=tolerance)continue;
+          if(absorbable(peer,options)&&frameKey(peer.autoTakeoff?.provenance?.context?.frame)===frameKey(newFrame)&&
+              (Math.abs(shared-netArea(peer))<=Math.max(1e-6,netArea(peer)*1e-8)||coveredByFreshFloorOrWall(peer,source)))absorbed.push(peer.id);
+          else {blocked=true;break;}
+        }
+        if(!blocked)for(const other of [...primary,...bathrooms])if(other.index!==index&&other.item.page===source.page&&overlap(source,other.item)>tolerance){blocked=true;break;}
+        if(blocked){warn('Un relevé existant chevauche la nouvelle salle de bain : anciens contours conservés.');continue;}
+        const replacement=copy(previous);
+        for(const field of ['points','holes','sourceRoomId','floorEvidence','bathroomGrouping','sanitaryEvidence','fixturePending']){
+          if(source[field]===undefined)delete replacement[field];else replacement[field]=copy(source[field]);
+        }
+        replacement.fixtureCuts=(source.fixtureCuts||[]).map(cut=>({...copy(cut),id:previous.fixtureCuts?.find(old=>old.hintKey===cut.hintKey)?.id||cut.id}));
+        replacement.qty=source.qty;replacement.status='à valider';replacement.wasteConfirmed=false;
+        replacement.autoTakeoff={...replacement.autoTakeoff,key:shapeKey(documentKey,source),provenance:copy(source.detectionProvenance)};
+        output.updates.push({itemId:previous.id,item:replacement,index});
+        for(const id of absorbed){consumed.add(id);output.removeIds.push(id);}
+      }
+      // Des cotes retirées peuvent rouvrir plusieurs anciens faux rectangles
+      // sur une même zone à réviser. Ne retirer que les brouillons intacts
+      // entièrement couverts par cette zone, jamais un sol affecté ou choisi.
+      for(const source of candidates.filter(item=>item.automaticFloorReviewReason==='unlabelled-surrounds-dwellings'&&item.selected===false)){
+        const sourceHoles=getHoles(source),boundarySize=source.points.length+sourceHoles.reduce((n,ring)=>n+ring.length,0);
+        for(const item of items){
+          if(consumed.has(item.id)||!retractableDraft(item,{...options,source,choices}))continue;
+          charge(item.points.length*boundarySize);
+          // Rejet rapide seulement : l'intersection exacte ci-dessous reste
+          // indispensable pour les concavités et les trous sans sommet commun.
+          const verticesInside=item.points.every(point=>inside(point,source.points)&&!sourceHoles.some(hole=>inside(point,hole)));
+          const area=netArea(item);if(!(area>0))continue;
+          if(!(verticesInside&&Math.abs(overlap(item,source)-area)<=Math.max(1e-6,area*1e-8))&&!coveredByReviewRegion(item,source))continue;
+          consumed.add(item.id);output.removeIds.push(item.id);
+        }
+      }
       // Les refus d’un ancien contour ne doivent pas être recréés à la suite
       // d’une petite modification du moteur. Appariement géométrique réciproque.
       const rejected=[];
@@ -5881,9 +5985,11 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         if(!Array.isArray(key)||key[0]!=='detection-decision-v1'||key[1]!==documentKey||!Number.isInteger(key[2])||!Array.isArray(key[3])||!Array.isArray(key[4]))continue;
         const rings=[key[3],...key[4]];if(rings.some(ring=>!Array.isArray(ring)||ring.length<3||ring.length>20000||ring.some(p=>!Array.isArray(p)||p.length!==2||!p.every(n=>Number.isFinite(n)&&Math.abs(n)<=1e7))))continue;
         const old={points:key[3].map(([x,y])=>({x,y})),holes:key[4].map(ring=>ring.map(([x,y])=>({x,y}))),page:key[2]},matches=[];
-        for(const proposal of primary.filter(({item,index})=>item.page===old.page&&!output.links.some(link=>link.index===index))){
+        for(const proposal of [...primary,...bathrooms].filter(({item,index})=>item.page===old.page&&!output.links.some(link=>link.index===index))){
           const intersection=overlap(old,proposal.item),union=netArea(old)+netArea(proposal.item)-intersection;
-          if(union>0&&intersection/union>=.75)matches.push(proposal.index);
+          const refusedBathroom=bathroomFloor(proposal.item)&&proposal.item.sanitaryEvidence.some(proof=>
+            old.holes.some(hole=>sameRing(old.page,hole,proof.footprintRing)));
+          if(union>0&&(intersection/union>=.75||refusedBathroom))matches.push(proposal.index);
         }
         if(matches.length===1)rejected.push({index:matches[0],choice});
       }
@@ -6272,22 +6378,32 @@ const doorOpenings = (function createDoorOpenings() {
           for(const a of starts)for(const b of ends) {
             spend();
             if(a.pathIndex===b.pathIndex && a.a===b.a && a.b===b.b)continue;
-            if(Math.abs(a.lo-b.lo)>.08 || Math.abs(a.hi-b.hi)>.08 ||
-              Math.max(a.hi-a.lo,b.hi-b.lo)/Math.min(a.hi-a.lo,b.hi-b.lo)>1.35 ||
-              b.s-a.s<.5 || b.s-a.s>maxFeet+.01)continue;
-            const first=support(a,arc.center,u,v,-1,excluded,wallNear),last=support(b,arc.center,u,v,1,excluded,wallNear);
+            // CAD arcs may overrun their nominal end by half a degree. The
+            // actual jambs, rather than the arc tangent, define the wall axes.
+            const capLength=distance(a.a,a.b),capU={x:(a.b.x-a.a.x)/capLength,y:(a.b.y-a.a.y)/capLength};
+            if(capU.x*u.x+capU.y*u.y<0){capU.x=-capU.x;capU.y=-capU.y;}
+            const capV={x:-capU.y,y:capU.x};if(capV.x*v.x+capV.y*v.y<0){capV.x=-capV.x;capV.y=-capV.y;}
+            const actualEnd=at(arc.center,capU,capV,0,arc.radius),
+              startCap=projectedCap(a,arc.center,capU,capV,arc.center,0,arc.style),
+              endCap=projectedCap(b,arc.center,capU,capV,actualEnd,arc.radius,arc.style);
+            if(!startCap||!endCap||Math.abs(startCap.lo-endCap.lo)>.08 || Math.abs(startCap.hi-endCap.hi)>.08 ||
+              Math.max(startCap.hi-startCap.lo,endCap.hi-endCap.lo)/Math.min(startCap.hi-startCap.lo,endCap.hi-endCap.lo)>1.35 ||
+              endCap.s-startCap.s<.5 || endCap.s-startCap.s>maxFeet+.01)continue;
+            const first=support(startCap,arc.center,capU,capV,-1,excluded,wallNear),last=support(endCap,arc.center,capU,capV,1,excluded,wallNear);
             if(!first?.length||!last?.length)continue;
-            const lo=(a.lo+b.lo)/2,hi=(a.hi+b.hi)/2;
-            if(blocked(arc.center,u,v,lo,hi,a.s,b.s,excluded))continue;
-            candidates.push({lo,hi,start:a.s,end:b.s,score:Math.abs(a.s)+Math.abs(b.s-arc.radius)+Math.abs(a.lo-b.lo)+Math.abs(a.hi-b.hi),
+            const lo=(startCap.lo+endCap.lo)/2,hi=(startCap.hi+endCap.hi)/2;
+            if(blocked(arc.center,capU,capV,lo,hi,startCap.s,endCap.s,excluded))continue;
+            candidates.push({lo,hi,u:capU,v:capV,start:startCap.s,end:endCap.s,score:Math.abs(startCap.s)+Math.abs(endCap.s-arc.radius)+Math.abs(startCap.lo-endCap.lo)+Math.abs(startCap.hi-endCap.hi),
               pathIndices:[a.pathIndex,b.pathIndex,...first,...last]});
           }
           if(!candidates.length)continue;
           candidates.sort((a,b)=>a.score-b.score);
           const selected=candidates[0];
           // Plusieurs cadres réellement différents et également plausibles restent ambigus.
-          if(candidates.some(c=>c.score<=selected.score+.04 && (Math.abs(c.lo-selected.lo)>.05||Math.abs(c.hi-selected.hi)>.05)))continue;
-          const closures=[selected.lo,selected.hi].map(t=>({a:at(arc.center,u,v,t,selected.start),b:at(arc.center,u,v,t,selected.end)}));
+          if(candidates.some(c=>c.score<=selected.score+.04 && (Math.abs(c.lo-selected.lo)>.05||Math.abs(c.hi-selected.hi)>.05||
+              distance(at(arc.center,c.u,c.v,c.lo,c.end),at(arc.center,selected.u,selected.v,selected.lo,selected.end))*scale>.05||
+              distance(at(arc.center,c.u,c.v,c.hi,c.start),at(arc.center,selected.u,selected.v,selected.hi,selected.start))*scale>.05)))continue;
+          const closures=[selected.lo,selected.hi].map(t=>({a:at(arc.center,selected.u,selected.v,t,selected.start),b:at(arc.center,selected.u,selected.v,t,selected.end)}));
           const ids=[...new Set([...excluded,...selected.pathIndices])].sort((a,b)=>a-b);
           let same;
           for(const existing of openings) {
@@ -6400,7 +6516,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
     }
     function bounds(points,o,u,v){let lo=Infinity,hi=-Infinity,bottom=Infinity,top=-Infinity;
       for(const p of points){spend();const x=project(p,o,u),y=project(p,o,v);lo=Math.min(lo,x);hi=Math.max(hi,x);bottom=Math.min(bottom,y);top=Math.max(top,y);}return {lo,hi,bottom,top};}
-    function arc(p){if(p.closed||p.points.length<5)return null;const pts=p.points,a=pts[0],b=minus(pts[Math.floor(pts.length/2)],a),c=minus(pts.at(-1),a);
+    function arc(p,minimumSweep=160){if(p.closed||p.points.length<5)return null;const pts=p.points,a=pts[0],b=minus(pts[Math.floor(pts.length/2)],a),c=minus(pts.at(-1),a);
       b.x*=scale;b.y*=scale;c.x*=scale;c.y*=scale;const den=2*cross(b,c);if(Math.abs(den)<1e-9)return null;
       const bb=dot(b,b),cc=dot(c,c),ox=(bb*c.y-cc*b.y)/den,oy=(b.x*cc-c.x*bb)/den,
         center={x:a.x+ox/scale,y:a.y+oy/scale},radius=Math.hypot(ox,oy);
@@ -6409,9 +6525,38 @@ const bathroomFurniture = (function createBathroomFurniture() {
       for(const q of pts){spend();if(Math.abs(dist(q,center)*scale-radius)>Math.min(.02,radius*.025))return null;
         const angle=Math.atan2(q.y-center.y,q.x-center.x);if(last!==undefined){const d=Math.atan2(Math.sin(angle-last),Math.cos(angle-last));
           if(Math.abs(d)<1e-7||Math.abs(d)>.65||sign&&Math.sign(d)!==sign)return null;sign=Math.sign(d);sweep+=d;}last=angle;mx+=q.x-center.x;my+=q.y-center.y;}
-      if(Math.abs(sweep)<160*Math.PI/180||Math.abs(sweep)>200*Math.PI/180)return null;
+      if(Math.abs(sweep)<minimumSweep*Math.PI/180||Math.abs(sweep)>200*Math.PI/180)return null;
       const norm=Math.hypot(mx,my);if(!norm)return null;const u={x:mx/norm,y:my/norm};
       return {path:p,center,radius,u,v:{x:-u.y,y:u.x}};
+    }
+    function connectedArcs(local,nearAll){
+      const result=[],partials=new Map(),complete=new Set(),seen=new Set();
+      const add=value=>{const key=[...value.path.ids].sort((a,b)=>a-b).join(':');if(!seen.has(key)){seen.add(key);result.push(value);}};
+      for(const p of local){spend();if(p.line)continue;const value=arc(p,30);if(!value)continue;partials.set(p,value);
+        const full=arc(p);if(full){complete.add(p);add(full);}}
+      // Some CAD exports split one semicircle into separate quarter paths.
+      // Reconnect only touching curves of the same circle/style. The complete
+      // double bowl, tank and wall-support proof below is still required.
+      for(const [start,first]of partials){
+        if(complete.has(start))continue;
+        for(const reverse of [false,true]){
+          const queue=[{parts:[start],points:reverse?[...start.points].reverse():start.points}];
+          for(let read=0;read<queue.length;read++){
+            spend();const chain=queue[read],tip=chain.points.at(-1);
+            for(const next of nearAll(tip,TOL)){
+              spend();const curve=partials.get(next);
+              if(!curve||complete.has(next)||chain.parts.includes(next)||!coherent(start,next)||
+                  dist(first.center,curve.center)*scale>TOL||Math.abs(first.radius-curve.radius)>TOL)continue;
+              const points=dist(tip,next.points[0])<dist(tip,next.points.at(-1))?next.points:[...next.points].reverse();
+              if(dist(tip,points[0])*scale>TOL||chain.points.length+points.length-1>MAX_POINTS)continue;
+              const parts=[...chain.parts,next],combined={...start,points:[...chain.points,...points.slice(1)],ids:[...new Set(parts.flatMap(p=>p.ids))]},full=arc(combined);
+              if(full)add(full);
+              else if(parts.length<4&&queue.length<64)queue.push({parts,points:combined.points});
+            }
+          }
+        }
+      }
+      return result;
     }
     function index(items){const cells=new Map(),cell=.1;
       for(const p of items)for(const q of [p.points[0],p.points.at(-1)]){spend();const key=Math.floor(q.x*scale/cell)+','+Math.floor(q.y*scale/cell);
@@ -6466,18 +6611,28 @@ const bathroomFurniture = (function createBathroomFurniture() {
     }
     let anchorNear;
     function wallIndex(items){const cell=4,cells=new Map(),large=[];let overflow=false;
-      for(const p of items){const a=p.points[0],b=p.points.at(-1),x0=Math.floor((Math.min(a.x,b.x)*scale-.15)/cell),x1=Math.floor((Math.max(a.x,b.x)*scale+.15)/cell),
-        y0=Math.floor((Math.min(a.y,b.y)*scale-.15)/cell),y1=Math.floor((Math.max(a.y,b.y)*scale+.15)/cell);
+      for(const p of items){const a=p.points[0],b=p.points.at(-1),radius=.15+p.width*scale/2+.11/2,
+        x0=Math.floor((Math.min(a.x,b.x)*scale-radius)/cell),x1=Math.floor((Math.max(a.x,b.x)*scale+radius)/cell),
+        y0=Math.floor((Math.min(a.y,b.y)*scale-radius)/cell),y1=Math.floor((Math.max(a.y,b.y)*scale+radius)/cell);
         if((x1-x0+1)*(y1-y0+1)>128){if(large.length<256)large.push(p);else overflow=true;continue;}
         for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){spend();const key=x+','+y;if(!cells.has(key))cells.set(key,[]);const list=cells.get(key);if(list.length<=MAX_LOCAL)list.push(p);}}
       return q=>{const list=cells.get(Math.floor(q.x*scale/cell)+','+Math.floor(q.y*scale/cell))||[];
         if(overflow||list.length>MAX_LOCAL){warn('Index des appuis saturé : analyse du mobilier partielle.');return [];}return [...list,...large];};}
-    function supports(face,parts,anchors){const a=face.points[0],b=face.points.at(-1),d=minus(b,a),len=dist(a,b),u={x:d.x/len,y:d.y/len},ids=new Set(parts.flatMap(p=>p.ids)),found=[];
-      const local=anchorNear?anchorNear({x:(a.x+b.x)/2,y:(a.y+b.y)/2}):anchors;
+    function supports(face,parts,anchors,allowPartial=false){const a=face.points[0],b=face.points.at(-1),d=minus(b,a),len=dist(a,b),u={x:d.x/len,y:d.y/len},ids=new Set(parts.flatMap(p=>p.ids)),found=[];
+      const probes=[{x:(a.x+b.x)/2,y:(a.y+b.y)/2},...(allowPartial?[a,b]:[])],local=anchorNear?[...new Set(probes.flatMap(anchorNear))]:anchors;
       for(const p of local){spend();if(p.ids.some(i=>ids.has(i)))continue;const c=p.points[0],e=p.points.at(-1),w=minus(e,c),l=dist(c,e);
-        if(l*scale<.5||Math.abs(dot(u,w)/l)<.9995||Math.max(segmentDistance(a,c,e),segmentDistance(b,c,e))*scale>.15)continue;
+        // The CAD paths describe stroke centres. Measure the existing .15ft
+        // support clearance from their painted edges, without moving a wall.
+        const strokeEdges=(face.width+p.width)*scale/2;
+        if(l*scale<.5||Math.abs(dot(u,w)/l)<.9995)continue;
         const lo=Math.min(project(c,a,u),project(e,a,u)),hi=Math.max(project(c,a,u),project(e,a,u));
-        if(lo<=-.5&&hi>=len*scale+.5)found.push(p);}return found;}
+        const full=lo<=-.5&&hi>=len*scale+.5&&Math.max(segmentDistance(a,c,e),segmentDistance(b,c,e))*scale<=.15+strokeEdges;
+        const normal=Math.abs(cross(minus(c,a),u))*scale,overlap=Math.min(len*scale,hi)-Math.max(0,lo);
+        // A counter can extend beyond a real wall return. Require at least
+        // one foot of dark/strong wall and a continuation beyond one end.
+        const partial=allowPartial&&(p.brightness<=60||p.width*scale>=.11)&&normal<=.15+strokeEdges&&overlap>=1&&
+          (lo<=-.5||hi>=len*scale+.5);
+        if(full||partial)found.push(p);}return found;}
     function lineTo(a,b,near,style){return near(a,TOL).find(p=>coherent(p,style)&&Math.min(
       dist(p.points[0],a)+dist(p.points.at(-1),b),dist(p.points.at(-1),a)+dist(p.points[0],b))*scale<=2*TOL);}
     function intersection(a,b,c,d){const r=minus(b,a),s=minus(d,c),q=minus(c,a),den=cross(r,s);if(Math.abs(den)<1e-12)return null;
@@ -6691,7 +6846,7 @@ const bathroomFurniture = (function createBathroomFurniture() {
           }
           continue;
         }
-        const arcs=local.map(arc).filter(Boolean),bodyCache=new Map(),bodyOf=a=>{if(!bodyCache.has(a))bodyCache.set(a,bodies(a,nearLines,nearAll));return bodyCache.get(a);};
+        const arcs=connectedArcs(local,nearAll),bodyCache=new Map(),bodyOf=a=>{if(!bodyCache.has(a))bodyCache.set(a,bodies(a,nearLines,nearAll));return bodyCache.get(a);};
         for(const outer of arcs)for(const inner of arcs){spend();const rim=outer.radius-inner.radius;
           if(rim<.005||rim>.15||dist(outer.center,inner.center)*scale>TOL||dot(outer.u,inner.u)<.995||!coherent(outer.path,inner.path))continue;
           for(const body of bodyOf(outer))for(const cavity of bodyOf(inner)){spend();if(!cavity.ring.every(p=>inside(p,body.ring)))continue;
@@ -6708,13 +6863,14 @@ const bathroomFurniture = (function createBathroomFurniture() {
         let roundedBasins;
         for(const panel of rectangles(mainLines,nearLines,nearAll,1,6,true)){const box=panel.bounds,dimensions=[box.hi-box.lo,box.top-box.bottom].sort((a,b)=>a-b);
           if(dimensions[0]<1||dimensions[0]>3||dimensions[1]<1.5||dimensions[1]>6)continue;
-          const supported=panel.faces.map(p=>({p,s:supports(p,panel.parts,anchors)})).filter(row=>row.s.length);
+          const supported=panel.faces.map(p=>({p,s:supports(p,panel.parts,anchors,true)})).filter(row=>row.s.length);
           if(panel.open){const face={...panel.parts[0],ids:[],points:panel.openSide},support=supports(face,panel.parts,anchors);
             if(!support.length||supported.length)continue;supported.push({p:face,s:support});}
           if(supported.length!==1)continue;
           let matched=sinks(panel,lines,nearLines);
           if(!matched.length){roundedBasins??=roundedTapBasins(lines,nearLines,nearAll);matched=roundedBasins.filter(b=>b.basinRing.every(p=>inside(p,panel.ring)));}
-          if(matched.length)emit('vanity',[...panel.parts,...matched.flatMap(sink=>sink.parts)],[panel.ring],[supported[0].p],supported[0].s,local,bath);
+          if(matched.length){const shared=supported[0].p.points.every(q=>supported[0].s.some(wall=>segmentDistance(q,wall.points[0],wall.points.at(-1))*scale<=TOL));
+            emit('vanity',[...panel.parts,...matched.flatMap(sink=>sink.parts)],[panel.ring],shared?[supported[0].p]:[],supported[0].s,local,bath);}
         }
       }
     } catch(error){if(error!==exhausted)throw error;}
