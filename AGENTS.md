@@ -46,6 +46,13 @@ Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`
 - Lire `docs/NAC_YOUTUBE_VIRAL_CHAPTERS_CODEX.md` et `.agents/skills/const-ia-takeoff-nac/references/youtube-agent-skill-integration.md`. Les neuf autres skills du pack de Jake Schincariol ne sont pas installés.
 - Aucune publication YouTube, aucun service payant, aucune copie de plans confidentiels dans des services distants et aucune modification du fichier HTML pour la veille. Indiquer les résultats des scripts uniquement après exécution documentée.
 
+## Fiabilite des sources et plan de repli (NAC)
+
+- La veille `$const-ia-takeoff-nac` integre une **methode** issue de l'analyse de `borski/travel-hacking-toolkit` : comparer plusieurs sources, suivre les erreurs, prevoir une voie de repli locale et verifier la fraicheur des documents. Guide : `.agents/skills/const-ia-takeoff-nac/references/architecture-multisources-repli-fraicheur.md`.
+- **Aucun module de voyage n'est installe** : ne pas activer les 42 skills/MCP de voyages, API de vols, images Docker, scripts d'installation distants, comptes clients ou services payants pour le logiciel d'estimation.
+- Pour un takeoff PDF, documenter la provenance (empreinte fichier, feuille, revision, echelle, moteur), ses limites et le plan de repli (vectoriel local, segmentation locale, trace manuel). Une methode non testee n'est pas une preuve de precision.
+- En cas de changement de feuille/revision, signaler les mesures `A REVALIDER` ; en cas d'echelle ou de contour incertain, conserver le resultat en proposition non acceptee. Ne jamais exporter automatiquement des quantites douteuses. Utiliser un releve humain independant pour confirmer.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.
