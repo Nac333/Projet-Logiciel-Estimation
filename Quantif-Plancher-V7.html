@@ -2015,7 +2015,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-18-fixtures-jambs';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-19-sideways-section-markers';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -4643,43 +4643,68 @@ const planAnnotations = (function createPlanAnnotations() {
       if (localPolys.length <= 256 && reserve(localPolys.length ** 2)) {
         const arcs = [];
         for (const p of localPolys.filter(p => p.stroke && !p.fill && p.points.length >= 9)) {
-          const a = p.points[0], b = p.points.at(-1), r = distance(a, b) / 2,
-            c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-          if (Math.abs(a.y - b.y) > eps || r < h * 1.2 || r > h * 2.5 || distance(c, center) > h * .2 ||
+          const a = p.points[0], b = p.points.at(-1), r = distance(a, b) / 2;
+          const c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          const horizontal = Math.abs(a.y - b.y) <= eps;
+          const vertical = Math.abs(a.x - b.x) <= eps;
+          if ((!horizontal && !vertical) || r < h * 1.2 || r > h * 2.5 || distance(c, center) > h * .2 ||
               p.points.some(q => Math.abs(distance(q, c) - r) > eps)) continue;
-          const above = p.points.every(q => q.y <= c.y + eps), below = p.points.every(q => q.y >= c.y - eps);
-          if (above !== below) arcs.push({ p, c, r, above });
+          const axis = horizontal ? 'y' : 'x';
+          const above = p.points.every(q => q[axis] <= c[axis] + eps);
+          const below = p.points.every(q => q[axis] >= c[axis] - eps);
+          if (above !== below) arcs.push({ p, c, r, above, axis });
         }
+        const shortStrokes = localPolys.filter(p => p.stroke && !p.fill && p.points.length === 2)
+          .map(p => ({ ...p, a: p.points[0], b: p.points[1] }));
         const completeMarkers = [];
-        for (const top of arcs.filter(a => a.above)) for (const bottom of arcs.filter(a => !a.above)) {
-          if (distance(top.c, bottom.c) > eps || Math.abs(top.r - bottom.r) > eps || !sameStyle(top.p, bottom.p)) continue;
-          if (arcs.length > 16 || !reserve(lines.length * 6 + localPolys.length * 128)) continue;
-          const c = top.c, r = top.r, k = Math.SQRT2 * r,
-            left = { x: c.x - k, y: c.y }, right = { x: c.x + k, y: c.y }, tip = { x: c.x, y: c.y + k },
-            onEdge = (p, a, b) => {
-              const dx = b.x - a.x, dy = b.y - a.y, n = dx * dx + dy * dy,
-                t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / n));
+        for (const first of arcs.filter(a => a.above)) for (const second of arcs.filter(a => !a.above)) {
+          if (first.axis !== second.axis || distance(first.c, second.c) > eps ||
+              Math.abs(first.r - second.r) > eps || !sameStyle(first.p, second.p)) continue;
+          if (arcs.length > 16 || !reserve(localPolys.length * 256)) continue;
+          const { c, r, axis } = first;
+          const k = Math.SQRT2 * r;
+          const stroke = (a, b) => shortStrokes.filter(l => sameStyle(l, first.p) &&
+            (distance(l.a, a) <= eps && distance(l.b, b) <= eps || distance(l.b, a) <= eps && distance(l.a, b) <= eps));
+          // The pointer can face sideways while the detail number and sheet
+          // remain stacked. The divider follows the text, not the pointer.
+          const divider = stroke({ x: c.x - r, y: c.y }, { x: c.x + r, y: c.y });
+          if (!divider.length || divider.length > 8) continue;
+          for (const direction of [-1, 1]) {
+            const point = (across, along) => axis === 'y'
+              ? { x: c.x + across, y: c.y + direction * along }
+              : { x: c.x + direction * along, y: c.y + across };
+            const left = point(-k, 0), right = point(k, 0), tip = point(0, k);
+            const across = q => axis === 'y' ? q.x - c.x : q.y - c.y;
+            const along = q => direction * (q[axis] - c[axis]);
+            const required = [stroke(left, tip), stroke(right, tip),
+              stroke(left, point(-r, 0)), stroke(right, point(r, 0))];
+            if (required.some(group => !group.length || group.length > 8)) continue;
+            const onEdge = (p, a, b) => {
+              const dx = b.x - a.x, dy = b.y - a.y, n = dx * dx + dy * dy;
+              const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / n));
               return distance(p, { x: a.x + t * dx, y: a.y + t * dy }) <= eps;
-            },
-            stroke = (a, b) => lines.filter(l => sameStyle(l, top.p) &&
-              (distance(l.a, a) <= eps && distance(l.b, b) <= eps || distance(l.b, a) <= eps && distance(l.a, b) <= eps));
-          const required = [stroke({ x: c.x - r, y: c.y }, { x: c.x + r, y: c.y }), stroke(left, tip), stroke(right, tip),
-            stroke(left, { x: c.x - r, y: c.y }), stroke(right, { x: c.x + r, y: c.y })];
-          if (required.some(group => !group.length || group.length > 8)) continue;
-          const role = p => Math.abs(distance(p, c) - r) <= eps || onEdge(p, left, tip) || onEdge(p, right, tip) ||
-            onEdge(p, { x: c.x, y: c.y + r }, tip) || onEdge(p, left, { x: c.x - r, y: c.y }) || onEdge(p, right, { x: c.x + r, y: c.y });
-          const fills = localPolys.filter(p => p.fill && sameStyle(p, top.p) && distance(p.points[0], p.points.at(-1)) <= eps &&
-            p.points.every(q => q.y >= c.y - eps && q.y <= tip.y + eps && Math.abs(q.x - c.x) <= k - (q.y - c.y) + eps && role(q)));
-          const area = points => Math.abs(points.reduce((sum, p, i) => { const q = points[(i + 1) % points.length]; return sum + p.x * q.y - q.x * p.y; }, 0)) / 2,
-            expected = (2 - Math.PI / 2) * r * r, filled = fills.reduce((sum, p) => sum + area(p.points), 0);
-          if (!fills.length || Math.abs(filled - expected) > expected * .08) continue;
-          const trace = localPolys.filter(p => p.stroke && !p.fill && sameStyle(p, top.p) && p.points.every(role) &&
-            p.points.slice(1).every((b, i) => { const a = p.points[i]; return [.25, .5, .75].every(t => role({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })); }));
-          // A line starting beside this symbol can be a real room wall.
-          // Its proximity alone never proves an annotation leader.
-          completeMarkers.push([top.p, bottom.p, ...required.flat(), ...fills, ...trace]);
+            };
+            const role = p => Math.abs(distance(p, c) - r) <= eps || onEdge(p, left, tip) || onEdge(p, right, tip) ||
+              onEdge(p, point(0, r), tip) || onEdge(p, left, point(-r, 0)) || onEdge(p, right, point(r, 0));
+            const fills = localPolys.filter(p => p.fill && sameStyle(p, first.p) && distance(p.points[0], p.points.at(-1)) <= eps &&
+              p.points.every(q => along(q) >= -eps && along(q) <= k + eps && Math.abs(across(q)) <= k - along(q) + eps && role(q)));
+            const area = points => Math.abs(points.reduce((sum, p, i) => { const q = points[(i + 1) % points.length]; return sum + p.x * q.y - q.x * p.y; }, 0)) / 2;
+            const expected = (2 - Math.PI / 2) * r * r;
+            if (!fills.length || Math.abs(fills.reduce((sum, p) => sum + area(p.points), 0) - expected) > expected * .08) continue;
+            const trace = localPolys.filter(p => p.stroke && !p.fill && sameStyle(p, first.p) && p.points.every(role) &&
+              p.points.slice(1).every((b, i) => { const a = p.points[i]; return [.25, .5, .75].every(t => role({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })); }));
+            completeMarkers.push({
+              paths: [first.p, second.p, ...divider, ...required.flat(), ...fills, ...trace],
+              originalOrientation: axis === 'y' && direction === 1
+            });
+          }
         }
-        if (completeMarkers.length === 1) { mark('circular-section-marker', completeMarkers[0], number.text + '/' + ref.text); continue; }
+        if (completeMarkers.length === 1) {
+          const marker = completeMarkers[0];
+          mark('circular-section-marker', marker.paths, number.text + '/' + ref.text);
+          // Preserve the separate leader proof when adding an orientation.
+          if (marker.originalOrientation) continue;
+        }
       }
       const bars = lines.filter(l => l.orientation === 'h' && Math.abs(l.minY - center.y) < h * .2 &&
         l.minX < center.x - h && l.maxX > center.x + h && l.maxX - l.minX < h * 4.5);
