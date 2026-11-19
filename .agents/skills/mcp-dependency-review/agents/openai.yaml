@@ -1,0 +1,9 @@
+interface:
+  display_name: "Audit des dépendances MCP — V7"
+  short_description: "Vérifier statiquement versions et droits des configurations MCP sans lancer de serveur"
+  default_prompt: "Utilise $mcp-dependency-review pour analyser les risques ou optimisations de Quantif Plancher V7 sans modifier le logiciel avant validation."
+policy:
+  products:
+    - chatgpt
+    - codex
+  allow_implicit_invocation: true
