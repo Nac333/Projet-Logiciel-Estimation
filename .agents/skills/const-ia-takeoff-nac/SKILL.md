@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, les méthodes de repli multi-source et de fraîcheur des plans, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -54,6 +54,18 @@ Lire [youtube-agent-skill-integration.md](references/youtube-agent-skill-integra
 **Workflow à suivre si des sources existent** : inventorier les cinq chaînes et les vidéos récentes/archives → qualifier par le sujet (PDF, détection de pièces, murs, nomenclatures, surfaces, calculs, IA, tests) → **facultativement** calculer les ratios yt-viral sur données vérifiables → retrouver les sous-titres accessibles → **facultativement** indexer les chapitres yt-chapters → vérifier méthodes et démonstrations → produire le rapport « Ce qu'on a appris » et, si utile, une fiche prête pour Codex. L'absence de données ne bloque jamais l'analyse normale de NAC.
 
 **Ne pas** transformer NAC en gestion de chaîne YouTube, publier de contenu, utiliser des clés personnelles, contourner YouTube ou envoyer des fichiers clients. Aucun appel au code ou moteur externe dans `Quantif-Plancher-V7.html`. Pour le rapport, séparer les statuts `VIDEO REPERÉE`, `RATIO CALCULÉ`, `CHAPITRES PROPOSÉS`, `TRANSCRIPTION LUE`, `DEMONSTRATION VERIFIÉE` et `TECHNIQUE TESTÉE`. Les classements et chapitres doivent rester des aides au tri, non des preuves scientifiques.
+
+## Méthode NAC : sources multiples, replis et données fraîches (18 novembre 2026)
+
+Lire [architecture-multisources-repli-fraicheur.md](references/architecture-multisources-repli-fraicheur.md) pour l'analyse vérifiée du dépôt de voyages `borski/travel-hacking-toolkit`. **N'intégrer aucune compétence, API, MCP, Docker ou configuration de voyage** à Codex/Quantif Plancher V7; seul son patron de traitement résilient est utile. Ne pas ajouter de veille récurrente sur le tourisme.
+
+1. **Sources tracées** : pour chaque extraction ou détection, préciser fichier/empreinte, page, révision, échelle, méthode (vectorielle, raster, OCR local, saisie manuelle), date et statut réel. Identifier séparément des sources corrélées (ne pas confondre deux sorties du même moteur avec une preuve indépendante).
+2. **Repli local explicite** : prévoir la méthode de remplacement lorsqu'un moteur PDF, OCR ou MCP échoue; mentionner la cause et le changement de provenance. Préserver les contours et corrections de l'utilisateur. Ne jamais exporter une quantité incertaine comme définitive.
+3. **Obsolescence** : marquer `À REVALIDER` si une nouvelle feuille ou révision affecte une mesure; noter le contrôle d'échelle par feuille. Les règles de péremption temporelle concernent les prix/catalogues externes, pas une géométrie inchangée.
+4. **Validation indépendante** : comparer avec un relevé humain annoté; surfaces nettes, trous, unités, plinthes, pièces manquées, faux positifs et temps de correction, seuils fixés avant le test.
+5. **Statuts honnêtes** : `SOURCE CONSULTÉE`, `MÉTHODE DOCUMENTÉE`, `CODE MODIFIÉ`, `TEST EXÉCUTÉ`, `QUANTITÉ VÉRIFIÉE` sont différents. Si aucune source de repli fiable n'existe, exposer la limite sans inventer la mesure.
+
+Lorsqu'une technique dépend de plusieurs moteurs ou sources, ajouter au rapport « Ce qu'on a appris » une courte rubrique « Fiabilité des sources et plans de repli » (méthode primaire, solution gratuite, fraîcheur et conséquence en cas d'échec). **La recherche sur ce dépôt est terminée comme inspiration méthodologique**, et ne crée aucun nouveau sujet de surveillance hebdomadaire.
 
 ## Déroulement d’une analyse
 
