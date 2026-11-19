@@ -1,0 +1,9 @@
+interface:
+  display_name: "Cache PDF et empreintes — V7"
+  short_description: "Réutiliser les analyses PDF uniquement quand leur provenance et leurs paramètres correspondent"
+  default_prompt: "Utilise $content-hash-cache-pattern pour analyser les risques ou optimisations de Quantif Plancher V7 sans modifier le logiciel avant validation."
+policy:
+  products:
+    - chatgpt
+    - codex
+  allow_implicit_invocation: true
