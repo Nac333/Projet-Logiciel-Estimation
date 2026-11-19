@@ -1,0 +1,35 @@
+name: NAC ECC skills static checks
+
+on:
+  pull_request:
+    paths:
+      - ".agents/skills/content-hash-cache-pattern/**"
+      - ".agents/skills/mcp-dependency-review/**"
+      - ".agents/skills/const-ia-takeoff-nac/**"
+      - "AGENTS.md"
+      - "docs/NAC_ECC_CODEX.md"
+      - "tests/nac_ecc/**"
+      - ".github/workflows/nac-ecc-skills.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - ".agents/skills/content-hash-cache-pattern/**"
+      - ".agents/skills/mcp-dependency-review/**"
+      - ".agents/skills/const-ia-takeoff-nac/**"
+      - "AGENTS.md"
+      - "docs/NAC_ECC_CODEX.md"
+      - "tests/nac_ecc/**"
+      - ".github/workflows/nac-ecc-skills.yml"
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify ECC instructions offline
+        run: python3 -m unittest discover -s tests/nac_ecc -v
