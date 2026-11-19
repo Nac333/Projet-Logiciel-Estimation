@@ -61,6 +61,14 @@ Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`
 - Avant toute modification MCP, vérifier versions `@latest`, sélecteurs sans version, images `:latest`, droits et transferts potentiels de plans. Le rapport statique ne constitue pas un test d'exécution, une validation de confidentialité ni un audit de sécurité complet.
 - Source, méthodes exclues et procédure : `.agents/skills/const-ia-takeoff-nac/references/ecc-selection-et-workflows-codex.md` et `docs/NAC_ECC_CODEX.md`. Les tests HTML/Playwright, les mesures humaines indépendantes et les autres compétences métier V7 conservent la priorité.
 
+## OpenJarvis : recherche locale IA et evaluation (sans installation)
+
+- Dépôt étudié : `open-jarvis/OpenJarvis`, plateforme d'agents et moteurs d'inférence (Ollama, LM Studio, llama.cpp) sous licence Apache-2.0. **Ce n'est pas un moteur de takeoff PDF** : son outil Python `pdf_extract` lit du texte via pdfplumber; ses tests de vision Ollama ne prouvent pas de segmentation de pièce.
+- La compétence `$const-ia-takeoff-nac` reçoit les **méthodes** d'évaluation des modèles locaux, de benchmark (latence p50/p95, débit, RAM/VRAM, coût) et de contrôle de confidentialité. Lire `.agents/skills/const-ia-takeoff-nac/references/openjarvis-ia-locale-benchmarks.md` et `docs/NAC_OPENJARVIS_CODEX.md`.
+- Avant de choisir un petit modèle local pour lire les finis/étiquettes de plans, définir un jeu de plans annotés et la vérité terrain; distinguer OCR/lecture de code et **métré géométrique**, appliquer les compétences V7 existantes pour polygones/échelles. Ne jamais déclarer un succès de takeoff avec une simple sortie textuelle.
+- Aucun paquet OpenJarvis, script `curl|bash`, installation Ollama, poids de modèle, agent permanent, accès réseau, MCP ou service payant autorisé par cette intégration. Même une solution `local-first` peut appeler le cloud : inspecter configuration, droits et trafic avant toute expérience future.
+- Les métriques de référence **120 pi² et 44 pi lin.** restent obligatoires, suivies des trous, révisions, ouvertures, corrections et du relevé indépendant. Ne modifier ni `Quantif-Plancher-V7.html` ni les fichiers AMTA lors d'une veille ou installation de simples instructions.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.
