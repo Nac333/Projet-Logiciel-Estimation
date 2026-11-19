@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, les méthodes de repli multi-source et de fraîcheur des plans, les méthodes ECC de cache PDF et d'audit MCP, et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, les méthodes de repli multi-source et de fraîcheur des plans, les méthodes ECC de cache PDF et d'audit MCP, l'évaluation d'IA locales inspirée d'OpenJarvis, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -76,6 +76,18 @@ Consulter [ecc-selection-et-workflows-codex.md](references/ecc-selection-et-work
 - **Autres méthodes ECC (référence seulement)** : analyse d'impact du code avant/après, tests de régression indépendants et vérification des critères métier. Elles complètent les compétences déjà installées et Playwright; éviter les doublons. Le hook `delivery-gate` de Claude Code ne doit pas être installé ni utilisé pour bloquer Codex.
 
 Lorsque ces principes éclairent une nouvelle solution de takeoff, ajouter au rapport NAC **« Gestion des reprises et des dépendances »** : quoi recalculer après révision, comment détecter un cache périmé, quelle dépendance MCP a été vérifiée et quels tests ont réellement été exécutés. Toujours distinguer `SOURCE LUE`, `SKILL DANS GITHUB`, `MOTEUR EXÉCUTÉ` et `RÉSULTAT MÉTIER VALIDÉ`. **Aucune tâche de veille ECC autonome supplémentaire** : conserver les cinq créateurs et notre priorité à la détection automatique.
+
+## OpenJarvis : IA locale et évaluation reproductible des plans (18 novembre 2026)
+
+Lire [openjarvis-ia-locale-benchmarks.md](references/openjarvis-ia-locale-benchmarks.md) avant de recommander une IA locale : analyse vérifiée du dépôt Apache-2.0 `open-jarvis/OpenJarvis`. **OpenJarvis n'est pas un moteur de takeoff** : son outil `pdf_extract` basé sur pdfplumber extrait du texte, et ses tests d'images Ollama prouvent seulement le transport multimodal, non la segmentation des pièces, murs ou superficies. Ne pas installer `jarvis`, Ollama, un modèle, un serveur, un outil shell ou un installateur `curl | bash` / `irm | iex` à partir de cette veille.
+
+- **P0 : établir des tests métier indépendants**. Pour toute proposition d'IA locale, préparer les plans synthétiques annotés (et plus tard autorisés), l'identité de la feuille, l'échelle, les contours, les trous, les ouvertures, les finis sol/mural, les erreurs de surface, les faux positifs et les pièces oubliées. Vérifier les seuils et le relevé humain avant d'affirmer une réussite.
+- **P1 : analyser un moteur local si justifié**. Étudier Ollama ou un backend local uniquement pour lire les notes/codes des finis ou étiquettes de pièces, puis tester un modèle vision **séparément**. Le moteur géométrique de Quantif Plancher V7 et la correction humaine demeurent la source des quantités; ne pas remplacer Codex ou la segmentation par un agent de chat.
+- **P1 : comparer les ressources**. Distinguer justesse du résultat (évaluation avec vérité terrain) et coût matériel / latence p50-p95 / temps de traitement / RAM et VRAM (benchmark). Consigner PDF/version, moteur et modèle exacts, matériel, date, nombre d'essais, erreurs, état d'exécution, corrections et limites.
+- **P0 : préserver la confidentialité**. `local-first` n'est pas `local-only`: OpenJarvis inclut aussi API cloud, outils réseau, sessions/traces, télémétrie et MCP externes. Avant un essai, vérifier chaque configuration et le trafic; ne jamais envoyer les plans privés à une API sans approbation.
+- **Éviter les doublons**. Les skills NAC/Codex, OpenTakeoff, AnyDoc, MarkItDown et les tests géométriques actuels sont prioritaires. Aucun nouvel agent persistant, nouvelle programmation de veille ou installation OpenJarvis complète par défaut.
+
+Dans « Ce qu'on a appris », inclure une courte rubrique **« Modèles locaux et preuves de performance »** seulement si une nouveauté touche effectivement l'extraction de finis, l'OCR local ou le takeoff. Statuts obligatoires : `DÉPÔT LU`, `MÉTHODE AJOUTÉE À NAC`, `MODÈLE EXÉCUTÉ`, `TEST MÉTIER VALIDÉ` ; ne jamais assimiler ces statuts. Les cinq créateurs et la détection automatique demeurent la priorité absolue.
 
 ## Déroulement d’une analyse
 
