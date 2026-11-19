@@ -1,6 +1,6 @@
 ---
 name: const-ia-takeoff-nac
-description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, les méthodes de repli multi-source et de fraîcheur des plans, et les fiches prêtes pour Codex.
+description: Analyser les vidéos anciennes et nouvelles de ConstructIQ, Shubham Sharma, Thomas Berton, Hamza Abdul Jabbar et Better Boss pour apprendre des techniques IA et takeoff applicables exclusivement à Quantif Plancher V7. Utiliser pour CONST. IA & Takeoff — NAC, la veille hebdomadaire, le rattrapage des vidéos, le rapport « Ce qu’on a appris », le radar technique des 30 derniers jours, la revue des dépôts AnyDoc, Claude-Mem, Anthropic, Addy Osmani, EGM, FreeLLMAPI et 21st MCP, ainsi que l'analyse YouTube assistée par yt-viral et yt-chapters, les méthodes de repli multi-source et de fraîcheur des plans, les méthodes ECC de cache PDF et d'audit MCP, et les fiches prêtes pour Codex.
 ---
 
 # CONST. IA & Takeoff — NAC
@@ -66,6 +66,16 @@ Lire [architecture-multisources-repli-fraicheur.md](references/architecture-mult
 5. **Statuts honnêtes** : `SOURCE CONSULTÉE`, `MÉTHODE DOCUMENTÉE`, `CODE MODIFIÉ`, `TEST EXÉCUTÉ`, `QUANTITÉ VÉRIFIÉE` sont différents. Si aucune source de repli fiable n'existe, exposer la limite sans inventer la mesure.
 
 Lorsqu'une technique dépend de plusieurs moteurs ou sources, ajouter au rapport « Ce qu'on a appris » une courte rubrique « Fiabilité des sources et plans de repli » (méthode primaire, solution gratuite, fraîcheur et conséquence en cas d'échec). **La recherche sur ce dépôt est terminée comme inspiration méthodologique**, et ne crée aucun nouveau sujet de surveillance hebdomadaire.
+
+## ECC ciblé — fiabilité du pipeline PDF et audit MCP
+
+Consulter [ecc-selection-et-workflows-codex.md](references/ecc-selection-et-workflows-codex.md) : analyse des fonctions réellement documentées du dépôt open source **affaan-m/ECC** (licence MIT), dont les 72 agents et 327 skills annoncés sont essentiellement consacrés à l'ingénierie logicielle et **ne détectent pas** les surfaces PDF. **N'installer aucun plugin ECC global, hook, mémoire, AgentShield, scanner LLM payant ou serveur MCP supplémentaire dans la seule veille NAC.**
+
+- **$content-hash-cache-pattern (P1)** : réutiliser la méthode de cache à empreinte SHA-256 pour les traitements répétés de PDF lourds, **sans la confondre avec un cache de quantités**. Pour une mesure, vérifier aussi feuille, révision, échelle/calibration, type de résultat, moteur/version, paramètres d'extraction/rendu et corrections humaines. La compétence a été copiée/adaptée dans `.agents/skills/content-hash-cache-pattern/` ; aucune optimisation du moteur HTML n'est implémentée par le fichier SKILL.md.
+- **$mcp-dependency-review (P1)** : inspecter statiquement une configuration MCP autorisée afin de signaler versions flottantes, paquets sans verrouillage, images Docker mutables et points d'accès externes. **Ne jamais lancer les commandes présentes dans le fichier inspecté**, importer des plans ou installer une dépendance en guise de vérification. La compétence a été copiée/adaptée dans `.agents/skills/mcp-dependency-review/` ; ne pas prétendre avoir exécuté un scan.
+- **Autres méthodes ECC (référence seulement)** : analyse d'impact du code avant/après, tests de régression indépendants et vérification des critères métier. Elles complètent les compétences déjà installées et Playwright; éviter les doublons. Le hook `delivery-gate` de Claude Code ne doit pas être installé ni utilisé pour bloquer Codex.
+
+Lorsque ces principes éclairent une nouvelle solution de takeoff, ajouter au rapport NAC **« Gestion des reprises et des dépendances »** : quoi recalculer après révision, comment détecter un cache périmé, quelle dépendance MCP a été vérifiée et quels tests ont réellement été exécutés. Toujours distinguer `SOURCE LUE`, `SKILL DANS GITHUB`, `MOTEUR EXÉCUTÉ` et `RÉSULTAT MÉTIER VALIDÉ`. **Aucune tâche de veille ECC autonome supplémentaire** : conserver les cinq créateurs et notre priorité à la détection automatique.
 
 ## Déroulement d’une analyse
 

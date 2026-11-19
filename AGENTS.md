@@ -53,6 +53,14 @@ Guide détaillé et critères de confidentialité : `docs/NAC_4_DEPOTS_CODEX.md`
 - Pour un takeoff PDF, documenter la provenance (empreinte fichier, feuille, revision, echelle, moteur), ses limites et le plan de repli (vectoriel local, segmentation locale, trace manuel). Une methode non testee n'est pas une preuve de precision.
 - En cas de changement de feuille/revision, signaler les mesures `A REVALIDER` ; en cas d'echelle ou de contour incertain, conserver le resultat en proposition non acceptee. Ne jamais exporter automatiquement des quantites douteuses. Utiliser un releve humain independant pour confirmer.
 
+## ECC sélectionné — cache PDF et audit des MCP
+
+- Deux compétences ECC **adaptées à Codex/V7** avec licences MIT ont été ajoutées dans `.agents/skills/` : `$content-hash-cache-pattern` (méthode de cache PDF par empreinte et options) et `$mcp-dependency-review` (inspection **statique** de configurations MCP sans exécuter les commandes analysées).
+- **Ne pas installer le pack affaan-m/ECC entier** (327 skills annoncés), activer des hooks mémoire/Stop/SessionStart, installer AgentShield, activer un serveur externe ou acheter ECC Pro au titre de ce projet. L'existence des fichiers SKILL.md ne prouve pas que le moteur de takeoff a été optimisé.
+- Un résultat de traitement mis en cache doit dépendre du **PDF+feuille+version du moteur+paramètres**; toute quantité requiert en plus une échelle/calibration vérifiée. Ne jamais écraser les corrections approuvées par l'estimateur ni publier des PDF/images clients sur GitHub.
+- Avant toute modification MCP, vérifier versions `@latest`, sélecteurs sans version, images `:latest`, droits et transferts potentiels de plans. Le rapport statique ne constitue pas un test d'exécution, une validation de confidentialité ni un audit de sécurité complet.
+- Source, méthodes exclues et procédure : `.agents/skills/const-ia-takeoff-nac/references/ecc-selection-et-workflows-codex.md` et `docs/NAC_ECC_CODEX.md`. Les tests HTML/Playwright, les mesures humaines indépendantes et les autres compétences métier V7 conservent la priorité.
+
 ## Standards de travail
 - Examiner le code et definir les controles de reception avant tout changement.
 - Distinguer trace manuel assiste, IA de detection, reconnaissance des finis et calcul des commandes.
