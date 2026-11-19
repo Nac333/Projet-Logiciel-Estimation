@@ -776,9 +776,13 @@ function applyCandidateWallFaces(candidate,model,scale,peers=[]) {
   if(model.wallDiagnostics)model.wallDiagnostics.faceAdjustedRooms=(model.wallDiagnostics.faceAdjustedRooms||0)+1;
   return item;
 }
-function applyAllCandidateWallFaces(candidates,model,scale,savedPeers=[]) {
+function applyAllCandidateWallFaces(candidates,model,scale,savedPeers=[],predecessor=null) {
   const adjusted=[];
-  for(let index=0;index<candidates.length;index++)adjusted.push(applyCandidateWallFaces(candidates[index],model,scale,[...adjusted,...candidates.slice(index+1),...savedPeers]));
+  for(let index=0;index<candidates.length;index++){
+    const candidate=candidates[index],previous=predecessor?.(candidate);
+    const peers=previous?savedPeers.filter(peer=>peer!==previous):savedPeers;
+    adjusted.push(applyCandidateWallFaces(candidate,model,scale,[...adjusted,...candidates.slice(index+1),...peers]));
+  }
   return adjusted;
 }
 
@@ -1870,7 +1874,21 @@ function groupBathroomFloors(candidates,model,scale) {
   }
   return candidates.flatMap(item=>replacements.has(item.sourceRoomId)?[replacements.get(item.sourceRoomId)]:consumed.has(item.sourceRoomId)?[]:[item]);
 }
-function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
+function hasOpenThresholdContacts(room,model,isCompatible) {
+  const {width,height,labels,mask,wallMask}=model,neighbors=new Set();
+  if(room.x<1||room.y<1||room.right>=width||room.bottom>=height)return false;
+  for(let y=room.y;y<room.bottom;y++)for(let x=room.x;x<room.right;x++){
+    const cell=y*width+x;if(labels[cell]!==room.id)continue;
+    if(mask[cell]||wallMask[cell])return false;
+    for(const next of [cell-1,cell+1,cell-width,cell+width]){
+      if(wallMask[next]||labels[next]===room.id)continue;
+      if(mask[next]||!isCompatible(labels[next]))return false;
+      neighbors.add(labels[next]);
+    }
+  }
+  return neighbors.size===2;
+}
+function groupUnitFloors(candidates,model,info,scale,mainMaterial=null,chosenRooms=new Set()) {
   if(!model.wallMask)return candidates;
   const seeds=new Map(),roomById=new Map(model.rooms.map(room=>[room.id,room])),parentSeeds=new Map();
   for(const label of distinctRoomLabels(info.labels||[]).filter(label=>isDwellingName(label.text))){
@@ -1887,7 +1905,7 @@ function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
   });
   const descriptors=candidates.map(item=>({id:item.sourceRoomId,unitSeeds:seeds.get(item.sourceRoomId)||[],spaceType:item.spaceType,material:item.material||'sans-fini',selected:item.selected,
     eligible:!!item.material&&!isSharedSpaceName(item.name)&&!item.fixtureCuts?.length&&!item.fixturePending?.length,needsSeparation:item.needsSeparation,mixedBathroom:item.mixedBathroom,bathroom:item.bathroom,detectedUnit:item.detectedUnit}));
-  const present=new Set(candidates.map(item=>item.sourceRoomId)),semantic=new Set();
+  const bySource=new Map(candidates.map(item=>[item.sourceRoomId,item])),descriptorById=new Map(descriptors.map(room=>[room.id,room])),semantic=new Set(),thresholds=new Set();
   for(const label of [...(info.labels||[]),...(info.texts||[]).filter(text=>MATERIALS.some(material=>normalizeName(text.text)===normalizeName(material.code)))]){
     const room=componentAt(model,{x:label.cx,y:label.cy},model.factor,0);if(room)semantic.add(room.id);
   }
@@ -1904,13 +1922,29 @@ function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
       const parentUnit=parents.values().next().value;
       if(!unit||unit.id===parentUnit.id){unit=parentUnit;supported=true;}
     }
+    const item=bySource.get(room.id);
+    // Le masque d'enveloppe ferme aussi certains seuils. Reprendre seulement
+    // le sol réellement libre entre deux noyaux compatibles du même logement.
+    if(item?.selected===false&&item.unnamed&&item.spaceType==='room'&&item.material===floor&&
+        !item.laundry&&!item.automaticFloorReviewReason&&!item.detectedFinishCodes?.length&&!chosenRooms.has(room.id)&&!semantic.has(room.id)&&
+        evidence?.total===room.pixels&&evidence.walls===evidence.total&&evidence.inside===0&&evidence.outside===0&&
+        parents?.size===1&&supported&&descriptorById.get(room.id).eligible&&!item.needsSeparation&&!item.mixedBathroom&&!item.bathroom&&
+        hasOpenThresholdContacts(room,model,id=>{
+          const neighbor=descriptorById.get(id),original=roomById.get(id);
+          return neighbor?.selected&&neighbor.eligible&&neighbor.material===floor&&!neighbor.needsSeparation&&!neighbor.mixedBathroom&&!neighbor.bathroom&&
+            ['room','dwelling'].includes(neighbor.spaceType)&&original?.parentRoomId===room.parentRoomId&&original.splitRole==='core'&&
+            (!neighbor.detectedUnit||neighbor.detectedUnit.id===unit.id);
+        })){
+      Object.assign(descriptorById.get(room.id),{selected:true,detectedUnit:unit,passageOnly:true});
+      thresholds.add(room.id);
+    }
     const localPassage=!unit&&parents?.size>1&&!(evidence?.outside>0);
-    if(!present.has(room.id)&&!semantic.has(room.id)&&floor&&quantity>0&&quantity<(model.minimumCandidateArea||0)&&(supported||localPassage))
+    if(!item&&!semantic.has(room.id)&&floor&&quantity>0&&quantity<(model.minimumCandidateArea||0)&&(supported||localPassage))
       descriptors.push({id:room.id,material:floor,selected:true,eligible:true,unitSeeds:[],...(unit?{detectedUnit:unit}:{}),passageOnly:true,...(localPassage?{parentRoomId:room.parentRoomId,splitRole:room.splitRole}:{})});
   }
   const plan=unitFloorGroups.group({boundaryMask:model.structuralEnvelope?.mask,width:model.width,height:model.height,labels:model.labels,wallMask:model.wallMask,closedMask:model.mask,rooms:descriptors});
   model.groupUnresolved=plan.unresolved;
-  const groups=plan.groups.filter(group=>group.roomIds.length>1||group.connectorCells.length>0),bySource=new Map(candidates.map(item=>[item.sourceRoomId,item]));
+  const groups=plan.groups.filter(group=>group.roomIds.length>1||group.connectorCells.length>0);
   if(!groups.length)return candidates;
   const labels=model.labels.slice(),mapping=new Map(),rooms=new Map(model.rooms.map(room=>[room.id,room]));
   for(const group of groups)for(const id of group.roomIds)mapping.set(id,group.roomIds[0]);
@@ -1932,6 +1966,7 @@ function groupUnitFloors(candidates,model,info,scale,mainMaterial=null) {
     item.qty=netArea(item)*scale*scale;
     const expected=sources.reduce((sum,row)=>sum+row.qty,0)+group.connectorCells.length/(model.factor*model.factor)*scale*scale;
     if(!(item.qty>0)||Math.abs(item.qty-expected)>Math.max(.05,expected*.007))continue;
+    for(const cell of group.connectorCells)if(thresholds.has(model.labels[cell]))consumed.add(model.labels[cell]);
     for(const sourceId of group.roomIds)consumed.add(sourceId);replacements.set(id,item);
   }
   return candidates.flatMap(item=>replacements.has(item.sourceRoomId)?[replacements.get(item.sourceRoomId)]:consumed.has(item.sourceRoomId)?[]:[item]);
@@ -2015,7 +2050,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-19-sideways-section-markers';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-20-open-interior-thresholds';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -2066,10 +2101,18 @@ async function runDetectionPages(pages) {
       const hasNames=candidates.some(item=>!item.unnamed);
       candidates.sort((a,b)=>boundsOf(a.points).y-boundsOf(b.points).y||boundsOf(a.points).x-boundsOf(b.points).x);
       candidates=candidates.slice(0,3000).map((candidate,n)=>({...candidate,page,selected:candidate.selected&&(!candidate.unnamed||candidate.bathroom||candidate.spaceType==='circulation'||(candidate.floorEvidence?candidate.floorEvidence.inside>0&&candidate.floorEvidence.outside===0:!hasNames)),name:candidate.name==='Pièce détectée'?'Pièce détectée '+(n+1):candidate.name}));
-      candidates=candidates.map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
+      const decisions=S.settings.detectionChoices||[],decisionKeys=new Set(decisions.map(choice=>choice.key)),chosenRooms=new Set();
+      candidates=candidates.map(candidate=>{
+        const decisionKey=detectionChoiceKey(job.key,page,candidate);
+        if(decisionKeys.has(decisionKey))chosenRooms.add(candidate.sourceRoomId);
+        return detectionDecisions.apply(decisions,decisionKey,candidate,MATERIALS.map(entry=>entry.code));
+      });
       model.minimumCandidateArea=settings.minArea;
       const savedPeers=S.items.filter(item=>{const frame=item.autoTakeoff?.provenance?.context?.frame;return !(automaticContourRefresh.pristine(item,{documentKey:job.key,version:LOCAL_ROOM_ENGINE_VERSION,items:S.items})&&frame?.width===image.width&&frame?.height===image.height&&frame?.pdfRenderScale===(S.pdf?PDF_RENDER_SCALE:null));});
-      candidates=applyAllCandidateWallFaces(groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material),model,scale,savedPeers).map(candidate=>detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
+      // Le même brouillon sanitaire ne doit pas bloquer son propre raccord.
+      const predecessor=candidate=>automaticContourRefresh.wallFacePredecessor(candidate,{items:S.items,documentKey:job.key,version:LOCAL_ROOM_ENGINE_VERSION,frame:detected.provenance.context.frame});
+      const groupedFloors=groupUnitFloors(groupBathroomFloors(candidates,model,scale),model,info,scale,settings.detectionFinishes?.floor||material,chosenRooms);
+      candidates=applyAllCandidateWallFaces(groupedFloors,model,scale,savedPeers,predecessor).map(candidate=>detectionDecisions.apply(decisions,detectionChoiceKey(job.key,page,candidate),candidate,MATERIALS.map(entry=>entry.code)));
       const provenance={...detected.provenance,warnings:[...new Set([...detected.warnings,...sanitary.warnings,...model.wallDiagnostics.faceWarnings||[]])]};
       candidates=candidates.map(candidate=>({...applyDetectionBaseboard(candidate,job.key,page),detectionProvenance:provenance}));
       S.reviewByPage[page]={key:job.key,items:candidates,engineSource:model.source,engineVersion:LOCAL_ROOM_ENGINE_VERSION,provenance,sanitary,wallSummary:{counts:model.wallClassification.counts,unknown:model.wallClassification.warnings.length}};
@@ -5801,6 +5844,17 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         !provenance.context?.frame || !automaticBathroom && (relatives(item,items) || item.fixtureCuts?.length)) return false;
     try { return source.key === shapeKey(documentKey,item); } catch { return false; }
   }
+  function matchingBathrooms(items, source, documentKey) {
+    return items.filter(item=>item.page===source.page&&item.autoTakeoff?.documentKey===documentKey&&sameBathroom(item,source));
+  }
+  function wallFacePredecessor(source, {items, documentKey, version, frame}) {
+    if(!frame||!bathroomFloor(source))return null;
+    const matches=matchingBathrooms(items,source,documentKey);
+    if(matches.length!==1)return null;
+    const previous=matches[0];
+    return frameKey(previous.autoTakeoff.provenance?.context?.frame)===frameKey(frame)&&
+      pristine(previous,{items,documentKey,version,sanitary:true})?previous:null;
+  }
   function absorbable(item, options) {
     const work = item.work || {};
     const inheritedLaundry=options.inheritedLaundry && item.laundry===true && item.laundryInBathroom===false &&
@@ -5955,7 +6009,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       const bathrooms=candidates.map((item,index)=>({item,index})).filter(({item})=>bathroomFloor(item));
       for(const {item:source,index} of bathrooms){
         if(bathrooms.filter(other=>other.item.page===source.page&&bathroomIdentity(other.item)===bathroomIdentity(source)).length!==1)continue;
-        const matching=items.filter(item=>item.page===source.page&&item.autoTakeoff?.documentKey===documentKey&&sameBathroom(item,source));
+        const matching=matchingBathrooms(items,source,documentKey);
         if(matching.length!==1){if(matching.length>1){output.deferred.push(index);warn('Plusieurs salles de bain portent le même symbole : anciens contours conservés.');}continue;}
         const previous=matching[0],newFrame=source.detectionProvenance?.context?.frame;
         if(previous.autoTakeoff?.provenance?.engineVersion===version||source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
@@ -6026,7 +6080,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       return {updates:[],removeIds:[],links:[],refusals:[],deferred:[],aborted:true,warnings:['Budget d’actualisation atteint : anciens relevés conservés.']};
     }
   }
-  return {plan,pristine,retractable};
+  return {plan,pristine,retractable,wallFacePredecessor};
 })(geometry, detectionDecisions);
 const detectionEngineFactory = (function createDetectionEngine({id,version,analyze}={}) {
   if(typeof id!=='string'||!/^[a-z][a-z0-9-]{0,60}$/.test(id)||typeof version!=='string'||!version||version.length>120||typeof analyze!=='function')throw new Error('Moteur de détection invalide.');
