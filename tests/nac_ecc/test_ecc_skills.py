@@ -46,7 +46,7 @@ class ECCSkillsOfflineTests(unittest.TestCase):
         self.assertIn("SHA-256", cache)
         self.assertIn("échelle", cache)
         self.assertIn("Ne **jamais** utiliser uniquement", cache)
-        self.assertIn("Ne **jamais**", mcp)
+        self.assertIn("ne jamais lancer", mcp.lower())
         self.assertIn("statique", mcp)
         self.assertIn("config", mcp.lower())
 
