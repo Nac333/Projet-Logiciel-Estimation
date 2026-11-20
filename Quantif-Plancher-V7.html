@@ -2227,6 +2227,14 @@ function colorForItem(item) {
 function manualButton(id,icon,label,title,tool='',tone='') {
   return `<button type="button" id="${id}" class="manual-button ${tone}" title="${title}" aria-label="${title}" ${tool?`data-manual-tool="${tool}" aria-pressed="false"`:''}><i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span></button>`;
 }
+function surfaceToolIcon(tool) {
+  const shapes={
+    move:'<path d="M12 8V2.8m-2.8 2.8L12 2.8l2.8 2.8M12 16v5.2m-2.8-2.8 2.8 2.8 2.8-2.8M8 12H2.8m2.8-2.8L2.8 12l2.8 2.8M16 12h5.2m-2.8-2.8 2.8 2.8-2.8 2.8"/><rect x="10" y="10" width="4" height="4" rx=".8"/>',
+    edit:'<path d="M7 5h8l4 5v7M17 19H7m-2-2V7"/><rect x="3" y="3" width="4" height="4" rx=".8"/><rect x="3" y="17" width="4" height="4" rx=".8"/><rect x="17" y="17" width="4" height="4" rx=".8"/>',
+    extend:'<path d="M13 7H5a1 1 0 0 0-1 1v11h10V8a1 1 0 0 0-1-1Z"/><path d="M15 5h4m2 2v3m0 5v3h-4" stroke-dasharray="1.8 2.3"/><path d="M18.5 10v4m-2-2h4"/>'
+  };
+  return `<svg data-surface-icon="${tool}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[tool]}</svg>`;
+}
 function startManualTool(tool) {
   if(!S.plan)return toast('Ouvrez un plan avant de commencer le relevé manuel.');
   if(S.loading||S.detectJob)return;
@@ -2267,7 +2275,10 @@ function initManualUI() {
   const moveButton=(selector,host,icon,label,title)=>{
     const button=$(selector);if(!button)return;
     button.type='button';button.className='manual-button';
-    if(icon)button.innerHTML=`<i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span>${button.id==='stepReview'?'<b id="reviewCount">0</b>':''}`;
+    if(icon){
+      const symbol=icon==='surface-edit'?surfaceToolIcon('edit'):`<i data-lucide="${icon}" aria-hidden="true"></i>`;
+      button.innerHTML=`${symbol}<span>${label}</span>${button.id==='stepReview'?'<b id="reviewCount">0</b>':''}`;
+    }
     if(title){button.title=title;button.setAttribute('aria-label',title);}
     host.append(button);
   };
@@ -2284,7 +2295,7 @@ function initManualUI() {
   $('#wallLayersToggle').onclick=toggleWallInspection;
   $('#wallLayersToggle').insertAdjacentHTML('afterend','<button type="button" id="wallSamplesBtn" class="manual-button manual-area" title="Trois exemples : mur extérieur, séparateur de logements, mur de corridor"><i data-lucide="scan-line"></i><span>3 exemples<br>de murs</span></button>');
   $('#wallSamplesBtn').onclick=startWallSamples;
-  moveButton('[data-tool="edit"]',corrections,'square-pen','Sommets','Modifier les sommets de la surface sélectionnée · E');
+  moveButton('[data-tool="edit"]',corrections,'surface-edit','Sommets','Modifier les sommets de la surface sélectionnée · E');
   moveButton('[data-tool="split"]',corrections,'scissors','Découpe','Découper une surface par une ligne · F');
   moveButton('#deleteSelection',corrections,'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
   moveButton('#tileSettings',layout,'grid-3x3','Carreaux','Régler le format et la pose des carreaux');
@@ -18314,8 +18325,8 @@ const measurementContextMenu=measurementContextMenuFactory({
 });
 measurementContextMenu.install();
 canvas.insertAdjacentHTML('afterend',`<div id="surfaceQuickActions" role="group" aria-label="Outils de la surface sélectionnée" hidden>
-  <button type="button" id="surfaceMoveBtn" aria-label="Déplacer la surface" title="Déplacer la surface"><i data-lucide="move" aria-hidden="true"></i></button>
-  <button type="button" id="surfaceExtendBtn" aria-label="Extension de surface" title="Extension de surface"><i data-lucide="square-plus" aria-hidden="true"></i></button>
+  <button type="button" id="surfaceMoveBtn" aria-label="Déplacer la surface" title="Déplacer la surface">${surfaceToolIcon('move')}</button>
+  <button type="button" id="surfaceExtendBtn" aria-label="Extension de surface" title="Extension de surface">${surfaceToolIcon('extend')}</button>
 </div>`);
 document.head.insertAdjacentHTML('beforeend',`<style>
 #surfaceQuickActions:not([hidden]){position:absolute;z-index:7;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:6px;box-shadow:0 2px 7px #17354d25}
