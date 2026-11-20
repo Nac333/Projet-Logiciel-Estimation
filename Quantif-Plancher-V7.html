@@ -2414,7 +2414,9 @@ function manualStatusText() {
   if(S.tool==='auto')return 'Pièce au clic : cliquez à l’intérieur d’une pièce fermée.';
   if(S.tool==='divider')return 'Fermer un passage : cliquez ses deux extrémités, puis relancez Détecter.';
   if(S.tool==='region')return 'Cadre de détection : cliquez deux coins opposés autour des pièces à analyser.';
-  if(S.tool==='edit')return 'Modifier les coins : glissez un sommet de la surface sélectionnée.';
+  if(S.tool==='edit')return 'Modifier la surface · Glissez un carré pour déplacer un sommet ou un losange pour en ajouter un.';
+  if(S.tool==='moveSurface')return 'Déplacer la surface · Glissez son tracé à la nouvelle position.';
+  if(S.tool==='extendSurface')return S.draft.length?'Extension · Continuez le contour, puis cliquez le premier point ou faites un double-clic.':'Extension · Cliquez le premier point dans la surface sélectionnée.';
   if(S.tool==='tileOrigin')return 'Point de départ : cliquez l’origine de pose de la céramique sélectionnée.';
   if(S.tool==='fixtureBox')return 'Bain ou douche : cliquez les deux coins opposés de l’emprise à retrancher · Échap pour annuler.';
   if(S.tool==='fixturePolygon')return 'Bain ou douche : cliquez les coins de l’emprise, puis Entrée pour la retrancher.';
@@ -2456,10 +2458,10 @@ function refreshManualUI() {
   $('#wallLayersToggle').title=busy?(!S.plan?'Ouvrez un plan pour examiner les murs.':'Attendez la fin du chargement ou de l’analyse.'):!S.scale?'Calibrez le plan avant d’examiner les murs.':$('#wallLayersToggle').getAttribute('aria-label');
   for(const id of ['tileSettings','tileOriginBtn'])$('#'+id).title=busy?(!S.plan?'Ouvrez un plan pour régler le calepinage.':'Attendez la fin du chargement ou de l’analyse.'):!measuredArea?'Sélectionnez une surface ajoutée au relevé pour régler le calepinage.':id==='tileOriginBtn'&&!measuredArea.material.startsWith('CER')?'Sélectionnez une surface de céramique pour placer le départ.':$('#'+id).getAttribute('aria-label');
   for(const id of ['wallTakeoffBtn','traceWallBtn']){$('#'+id).disabled=busy||!S.scale;$('#'+id).title=busy?(!S.plan?'Ouvrez un plan pour relever la céramique murale.':'Attendez la fin du chargement ou de l’analyse.'):!S.scale?'Calibrez le plan avant de calculer les surfaces murales.':$('#'+id).getAttribute('aria-label');}
-  const finishable=['area','linear','split','exclude','rectangle','segment','count','dimension','wallTrace'].includes(S.tool);
+  const finishable=['area','linear','split','exclude','extendSurface','rectangle','segment','count','dimension','wallTrace'].includes(S.tool);
   $('#manualActions').hidden=!finishable;
   const n=S.draft.length;
-  $('#manualFinish').disabled=busy||(['area','exclude'].includes(S.tool)?n<3:S.tool==='count'?n<1:S.tool==='segment'?n===1:n<2);
+  $('#manualFinish').disabled=busy||(['area','exclude','extendSurface'].includes(S.tool)?n<3:S.tool==='count'?n<1:S.tool==='segment'?n===1:n<2);
   $('#manualCancel').disabled=busy;
   const text=manualStatusText();if($('#manualStatus').textContent!==text)$('#manualStatus').textContent=text;
   refreshRibbonOverflowState();
@@ -2487,6 +2489,7 @@ function addManualLine(points,dimension=false) {
 }
 function finishManualTool() {
   const tool=S.tool;
+  if(tool==='extendSurface'){finishSurfaceExtension();return true;}
   if(tool==='wallTrace'){finishWallTakeoffTrace(S.draft);return true;}
   if(tool==='split'){finishSurfaceSplit();return true;}
   if(!['rectangle','segment','count','dimension','area','linear','split','exclude'].includes(tool))return false;
@@ -3176,6 +3179,75 @@ function openKitchenBacksplashEditor(item) {
 
 /* BEGIN GENERATED MODULES */
 // Généré depuis src/*.cjs par npm run build.
+const surfaceClipper = (() => {
+const module = {exports:{}}; const exports = module.exports;
+/*! polygon-clipping 0.15.7
+The MIT License (MIT)
+
+Copyright (c) 2018 Mike Fogel <mike@fogel.ca> - covers everything not specially attributed to others below.
+
+Copyright (c) 2016 Alexander Milevski <info@w8r.name> - covers all portions originally part of github:w8r/martinez, from which this project was forked on Febuary 2, 2018.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+robust-predicates
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org>
+
+*/
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t="undefined"!=typeof globalThis?globalThis:t||self).polygonClipping=e()}(this,(function(){"use strict";
+/**
+     * splaytree v3.1.2
+     * Fast Splay tree for Node and browser
+     *
+     * @author Alexander Milevski <info@w8r.name>
+     * @license MIT
+     * @preserve
+     */
+/*! *****************************************************************************
+    Copyright (c) Microsoft Corporation. All rights reserved.
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+    this file except in compliance with the License. You may obtain a copy of the
+    License at http://www.apache.org/licenses/LICENSE-2.0
+
+    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+    MERCHANTABLITY OR NON-INFRINGEMENT.
+
+    See the Apache Version 2.0 License for specific language governing permissions
+    and limitations under the License.
+    ***************************************************************************** */function t(t,e){var n,r,i,o,s={label:0,sent:function(){if(1&i[0])throw i[1];return i[1]},trys:[],ops:[]};return o={next:l(0),throw:l(1),return:l(2)},"function"==typeof Symbol&&(o[Symbol.iterator]=function(){return this}),o;function l(o){return function(l){return function(o){if(n)throw new TypeError("Generator is already executing.");for(;s;)try{if(n=1,r&&(i=2&o[0]?r.return:o[0]?r.throw||((i=r.return)&&i.call(r),0):r.next)&&!(i=i.call(r,o[1])).done)return i;switch(r=0,i&&(o=[2&o[0],i.value]),o[0]){case 0:case 1:i=o;break;case 4:return s.label++,{value:o[1],done:!1};case 5:s.label++,r=o[1],o=[0];continue;case 7:o=s.ops.pop(),s.trys.pop();continue;default:if(!(i=s.trys,(i=i.length>0&&i[i.length-1])||6!==o[0]&&2!==o[0])){s=0;continue}if(3===o[0]&&(!i||o[1]>i[0]&&o[1]<i[3])){s.label=o[1];break}if(6===o[0]&&s.label<i[1]){s.label=i[1],i=o;break}if(i&&s.label<i[2]){s.label=i[2],s.ops.push(o);break}i[2]&&s.ops.pop(),s.trys.pop();continue}o=e.call(t,s)}catch(t){o=[6,t],r=0}finally{n=i=0}if(5&o[0])throw o[1];return{value:o[0]?o[1]:void 0,done:!0}}([o,l])}}}var e=function(t,e){this.next=null,this.key=t,this.data=e,this.left=null,this.right=null};function n(t,e){return t>e?1:t<e?-1:0}function r(t,n,r){for(var i=new e(null,null),o=i,s=i;;){var l=r(t,n.key);if(l<0){if(null===n.left)break;if(r(t,n.left.key)<0){var h=n.left;if(n.left=h.right,h.right=n,null===(n=h).left)break}s.left=n,s=n,n=n.left}else{if(!(l>0))break;if(null===n.right)break;if(r(t,n.right.key)>0){h=n.right;if(n.right=h.left,h.left=n,null===(n=h).right)break}o.right=n,o=n,n=n.right}}return o.right=n.left,s.left=n.right,n.left=i.right,n.right=i.left,n}function i(t,n,i,o){var s=new e(t,n);if(null===i)return s.left=s.right=null,s;var l=o(t,(i=r(t,i,o)).key);return l<0?(s.left=i.left,s.right=i,i.left=null):l>=0&&(s.right=i.right,s.left=i,i.right=null),s}function o(t,e,n){var i=null,o=null;if(e){var s=n((e=r(t,e,n)).key,t);0===s?(i=e.left,o=e.right):s<0?(o=e.right,e.right=null,i=e):(i=e.left,e.left=null,o=e)}return{left:i,right:o}}function s(t,e,n,r,i){if(t){r(e+(n?"└── ":"├── ")+i(t)+"\n");var o=e+(n?"    ":"│   ");t.left&&s(t.left,o,!1,r,i),t.right&&s(t.right,o,!0,r,i)}}var l=function(){function l(t){void 0===t&&(t=n),this._root=null,this._size=0,this._comparator=t}return l.prototype.insert=function(t,e){return this._size++,this._root=i(t,e,this._root,this._comparator)},l.prototype.add=function(t,n){var i=new e(t,n);null===this._root&&(i.left=i.right=null,this._size++,this._root=i);var o=this._comparator,s=r(t,this._root,o),l=o(t,s.key);return 0===l?this._root=s:(l<0?(i.left=s.left,i.right=s,s.left=null):l>0&&(i.right=s.right,i.left=s,s.right=null),this._size++,this._root=i),this._root},l.prototype.remove=function(t){this._root=this._remove(t,this._root,this._comparator)},l.prototype._remove=function(t,e,n){var i;return null===e?null:0===n(t,(e=r(t,e,n)).key)?(null===e.left?i=e.right:(i=r(t,e.left,n)).right=e.right,this._size--,i):e},l.prototype.pop=function(){var t=this._root;if(t){for(;t.left;)t=t.left;return this._root=r(t.key,this._root,this._comparator),this._root=this._remove(t.key,this._root,this._comparator),{key:t.key,data:t.data}}return null},l.prototype.findStatic=function(t){for(var e=this._root,n=this._comparator;e;){var r=n(t,e.key);if(0===r)return e;e=r<0?e.left:e.right}return null},l.prototype.find=function(t){return this._root&&(this._root=r(t,this._root,this._comparator),0!==this._comparator(t,this._root.key))?null:this._root},l.prototype.contains=function(t){for(var e=this._root,n=this._comparator;e;){var r=n(t,e.key);if(0===r)return!0;e=r<0?e.left:e.right}return!1},l.prototype.forEach=function(t,e){for(var n=this._root,r=[],i=!1;!i;)null!==n?(r.push(n),n=n.left):0!==r.length?(n=r.pop(),t.call(e,n),n=n.right):i=!0;return this},l.prototype.range=function(t,e,n,r){for(var i=[],o=this._comparator,s=this._root;0!==i.length||s;)if(s)i.push(s),s=s.left;else{if(o((s=i.pop()).key,e)>0)break;if(o(s.key,t)>=0&&n.call(r,s))return this;s=s.right}return this},l.prototype.keys=function(){var t=[];return this.forEach((function(e){var n=e.key;return t.push(n)})),t},l.prototype.values=function(){var t=[];return this.forEach((function(e){var n=e.data;return t.push(n)})),t},l.prototype.min=function(){return this._root?this.minNode(this._root).key:null},l.prototype.max=function(){return this._root?this.maxNode(this._root).key:null},l.prototype.minNode=function(t){if(void 0===t&&(t=this._root),t)for(;t.left;)t=t.left;return t},l.prototype.maxNode=function(t){if(void 0===t&&(t=this._root),t)for(;t.right;)t=t.right;return t},l.prototype.at=function(t){for(var e=this._root,n=!1,r=0,i=[];!n;)if(e)i.push(e),e=e.left;else if(i.length>0){if(e=i.pop(),r===t)return e;r++,e=e.right}else n=!0;return null},l.prototype.next=function(t){var e=this._root,n=null;if(t.right){for(n=t.right;n.left;)n=n.left;return n}for(var r=this._comparator;e;){var i=r(t.key,e.key);if(0===i)break;i<0?(n=e,e=e.left):e=e.right}return n},l.prototype.prev=function(t){var e=this._root,n=null;if(null!==t.left){for(n=t.left;n.right;)n=n.right;return n}for(var r=this._comparator;e;){var i=r(t.key,e.key);if(0===i)break;i<0?e=e.left:(n=e,e=e.right)}return n},l.prototype.clear=function(){return this._root=null,this._size=0,this},l.prototype.toList=function(){return function(t){var n=t,r=[],i=!1,o=new e(null,null),s=o;for(;!i;)n?(r.push(n),n=n.left):r.length>0?n=(n=s=s.next=r.pop()).right:i=!0;return s.next=null,o.next}(this._root)},l.prototype.load=function(t,n,r){void 0===n&&(n=[]),void 0===r&&(r=!1);var i=t.length,o=this._comparator;if(r&&f(t,n,0,i-1,o),null===this._root)this._root=h(t,n,0,i),this._size=i;else{var s=function(t,n,r){var i=new e(null,null),o=i,s=t,l=n;for(;null!==s&&null!==l;)r(s.key,l.key)<0?(o.next=s,s=s.next):(o.next=l,l=l.next),o=o.next;null!==s?o.next=s:null!==l&&(o.next=l);return i.next}(this.toList(),function(t,n){for(var r=new e(null,null),i=r,o=0;o<t.length;o++)i=i.next=new e(t[o],n[o]);return i.next=null,r.next}(t,n),o);i=this._size+i,this._root=u({head:s},0,i)}return this},l.prototype.isEmpty=function(){return null===this._root},Object.defineProperty(l.prototype,"size",{get:function(){return this._size},enumerable:!0,configurable:!0}),Object.defineProperty(l.prototype,"root",{get:function(){return this._root},enumerable:!0,configurable:!0}),l.prototype.toString=function(t){void 0===t&&(t=function(t){return String(t.key)});var e=[];return s(this._root,"",!0,(function(t){return e.push(t)}),t),e.join("")},l.prototype.update=function(t,e,n){var s=this._comparator,l=o(t,this._root,s),h=l.left,u=l.right;s(t,e)<0?u=i(e,n,u,s):h=i(e,n,h,s),this._root=function(t,e,n){return null===e?t:(null===t||((e=r(t.key,e,n)).left=t),e)}(h,u,s)},l.prototype.split=function(t){return o(t,this._root,this._comparator)},l.prototype[Symbol.iterator]=function(){var e,n,r;return t(this,(function(t){switch(t.label){case 0:e=this._root,n=[],r=!1,t.label=1;case 1:return r?[3,6]:null===e?[3,2]:(n.push(e),e=e.left,[3,5]);case 2:return 0===n.length?[3,4]:[4,e=n.pop()];case 3:return t.sent(),e=e.right,[3,5];case 4:r=!0,t.label=5;case 5:return[3,1];case 6:return[2]}}))},l}();function h(t,n,r,i){var o=i-r;if(o>0){var s=r+Math.floor(o/2),l=t[s],u=n[s],f=new e(l,u);return f.left=h(t,n,r,s),f.right=h(t,n,s+1,i),f}return null}function u(t,e,n){var r=n-e;if(r>0){var i=e+Math.floor(r/2),o=u(t,e,i),s=t.head;return s.left=o,t.head=t.head.next,s.right=u(t,i+1,n),s}return null}function f(t,e,n,r,i){if(!(n>=r)){for(var o=t[n+r>>1],s=n-1,l=r+1;;){do{s++}while(i(t[s],o)<0);do{l--}while(i(t[l],o)>0);if(s>=l)break;var h=t[s];t[s]=t[l],t[l]=h,h=e[s],e[s]=e[l],e[l]=h}f(t,e,n,l,i),f(t,e,l+1,r,i)}}const c=(t,e)=>t.ll.x<=e.x&&e.x<=t.ur.x&&t.ll.y<=e.y&&e.y<=t.ur.y,p=(t,e)=>{if(e.ur.x<t.ll.x||t.ur.x<e.ll.x||e.ur.y<t.ll.y||t.ur.y<e.ll.y)return null;const n=t.ll.x<e.ll.x?e.ll.x:t.ll.x,r=t.ur.x<e.ur.x?t.ur.x:e.ur.x;return{ll:{x:n,y:t.ll.y<e.ll.y?e.ll.y:t.ll.y},ur:{x:r,y:t.ur.y<e.ur.y?t.ur.y:e.ur.y}}};let g=Number.EPSILON;void 0===g&&(g=Math.pow(2,-52));const a=g*g,y=(t,e)=>{if(-g<t&&t<g&&-g<e&&e<g)return 0;const n=t-e;return n*n<a*t*e?0:t<e?-1:1};class x{constructor(){this.tree=new l,this.round(0)}round(t){const e=this.tree.add(t),n=this.tree.prev(e);if(null!==n&&0===y(e.key,n.key))return this.tree.remove(t),n.key;const r=this.tree.next(e);return null!==r&&0===y(e.key,r.key)?(this.tree.remove(t),r.key):t}}const b=new class{constructor(){this.reset()}reset(){this.xRounder=new x,this.yRounder=new x}round(t,e){return{x:this.xRounder.round(t),y:this.yRounder.round(e)}}},v=11102230246251565e-32,d=134217729,m=(3+8*v)*v;function E(t,e,n,r,i){let o,s,l,h,u=e[0],f=r[0],c=0,p=0;f>u==f>-u?(o=u,u=e[++c]):(o=f,f=r[++p]);let g=0;if(c<t&&p<n)for(f>u==f>-u?(s=u+o,l=o-(s-u),u=e[++c]):(s=f+o,l=o-(s-f),f=r[++p]),o=s,0!==l&&(i[g++]=l);c<t&&p<n;)f>u==f>-u?(s=o+u,h=s-o,l=o-(s-h)+(u-h),u=e[++c]):(s=o+f,h=s-o,l=o-(s-h)+(f-h),f=r[++p]),o=s,0!==l&&(i[g++]=l);for(;c<t;)s=o+u,h=s-o,l=o-(s-h)+(u-h),u=e[++c],o=s,0!==l&&(i[g++]=l);for(;p<n;)s=o+f,h=s-o,l=o-(s-h)+(f-h),f=r[++p],o=s,0!==l&&(i[g++]=l);return 0===o&&0!==g||(i[g++]=o),g}function S(t){return new Float64Array(t)}const _=22204460492503146e-32,w=11093356479670487e-47,k=S(4),R=S(8),I=S(12),P=S(16),N=S(4);function A(t,e,n,r,i,o){const s=(e-o)*(n-i),l=(t-i)*(r-o),h=s-l,u=Math.abs(s+l);return Math.abs(h)>=33306690738754716e-32*u?h:-function(t,e,n,r,i,o,s){let l,h,u,f,c,p,g,a,y,x,b,v,S,A,O,L,$,M;const z=t-i,B=n-i,G=e-o,T=r-o;A=z*T,p=d*z,g=p-(p-z),a=z-g,p=d*T,y=p-(p-T),x=T-y,O=a*x-(A-g*y-a*y-g*x),L=G*B,p=d*G,g=p-(p-G),a=G-g,p=d*B,y=p-(p-B),x=B-y,$=a*x-(L-g*y-a*y-g*x),b=O-$,c=O-b,k[0]=O-(b+c)+(c-$),v=A+b,c=v-A,S=A-(v-c)+(b-c),b=S-L,c=S-b,k[1]=S-(b+c)+(c-L),M=v+b,c=M-v,k[2]=v-(M-c)+(b-c),k[3]=M;let q=function(t,e){let n=e[0];for(let r=1;r<t;r++)n+=e[r];return n}(4,k),C=_*s;if(q>=C||-q>=C)return q;if(c=t-z,l=t-(z+c)+(c-i),c=n-B,u=n-(B+c)+(c-i),c=e-G,h=e-(G+c)+(c-o),c=r-T,f=r-(T+c)+(c-o),0===l&&0===h&&0===u&&0===f)return q;if(C=w*s+m*Math.abs(q),q+=z*f+T*l-(G*u+B*h),q>=C||-q>=C)return q;A=l*T,p=d*l,g=p-(p-l),a=l-g,p=d*T,y=p-(p-T),x=T-y,O=a*x-(A-g*y-a*y-g*x),L=h*B,p=d*h,g=p-(p-h),a=h-g,p=d*B,y=p-(p-B),x=B-y,$=a*x-(L-g*y-a*y-g*x),b=O-$,c=O-b,N[0]=O-(b+c)+(c-$),v=A+b,c=v-A,S=A-(v-c)+(b-c),b=S-L,c=S-b,N[1]=S-(b+c)+(c-L),M=v+b,c=M-v,N[2]=v-(M-c)+(b-c),N[3]=M;const F=E(4,k,4,N,R);A=z*f,p=d*z,g=p-(p-z),a=z-g,p=d*f,y=p-(p-f),x=f-y,O=a*x-(A-g*y-a*y-g*x),L=G*u,p=d*G,g=p-(p-G),a=G-g,p=d*u,y=p-(p-u),x=u-y,$=a*x-(L-g*y-a*y-g*x),b=O-$,c=O-b,N[0]=O-(b+c)+(c-$),v=A+b,c=v-A,S=A-(v-c)+(b-c),b=S-L,c=S-b,N[1]=S-(b+c)+(c-L),M=v+b,c=M-v,N[2]=v-(M-c)+(b-c),N[3]=M;const j=E(F,R,4,N,I);A=l*f,p=d*l,g=p-(p-l),a=l-g,p=d*f,y=p-(p-f),x=f-y,O=a*x-(A-g*y-a*y-g*x),L=h*u,p=d*h,g=p-(p-h),a=h-g,p=d*u,y=p-(p-u),x=u-y,$=a*x-(L-g*y-a*y-g*x),b=O-$,c=O-b,N[0]=O-(b+c)+(c-$),v=A+b,c=v-A,S=A-(v-c)+(b-c),b=S-L,c=S-b,N[1]=S-(b+c)+(c-L),M=v+b,c=M-v,N[2]=v-(M-c)+(b-c),N[3]=M;const U=E(j,I,4,N,P);return P[U-1]}(t,e,n,r,i,o,u)}const O=(t,e)=>t.x*e.y-t.y*e.x,L=(t,e)=>t.x*e.x+t.y*e.y,$=(t,e,n)=>{const r=A(t.x,t.y,e.x,e.y,n.x,n.y);return r>0?-1:r<0?1:0},M=t=>Math.sqrt(L(t,t)),z=(t,e,n)=>{const r={x:e.x-t.x,y:e.y-t.y},i={x:n.x-t.x,y:n.y-t.y};return O(i,r)/M(i)/M(r)},B=(t,e,n)=>{const r={x:e.x-t.x,y:e.y-t.y},i={x:n.x-t.x,y:n.y-t.y};return L(i,r)/M(i)/M(r)},G=(t,e,n)=>0===e.y?null:{x:t.x+e.x/e.y*(n-t.y),y:n},T=(t,e,n)=>0===e.x?null:{x:n,y:t.y+e.y/e.x*(n-t.x)};class q{static compare(t,e){const n=q.comparePoints(t.point,e.point);return 0!==n?n:(t.point!==e.point&&t.link(e),t.isLeft!==e.isLeft?t.isLeft?1:-1:F.compare(t.segment,e.segment))}static comparePoints(t,e){return t.x<e.x?-1:t.x>e.x?1:t.y<e.y?-1:t.y>e.y?1:0}constructor(t,e){void 0===t.events?t.events=[this]:t.events.push(this),this.point=t,this.isLeft=e}link(t){if(t.point===this.point)throw new Error("Tried to link already linked events");const e=t.point.events;for(let t=0,n=e.length;t<n;t++){const n=e[t];this.point.events.push(n),n.point=this.point}this.checkForConsuming()}checkForConsuming(){const t=this.point.events.length;for(let e=0;e<t;e++){const n=this.point.events[e];if(void 0===n.segment.consumedBy)for(let r=e+1;r<t;r++){const t=this.point.events[r];void 0===t.consumedBy&&(n.otherSE.point.events===t.otherSE.point.events&&n.segment.consume(t.segment))}}}getAvailableLinkedEvents(){const t=[];for(let e=0,n=this.point.events.length;e<n;e++){const n=this.point.events[e];n!==this&&!n.segment.ringOut&&n.segment.isInResult()&&t.push(n)}return t}getLeftmostComparator(t){const e=new Map,n=n=>{const r=n.otherSE;e.set(n,{sine:z(this.point,t.point,r.point),cosine:B(this.point,t.point,r.point)})};return(t,r)=>{e.has(t)||n(t),e.has(r)||n(r);const{sine:i,cosine:o}=e.get(t),{sine:s,cosine:l}=e.get(r);return i>=0&&s>=0?o<l?1:o>l?-1:0:i<0&&s<0?o<l?-1:o>l?1:0:s<i?-1:s>i?1:0}}}let C=0;class F{static compare(t,e){const n=t.leftSE.point.x,r=e.leftSE.point.x,i=t.rightSE.point.x,o=e.rightSE.point.x;if(o<n)return 1;if(i<r)return-1;const s=t.leftSE.point.y,l=e.leftSE.point.y,h=t.rightSE.point.y,u=e.rightSE.point.y;if(n<r){if(l<s&&l<h)return 1;if(l>s&&l>h)return-1;const n=t.comparePoint(e.leftSE.point);if(n<0)return 1;if(n>0)return-1;const r=e.comparePoint(t.rightSE.point);return 0!==r?r:-1}if(n>r){if(s<l&&s<u)return-1;if(s>l&&s>u)return 1;const n=e.comparePoint(t.leftSE.point);if(0!==n)return n;const r=t.comparePoint(e.rightSE.point);return r<0?1:r>0?-1:1}if(s<l)return-1;if(s>l)return 1;if(i<o){const n=e.comparePoint(t.rightSE.point);if(0!==n)return n}if(i>o){const n=t.comparePoint(e.rightSE.point);if(n<0)return 1;if(n>0)return-1}if(i!==o){const t=h-s,e=i-n,f=u-l,c=o-r;if(t>e&&f<c)return 1;if(t<e&&f>c)return-1}return i>o?1:i<o||h<u?-1:h>u?1:t.id<e.id?-1:t.id>e.id?1:0}constructor(t,e,n,r){this.id=++C,this.leftSE=t,t.segment=this,t.otherSE=e,this.rightSE=e,e.segment=this,e.otherSE=t,this.rings=n,this.windings=r}static fromRing(t,e,n){let r,i,o;const s=q.comparePoints(t,e);if(s<0)r=t,i=e,o=1;else{if(!(s>0))throw new Error(`Tried to create degenerate segment at [${t.x}, ${t.y}]`);r=e,i=t,o=-1}const l=new q(r,!0),h=new q(i,!1);return new F(l,h,[n],[o])}replaceRightSE(t){this.rightSE=t,this.rightSE.segment=this,this.rightSE.otherSE=this.leftSE,this.leftSE.otherSE=this.rightSE}bbox(){const t=this.leftSE.point.y,e=this.rightSE.point.y;return{ll:{x:this.leftSE.point.x,y:t<e?t:e},ur:{x:this.rightSE.point.x,y:t>e?t:e}}}vector(){return{x:this.rightSE.point.x-this.leftSE.point.x,y:this.rightSE.point.y-this.leftSE.point.y}}isAnEndpoint(t){return t.x===this.leftSE.point.x&&t.y===this.leftSE.point.y||t.x===this.rightSE.point.x&&t.y===this.rightSE.point.y}comparePoint(t){if(this.isAnEndpoint(t))return 0;const e=this.leftSE.point,n=this.rightSE.point,r=this.vector();if(e.x===n.x)return t.x===e.x?0:t.x<e.x?1:-1;const i=(t.y-e.y)/r.y,o=e.x+i*r.x;if(t.x===o)return 0;const s=(t.x-e.x)/r.x,l=e.y+s*r.y;return t.y===l?0:t.y<l?-1:1}getIntersection(t){const e=this.bbox(),n=t.bbox(),r=p(e,n);if(null===r)return null;const i=this.leftSE.point,o=this.rightSE.point,s=t.leftSE.point,l=t.rightSE.point,h=c(e,s)&&0===this.comparePoint(s),u=c(n,i)&&0===t.comparePoint(i),f=c(e,l)&&0===this.comparePoint(l),g=c(n,o)&&0===t.comparePoint(o);if(u&&h)return g&&!f?o:!g&&f?l:null;if(u)return f&&i.x===l.x&&i.y===l.y?null:i;if(h)return g&&o.x===s.x&&o.y===s.y?null:s;if(g&&f)return null;if(g)return o;if(f)return l;const a=((t,e,n,r)=>{if(0===e.x)return T(n,r,t.x);if(0===r.x)return T(t,e,n.x);if(0===e.y)return G(n,r,t.y);if(0===r.y)return G(t,e,n.y);const i=O(e,r);if(0==i)return null;const o={x:n.x-t.x,y:n.y-t.y},s=O(o,e)/i,l=O(o,r)/i;return{x:(t.x+l*e.x+(n.x+s*r.x))/2,y:(t.y+l*e.y+(n.y+s*r.y))/2}})(i,this.vector(),s,t.vector());return null===a?null:c(r,a)?b.round(a.x,a.y):null}split(t){const e=[],n=void 0!==t.events,r=new q(t,!0),i=new q(t,!1),o=this.rightSE;this.replaceRightSE(i),e.push(i),e.push(r);const s=new F(r,o,this.rings.slice(),this.windings.slice());return q.comparePoints(s.leftSE.point,s.rightSE.point)>0&&s.swapEvents(),q.comparePoints(this.leftSE.point,this.rightSE.point)>0&&this.swapEvents(),n&&(r.checkForConsuming(),i.checkForConsuming()),e}swapEvents(){const t=this.rightSE;this.rightSE=this.leftSE,this.leftSE=t,this.leftSE.isLeft=!0,this.rightSE.isLeft=!1;for(let t=0,e=this.windings.length;t<e;t++)this.windings[t]*=-1}consume(t){let e=this,n=t;for(;e.consumedBy;)e=e.consumedBy;for(;n.consumedBy;)n=n.consumedBy;const r=F.compare(e,n);if(0!==r){if(r>0){const t=e;e=n,n=t}if(e.prev===n){const t=e;e=n,n=t}for(let t=0,r=n.rings.length;t<r;t++){const r=n.rings[t],i=n.windings[t],o=e.rings.indexOf(r);-1===o?(e.rings.push(r),e.windings.push(i)):e.windings[o]+=i}n.rings=null,n.windings=null,n.consumedBy=e,n.leftSE.consumedBy=e.leftSE,n.rightSE.consumedBy=e.rightSE}}prevInResult(){return void 0!==this._prevInResult||(this.prev?this.prev.isInResult()?this._prevInResult=this.prev:this._prevInResult=this.prev.prevInResult():this._prevInResult=null),this._prevInResult}beforeState(){if(void 0!==this._beforeState)return this._beforeState;if(this.prev){const t=this.prev.consumedBy||this.prev;this._beforeState=t.afterState()}else this._beforeState={rings:[],windings:[],multiPolys:[]};return this._beforeState}afterState(){if(void 0!==this._afterState)return this._afterState;const t=this.beforeState();this._afterState={rings:t.rings.slice(0),windings:t.windings.slice(0),multiPolys:[]};const e=this._afterState.rings,n=this._afterState.windings,r=this._afterState.multiPolys;for(let t=0,r=this.rings.length;t<r;t++){const r=this.rings[t],i=this.windings[t],o=e.indexOf(r);-1===o?(e.push(r),n.push(i)):n[o]+=i}const i=[],o=[];for(let t=0,r=e.length;t<r;t++){if(0===n[t])continue;const r=e[t],s=r.poly;if(-1===o.indexOf(s))if(r.isExterior)i.push(s);else{-1===o.indexOf(s)&&o.push(s);const t=i.indexOf(r.poly);-1!==t&&i.splice(t,1)}}for(let t=0,e=i.length;t<e;t++){const e=i[t].multiPoly;-1===r.indexOf(e)&&r.push(e)}return this._afterState}isInResult(){if(this.consumedBy)return!1;if(void 0!==this._isInResult)return this._isInResult;const t=this.beforeState().multiPolys,e=this.afterState().multiPolys;switch(H.type){case"union":{const n=0===t.length,r=0===e.length;this._isInResult=n!==r;break}case"intersection":{let n,r;t.length<e.length?(n=t.length,r=e.length):(n=e.length,r=t.length),this._isInResult=r===H.numMultiPolys&&n<r;break}case"xor":{const n=Math.abs(t.length-e.length);this._isInResult=n%2==1;break}case"difference":{const n=t=>1===t.length&&t[0].isSubject;this._isInResult=n(t)!==n(e);break}default:throw new Error(`Unrecognized operation type found ${H.type}`)}return this._isInResult}}class j{constructor(t,e,n){if(!Array.isArray(t)||0===t.length)throw new Error("Input geometry is not a valid Polygon or MultiPolygon");if(this.poly=e,this.isExterior=n,this.segments=[],"number"!=typeof t[0][0]||"number"!=typeof t[0][1])throw new Error("Input geometry is not a valid Polygon or MultiPolygon");const r=b.round(t[0][0],t[0][1]);this.bbox={ll:{x:r.x,y:r.y},ur:{x:r.x,y:r.y}};let i=r;for(let e=1,n=t.length;e<n;e++){if("number"!=typeof t[e][0]||"number"!=typeof t[e][1])throw new Error("Input geometry is not a valid Polygon or MultiPolygon");let n=b.round(t[e][0],t[e][1]);n.x===i.x&&n.y===i.y||(this.segments.push(F.fromRing(i,n,this)),n.x<this.bbox.ll.x&&(this.bbox.ll.x=n.x),n.y<this.bbox.ll.y&&(this.bbox.ll.y=n.y),n.x>this.bbox.ur.x&&(this.bbox.ur.x=n.x),n.y>this.bbox.ur.y&&(this.bbox.ur.y=n.y),i=n)}r.x===i.x&&r.y===i.y||this.segments.push(F.fromRing(i,r,this))}getSweepEvents(){const t=[];for(let e=0,n=this.segments.length;e<n;e++){const n=this.segments[e];t.push(n.leftSE),t.push(n.rightSE)}return t}}class U{constructor(t,e){if(!Array.isArray(t))throw new Error("Input geometry is not a valid Polygon or MultiPolygon");this.exteriorRing=new j(t[0],this,!0),this.bbox={ll:{x:this.exteriorRing.bbox.ll.x,y:this.exteriorRing.bbox.ll.y},ur:{x:this.exteriorRing.bbox.ur.x,y:this.exteriorRing.bbox.ur.y}},this.interiorRings=[];for(let e=1,n=t.length;e<n;e++){const n=new j(t[e],this,!1);n.bbox.ll.x<this.bbox.ll.x&&(this.bbox.ll.x=n.bbox.ll.x),n.bbox.ll.y<this.bbox.ll.y&&(this.bbox.ll.y=n.bbox.ll.y),n.bbox.ur.x>this.bbox.ur.x&&(this.bbox.ur.x=n.bbox.ur.x),n.bbox.ur.y>this.bbox.ur.y&&(this.bbox.ur.y=n.bbox.ur.y),this.interiorRings.push(n)}this.multiPoly=e}getSweepEvents(){const t=this.exteriorRing.getSweepEvents();for(let e=0,n=this.interiorRings.length;e<n;e++){const n=this.interiorRings[e].getSweepEvents();for(let e=0,r=n.length;e<r;e++)t.push(n[e])}return t}}class Y{constructor(t,e){if(!Array.isArray(t))throw new Error("Input geometry is not a valid Polygon or MultiPolygon");try{"number"==typeof t[0][0][0]&&(t=[t])}catch(t){}this.polys=[],this.bbox={ll:{x:Number.POSITIVE_INFINITY,y:Number.POSITIVE_INFINITY},ur:{x:Number.NEGATIVE_INFINITY,y:Number.NEGATIVE_INFINITY}};for(let e=0,n=t.length;e<n;e++){const n=new U(t[e],this);n.bbox.ll.x<this.bbox.ll.x&&(this.bbox.ll.x=n.bbox.ll.x),n.bbox.ll.y<this.bbox.ll.y&&(this.bbox.ll.y=n.bbox.ll.y),n.bbox.ur.x>this.bbox.ur.x&&(this.bbox.ur.x=n.bbox.ur.x),n.bbox.ur.y>this.bbox.ur.y&&(this.bbox.ur.y=n.bbox.ur.y),this.polys.push(n)}this.isSubject=e}getSweepEvents(){const t=[];for(let e=0,n=this.polys.length;e<n;e++){const n=this.polys[e].getSweepEvents();for(let e=0,r=n.length;e<r;e++)t.push(n[e])}return t}}class V{static factory(t){const e=[];for(let n=0,r=t.length;n<r;n++){const r=t[n];if(!r.isInResult()||r.ringOut)continue;let i=null,o=r.leftSE,s=r.rightSE;const l=[o],h=o.point,u=[];for(;i=o,o=s,l.push(o),o.point!==h;)for(;;){const t=o.getAvailableLinkedEvents();if(0===t.length){const t=l[0].point,e=l[l.length-1].point;throw new Error(`Unable to complete output ring starting at [${t.x}, ${t.y}]. Last matching segment found ends at [${e.x}, ${e.y}].`)}if(1===t.length){s=t[0].otherSE;break}let n=null;for(let t=0,e=u.length;t<e;t++)if(u[t].point===o.point){n=t;break}if(null!==n){const t=u.splice(n)[0],r=l.splice(t.index);r.unshift(r[0].otherSE),e.push(new V(r.reverse()));continue}u.push({index:l.length,point:o.point});const r=o.getLeftmostComparator(i);s=t.sort(r)[0].otherSE;break}e.push(new V(l))}return e}constructor(t){this.events=t;for(let e=0,n=t.length;e<n;e++)t[e].segment.ringOut=this;this.poly=null}getGeom(){let t=this.events[0].point;const e=[t];for(let n=1,r=this.events.length-1;n<r;n++){const r=this.events[n].point,i=this.events[n+1].point;0!==$(r,t,i)&&(e.push(r),t=r)}if(1===e.length)return null;const n=e[0],r=e[1];0===$(n,t,r)&&e.shift(),e.push(e[0]);const i=this.isExteriorRing()?1:-1,o=this.isExteriorRing()?0:e.length-1,s=this.isExteriorRing()?e.length:-1,l=[];for(let t=o;t!=s;t+=i)l.push([e[t].x,e[t].y]);return l}isExteriorRing(){if(void 0===this._isExteriorRing){const t=this.enclosingRing();this._isExteriorRing=!t||!t.isExteriorRing()}return this._isExteriorRing}enclosingRing(){return void 0===this._enclosingRing&&(this._enclosingRing=this._calcEnclosingRing()),this._enclosingRing}_calcEnclosingRing(){let t=this.events[0];for(let e=1,n=this.events.length;e<n;e++){const n=this.events[e];q.compare(t,n)>0&&(t=n)}let e=t.segment.prevInResult(),n=e?e.prevInResult():null;for(;;){if(!e)return null;if(!n)return e.ringOut;if(n.ringOut!==e.ringOut)return n.ringOut.enclosingRing()!==e.ringOut?e.ringOut:e.ringOut.enclosingRing();e=n.prevInResult(),n=e?e.prevInResult():null}}}class X{constructor(t){this.exteriorRing=t,t.poly=this,this.interiorRings=[]}addInterior(t){this.interiorRings.push(t),t.poly=this}getGeom(){const t=[this.exteriorRing.getGeom()];if(null===t[0])return null;for(let e=0,n=this.interiorRings.length;e<n;e++){const n=this.interiorRings[e].getGeom();null!==n&&t.push(n)}return t}}class Q{constructor(t){this.rings=t,this.polys=this._composePolys(t)}getGeom(){const t=[];for(let e=0,n=this.polys.length;e<n;e++){const n=this.polys[e].getGeom();null!==n&&t.push(n)}return t}_composePolys(t){const e=[];for(let n=0,r=t.length;n<r;n++){const r=t[n];if(!r.poly)if(r.isExteriorRing())e.push(new X(r));else{const t=r.enclosingRing();t.poly||e.push(new X(t)),t.poly.addInterior(r)}}return e}}class W{constructor(t){let e=arguments.length>1&&void 0!==arguments[1]?arguments[1]:F.compare;this.queue=t,this.tree=new l(e),this.segments=[]}process(t){const e=t.segment,n=[];if(t.consumedBy)return t.isLeft?this.queue.remove(t.otherSE):this.tree.remove(e),n;const r=t.isLeft?this.tree.add(e):this.tree.find(e);if(!r)throw new Error(`Unable to find segment #${e.id} [${e.leftSE.point.x}, ${e.leftSE.point.y}] -> [${e.rightSE.point.x}, ${e.rightSE.point.y}] in SweepLine tree.`);let i,o,s=r,l=r;for(;void 0===i;)s=this.tree.prev(s),null===s?i=null:void 0===s.key.consumedBy&&(i=s.key);for(;void 0===o;)l=this.tree.next(l),null===l?o=null:void 0===l.key.consumedBy&&(o=l.key);if(t.isLeft){let r=null;if(i){const t=i.getIntersection(e);if(null!==t&&(e.isAnEndpoint(t)||(r=t),!i.isAnEndpoint(t))){const e=this._splitSafely(i,t);for(let t=0,r=e.length;t<r;t++)n.push(e[t])}}let s=null;if(o){const t=o.getIntersection(e);if(null!==t&&(e.isAnEndpoint(t)||(s=t),!o.isAnEndpoint(t))){const e=this._splitSafely(o,t);for(let t=0,r=e.length;t<r;t++)n.push(e[t])}}if(null!==r||null!==s){let t=null;if(null===r)t=s;else if(null===s)t=r;else{t=q.comparePoints(r,s)<=0?r:s}this.queue.remove(e.rightSE),n.push(e.rightSE);const i=e.split(t);for(let t=0,e=i.length;t<e;t++)n.push(i[t])}n.length>0?(this.tree.remove(e),n.push(t)):(this.segments.push(e),e.prev=i)}else{if(i&&o){const t=i.getIntersection(o);if(null!==t){if(!i.isAnEndpoint(t)){const e=this._splitSafely(i,t);for(let t=0,r=e.length;t<r;t++)n.push(e[t])}if(!o.isAnEndpoint(t)){const e=this._splitSafely(o,t);for(let t=0,r=e.length;t<r;t++)n.push(e[t])}}}this.tree.remove(e)}return n}_splitSafely(t,e){this.tree.remove(t);const n=t.rightSE;this.queue.remove(n);const r=t.split(e);return r.push(n),void 0===t.consumedBy&&this.tree.add(t),r}}const Z="undefined"!=typeof process&&process.env.POLYGON_CLIPPING_MAX_QUEUE_SIZE||1e6,D="undefined"!=typeof process&&process.env.POLYGON_CLIPPING_MAX_SWEEPLINE_SEGMENTS||1e6;const H=new class{run(t,e,n){H.type=t,b.reset();const r=[new Y(e,!0)];for(let t=0,e=n.length;t<e;t++)r.push(new Y(n[t],!1));if(H.numMultiPolys=r.length,"difference"===H.type){const t=r[0];let e=1;for(;e<r.length;)null!==p(r[e].bbox,t.bbox)?e++:r.splice(e,1)}if("intersection"===H.type)for(let t=0,e=r.length;t<e;t++){const e=r[t];for(let n=t+1,i=r.length;n<i;n++)if(null===p(e.bbox,r[n].bbox))return[]}const i=new l(q.compare);for(let t=0,e=r.length;t<e;t++){const e=r[t].getSweepEvents();for(let t=0,n=e.length;t<n;t++)if(i.insert(e[t]),i.size>Z)throw new Error("Infinite loop when putting segment endpoints in a priority queue (queue size too big).")}const o=new W(i);let s=i.size,h=i.pop();for(;h;){const t=h.key;if(i.size===s){const e=t.segment;throw new Error(`Unable to pop() ${t.isLeft?"left":"right"} SweepEvent [${t.point.x}, ${t.point.y}] from segment #${e.id} [${e.leftSE.point.x}, ${e.leftSE.point.y}] -> [${e.rightSE.point.x}, ${e.rightSE.point.y}] from queue.`)}if(i.size>Z)throw new Error("Infinite loop when passing sweep line over endpoints (queue size too big).");if(o.segments.length>D)throw new Error("Infinite loop when passing sweep line over endpoints (too many sweep line segments).");const e=o.process(t);for(let t=0,n=e.length;t<n;t++){const n=e[t];void 0===n.consumedBy&&i.insert(n)}s=i.size,h=i.pop()}b.reset();const u=V.factory(o.segments);return new Q(u).getGeom()}};var J={union:function(t){for(var e=arguments.length,n=new Array(e>1?e-1:0),r=1;r<e;r++)n[r-1]=arguments[r];return H.run("union",t,n)},intersection:function(t){for(var e=arguments.length,n=new Array(e>1?e-1:0),r=1;r<e;r++)n[r-1]=arguments[r];return H.run("intersection",t,n)},xor:function(t){for(var e=arguments.length,n=new Array(e>1?e-1:0),r=1;r<e;r++)n[r-1]=arguments[r];return H.run("xor",t,n)},difference:function(t){for(var e=arguments.length,n=new Array(e>1?e-1:0),r=1;r<e;r++)n[r-1]=arguments[r];return H.run("difference",t,n)}};return J}));
+//# sourceMappingURL=polygon-clipping.umd.min.js.map
+
+return module.exports;
+})();
 const persistence = (function createPersistence(getStorage) {
   function readSaved(key, fallback) {
     try { return JSON.parse(getStorage().getItem(key)) ?? fallback; }
@@ -3298,6 +3370,61 @@ const geometry = (function createGeometry() {
 
   return { dist, area, perimeter, inside, boundsOf, getHoles, netArea, excludedArea, distanceToSegment, onRing, cross, segmentsCross, validPolygon, lineLength };
 })();
+const surfaceEditing = (function createSurfaceEditing(geometry, clipping) {
+  const {validPolygon, inside, onRing, getHoles, netArea, dist}=geometry;
+  const ringToClip=ring=>[...ring,ring[0]].map(({x,y})=>[x,y]);
+  const ringFromClip=ring=>ring.slice(0,-1).map(([x,y])=>({x,y}));
+
+  function extend(item, addition) {
+    if(item.points.length>20000||addition.length>20000||!validPolygon(item.points)||!validPolygon(addition)) {
+      throw new Error('Tracez au moins trois points distincts sans croisement.');
+    }
+    const first=addition[0];
+    if(!(inside(first,item.points)||onRing(first,item.points))||getHoles(item).some(ring=>inside(first,ring)||onRing(first,ring))) {
+      throw new Error('Commencez l’extension dans la surface.');
+    }
+    const union=clipping.union([ringToClip(item.points)],[ringToClip(addition)]);
+    if(union.length!==1)throw new Error('L’extension doit rejoindre la surface sélectionnée.');
+    const [points,...newHoles]=union[0].map(ringFromClip);
+    if(![points,...newHoles].every(ring=>ring.length<=20000&&validPolygon(ring)))throw new Error('L’extension crée un contour invalide.');
+    const holes=[...(item.holes||[]),...newHoles],candidate={...item,points,holes};
+    const previous=netArea(item),next=netArea(candidate),tolerance=Math.max(1e-6,previous*1e-8);
+    if(next<=previous+tolerance)throw new Error('Ajoutez au moins un point à l’extérieur de la surface.');
+    const overlap=previous+netArea({points:addition,holes:getHoles(item)})-next;
+    if(overlap<=tolerance)throw new Error('Tracez une extension qui recouvre une partie du sol.');
+    return {points,holes};
+  }
+
+  function midpoints(points, minimumLength) {
+    return points.flatMap((start,index)=>{
+      const end=points[(index+1)%points.length];
+      return dist(start,end)>=minimumLength?[{x:(start.x+end.x)/2,y:(start.y+end.y)/2,index:index+1}]:[];
+    });
+  }
+
+  function translate(item, dx, dy) {
+    const move=point=>({...point,x:point.x+dx,y:point.y+dy});
+    const ring=points=>points.map(move);
+    const rings=entries=>entries.map(ring);
+    const result={...item,points:ring(item.points)};
+    if(item.holes)result.holes=rings(item.holes);
+    if(item.subzones)result.subzones=Object.fromEntries(Object.entries(item.subzones).map(([id,points])=>[id,ring(points)]));
+    if(item.layout?.origin)result.layout={...item.layout,origin:move(item.layout.origin)};
+    if(item.fixtureCuts)result.fixtureCuts=item.fixtureCuts.map(cut=>({
+      ...cut,points:ring(cut.points),...(cut.absorbedHoles?{absorbedHoles:rings(cut.absorbedHoles)}:{})
+    }));
+    if(item.fixturePending)result.fixturePending=item.fixturePending.map(hint=>Number.isFinite(hint.cx)&&Number.isFinite(hint.cy)?
+      {...hint,cx:hint.cx+dx,cy:hint.cy+dy}:hint);
+    if(item.sanitaryEvidence)result.sanitaryEvidence=item.sanitaryEvidence.map(proof=>({
+      ...proof,basinRing:ring(proof.basinRing),drainRing:ring(proof.drainRing),
+      ...(proof.footprintRing?{footprintRing:ring(proof.footprintRing)}:{}),
+      ...(proof.wallSupportSegments?{wallSupportSegments:proof.wallSupportSegments.map(({a,b})=>({a:move(a),b:move(b)}))}:{})
+    }));
+    return result;
+  }
+
+  return {extend,midpoints,translate};
+})(geometry, surfaceClipper);
 const branding = (function createBranding() {
   const maxLogoCharacters = 350000;
   const maxLogoDimension = 512;
@@ -4543,6 +4670,7 @@ const planRenderingFactory = (function createPlanRendering(options){
  const requestFrame=options.requestFrame||win.requestAnimationFrame.bind(win),cancelFrame=options.cancelFrame||win.cancelAnimationFrame.bind(win);
  let pending=null,disposed=false;
  let detail=null,detailJob=null;
+ const detailThreshold=1.07;
  function request(){
   if(disposed||pending!==null)return;
   pending=requestFrame(()=>{pending=null;if(!disposed&&!doc.hidden)render();});
@@ -4558,7 +4686,7 @@ const planRenderingFactory = (function createPlanRendering(options){
  function clearDetail(){stopDetailJob();detail=null;}
  function paintPdfDetail(context,{pdf,page,width,height,baseScale}){
   const transform=context.getTransform(),density=Math.hypot(transform.a,transform.b);
-  if(disposed||!pdf||density<=1.15){clearDetail();return;}
+  if(disposed||!pdf||density<=detailThreshold){clearDetail();return;}
   const inverse=transform.inverse(),corners=[
    {x:0,y:0},{x:canvas.width,y:0},{x:0,y:canvas.height},{x:canvas.width,y:canvas.height}
   ].map(p=>inverse.transformPoint(p));
@@ -4572,8 +4700,8 @@ const planRenderingFactory = (function createPlanRendering(options){
   const margin=Math.ceil(48/density),x=Math.max(0,visible.x-margin),y=Math.max(0,visible.y-margin);
   const right=Math.min(width,visible.right+margin),bottom=Math.min(height,visible.bottom+margin);
   const w=right-x,h=bottom-y;
-  const ratio=Math.min(density*1.1,14,4095/w,4095/h,Math.sqrt(4_000_000/(w*h)));
-  if(!(ratio>1.15)){clearDetail();return;}
+  const ratio=Math.min(density*1.25,16,4095/w,4095/h,Math.sqrt(4_000_000/(w*h)));
+  if(!(ratio>detailThreshold)){clearDetail();return;}
   const key=[page,x,y,right,bottom,ratio].join(':');
   if(detail?.pdf===pdf&&detail.key===key){
    context.drawImage(detail.tile,detail.x,detail.y,detail.tile.width/detail.ratio,detail.tile.height/detail.ratio);
@@ -4603,7 +4731,7 @@ const planRenderingFactory = (function createPlanRendering(options){
    }catch{
     // A late or failed detail render leaves the original sheet available.
    }finally{job.renderTask=null;}
-  },80);
+  },48);
  }
  function dispose(){disposed=true;if(pending!==null)cancelFrame(pending);pending=null;clearDetail();observer?.disconnect();win.removeEventListener('resize',request);win.removeEventListener('focus',request);doc.removeEventListener('visibilitychange',request);}
  return {request,dispose,paintPdfDetail,clearDetail};
@@ -16091,8 +16219,24 @@ function renderPlanScene() {
   }
   ctx.restore();
   drawSelectionBox(ctx);
+  renderSurfaceQuickActions();
   if(!S.plan){ctx.fillStyle='#55605a';ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle='#7b847f';ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
   if(!planOverlayUI?.aligning())pdfIntelligenceUI?.paint();
+}
+function renderSurfaceQuickActions() {
+  const actions=$('#surfaceQuickActions');
+  if(!actions)return;
+  const target=S.plan&&!S.loading&&!S.detectJob&&!S.dragging&&!S.panning&&!S.selectionBox?.moved&&!planOverlayUI?.aligning()&&
+    ['select','edit'].includes(S.tool)&&actionableSurface();
+  if(!target){actions.hidden=true;return;}
+  const transform={width:S.plan.width,height:S.plan.height,rotation:viewRotation(),zoom:S.zoom,pan:S.pan};
+  const bounds=boundsOf(target.item.points.map(point=>view.planToScreen(point,transform)));
+  const width=canvas.clientWidth,height=canvas.clientHeight;
+  if(bounds.right<0||bounds.x>width||bounds.bottom<0||bounds.y>height){actions.hidden=true;return;}
+  const left=Math.max(8,Math.min(width-82,(bounds.x+bounds.right)/2-37));
+  const top=Math.max(8,Math.min(height-40,bounds.y>=40?bounds.y-37:bounds.y+8));
+  actions.hidden=false;
+  actions.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
 }
 draw();
 function itemQuantityText(item,withWaste=false) {
@@ -16399,14 +16543,13 @@ async function showPage(number,options={}) {
     const offscreen = window.document.createElement('canvas');
     offscreen.width = Math.ceil(viewport.width); offscreen.height = Math.ceil(viewport.height);
     const [,info] = await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise, inspectPdfScale(page,true)]);
-    const image = await decodeImage(offscreen.toDataURL());
     if (token !== S.renderVersion || document !== S.pdf) return;
-    S.page=number;S.plan=image;S.pageInfo[number]=info;rememberSheet(number,info);pdfIntelligenceUI?.capture(S.documentKey,number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
+    S.page=number;S.plan=offscreen;S.pageInfo[number]=info;rememberSheet(number,info);pdfIntelligenceUI?.capture(S.documentKey,number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
     if (!options.preserveQuantities && !S.scales[number] && info.candidates.length === 1 && !info.ambiguous) {
       const candidate = info.candidates[0]; S.scales[number] = candidate.feetPerInch / PDF_DPI;
       S.scaleMeta[number] = {...candidate,source:'automatic',verified:false}; recalculatePage(number);
     }
-    S.scale = S.scales[number] || null; S.loading = false;if(previousView){S.zoom=previousView.zoom;S.pan=previousView.pan;}else fitPlan(image);save();refresh();
+    S.scale = S.scales[number] || null; S.loading = false;if(previousView){S.zoom=previousView.zoom;S.pan=previousView.pan;}else fitPlan(offscreen);save();refresh();
   } catch (error) {
     if (token === S.renderVersion) { S.loading = false; refresh(); toast('Cette feuille ne peut pas être affichée : '+error.message); }
   }
@@ -16947,8 +17090,9 @@ function zoomAt(next,x=canvas.clientWidth/2,y=canvas.clientHeight/2) {
   draw();
   if(!S.plan)return;
   const changed=view.zoomAt({zoom:S.zoom,pan:S.pan},next,{x,y});S.zoom=changed.zoom;S.pan=changed.pan;
-  $('#zoomText').textContent=Math.round(next*100)+' %';
+  refreshZoomText();
 }
+function refreshZoomText(){const text=Math.round(S.zoom*100)+' %';if($('#zoomText').textContent!==text)$('#zoomText').textContent=text;}
 function fitPlan(image=S.plan) {
   draw();
   if(!image)return;
@@ -16971,7 +17115,7 @@ function activateTool(tool) {
   if(tool==='calibrate')return calibrationModal();
   if(tool==='tileOrigin')return activateOrigin();
   if(['rectangle','segment','dimension'].includes(tool)&&!S.scale)return calibrationModal();
-  if(['split','exclude','edit'].includes(tool)) {
+  if(['split','exclude','edit','moveSurface','extendSurface'].includes(tool)) {
     const parent=actionableSurface()?.item;
     if(!parent)return toast('Sélectionnez une surface avant d’utiliser cet outil.');
     if(tool==='split'&&(parent.parentId||Object.keys(parent.subzones||{}).length))return toast('Cette surface contient des sous-zones liées. Découpez une surface indépendante pour conserver ces liens.');
@@ -17059,7 +17203,7 @@ function keyboard(event) {
   if(['+','=','-','_','0','1','home','z'].includes(key)) {
     event.preventDefault();
     if(['+','='].includes(key))zoomAt(S.zoom*1.2);else if(['-','_'].includes(key))zoomAt(S.zoom/1.2);
-    else if(key==='1')zoomAt(1);else if(key==='z')zoomSelection();else fitPlan();refresh();return;
+    else if(key==='1')zoomAt(1);else if(key==='z')zoomSelection();else fitPlan();refreshZoomText();return;
   }
   if(key==='pageup'||key==='pagedown'){event.preventDefault();if(S.pdf){const page=S.page+(key==='pageup'?-1:1);if(planTabsUI)planTabsUI.navigateSheet(page);else showPage(page);}return;}
   if(key==='f2'){event.preventDefault();renameSelectedMeasure();return;}
@@ -17101,6 +17245,11 @@ function drawGuides(context) {
   const editable=focusedSurfaceEdit();
   if(editable) {
     for(const p of editable.item.points){const r=4/S.zoom;context.fillStyle='#ffffff';context.fillRect(p.x-r,p.y-r,r*2,r*2);context.strokeStyle='#256d54';context.lineWidth=1.5/S.zoom;context.strokeRect(p.x-r,p.y-r,r*2,r*2);}
+    if(S.tool==='edit')for(const point of surfaceEditing.midpoints(editable.item.points,24/S.zoom)){
+      const r=4/S.zoom;context.strokeStyle='#236d95';context.fillStyle='#e7f4fb';context.beginPath();
+      context.moveTo(point.x,point.y-r);context.lineTo(point.x+r,point.y);context.lineTo(point.x,point.y+r);context.lineTo(point.x-r,point.y);
+      context.closePath();context.fill();context.stroke();
+    }
   }
   context.restore();
 }
@@ -17123,20 +17272,85 @@ function validEditedItem(item) {
   }
   return !S.items.some(other=>other.id!==item.id&&other.page===item.page&&other.kind==='area'&&other.id!==item.parentId&&other.parentId!==item.id&&overlapItems(item,other));
 }
+function syncEditedSurface(item, translated=false) {
+  const scale=S.scales[item.page||S.page];
+  if(!translated)item.qty=isKitchenElevation(item)?lineLength(item.points)*scale:netArea(item)*scale**2;
+  item.status='à valider';
+  item.geometryEdited=true;
+  if(isKitchenElevation(item)){
+    item.wallTakeoff={...item.wallTakeoff,source:'manual',reviewed:false,elevation:{...item.wallTakeoff.elevation,geometryEdited:true}};
+    item.method='Contour de dosseret corrigé manuellement';
+  }
+}
+function syncEditedParent(item) {
+  const parent=S.items.find(other=>other.id===item.parentId);
+  if(!parent)return;
+  parent.subzones={...parent.subzones,[item.id]:structuredClone(item.points)};
+  syncEditedSurface(parent);
+}
+function insideSheet(item) {
+  return item.points.every(point=>point.x>=0&&point.y>=0&&point.x<=S.plan.width&&point.y<=S.plan.height);
+}
+function finishSurfaceExtension() {
+  const target=actionableSurface();
+  if(!target||S.draft.length<3)return toast('Tracez au moins trois points pour agrandir la surface.');
+  try{
+    const candidate={...target.item,...surfaceEditing.extend(target.item,S.draft)};
+    if(!insideSheet(candidate))throw new Error('L’extension dépasse la feuille.');
+    if(!(target.preview?validPreviewEditedItem(candidate,target.index):validEditedItem(candidate)))throw new Error('L’extension croise une autre mesure ou dépasse la surface parente.');
+    remember();
+    Object.assign(target.item,candidate);
+    syncEditedSurface(target.item);
+    if(!target.preview)syncEditedParent(target.item);
+    S.draft=[];S.tool='select';save();refresh();toast('Surface agrandie. Ctrl+Z pour annuler.');
+  }catch(error){toast(error.message);}
+}
+function startSurfaceMove(target,point,event) {
+  if(!(insideItem(point,target.item)||onRing(point,target.item.points)))return;
+  const before=snapshot(),ids=new Set([target.item.id]);
+  if(!target.preview){
+    for(let changed=true;changed;){
+      const size=ids.size;
+      for(const item of before.items)if(item.page===S.page&&(ids.has(item.parentId)||ids.has(item.sanitarySource?.parentId)))ids.add(item.id);
+      changed=ids.size!==size;
+    }
+  }
+  const originals=target.preview?[before.reviewByPage[S.page].items[target.index]]:before.items.filter(item=>ids.has(item.id));
+  S.dragging={type:target.preview?'previewMoveSurface':'moveSurface',id:target.item.id,indexInReview:target.index,before,start:point,originals};
+  canvas.setPointerCapture?.(event.pointerId);event.preventDefault();canvas.style.cursor='grabbing';
+}
+function applySurfaceMove(drag,point) {
+  const dx=point.x-drag.start.x,dy=point.y-drag.start.y;
+  for(const original of drag.originals){
+    const item=drag.type==='previewMoveSurface'?S.reviewByPage[S.page]?.items[drag.indexInReview]:S.items.find(item=>item.id===original.id);
+    if(item)Object.assign(item,surfaceEditing.translate(original,dx,dy));
+  }
+}
+function commitSurfaceMove(drag) {
+  const preview=drag.type==='previewMoveSurface';
+  const moved=preview?[S.reviewByPage[S.page]?.items[drag.indexInReview]]:drag.originals.map(original=>S.items.find(item=>item.id===original.id));
+  const valid=moved.every(item=>item&&insideSheet(item)&&
+    (item.kind!=='area'||(preview?validPreviewEditedItem(item,drag.indexInReview):validEditedItem(item))));
+  if(!valid){restoreSnapshot(drag.before);toast('Le déplacement croise une surface ou dépasse la feuille. Tracé restauré.');return false;}
+  for(const item of moved)if(item.kind==='area')syncEditedSurface(item,true);
+  if(!preview)syncEditedParent(moved.find(item=>item.id===drag.id));
+  S.tool='select';
+  return true;
+}
 function commitDrag(drag) {
   if(drag.type==='fixtureVertex')return commitFixtureDrag(drag);
+  if(['moveSurface','previewMoveSurface'].includes(drag.type)&&!commitSurfaceMove(drag))return;
   if(drag.type==='previewVertex') {
     const candidate=S.reviewByPage[S.page]?.items[drag.indexInReview];if(!candidate)return;
     if(!validPreviewEditedItem(candidate,drag.indexInReview)){restoreSnapshot(drag.before);toast('Ce déplacement croise un contour ou une exclusion. Proposition restaurée.');return;}
-    candidate.qty=netArea(candidate)*S.scale**2;candidate.status='à valider';candidate.method='Contour détecté corrigé';candidate.geometryEdited=true;
+    syncEditedSurface(candidate);candidate.method='Contour détecté corrigé';S.tool='edit';
     S.history.push(drag.before);S.history=S.history.slice(-40);S.redo=[];save();refresh();return;
   }
-  const item=S.items.find(i=>i.id===drag.id);if(!item)return;
+  const item=S.items.find(i=>i.id===drag.id);if(!item&&drag.type!=='previewMoveSurface')return;
   if(drag.type==='vertex') {
     if(!validEditedItem(item)){restoreSnapshot(drag.before);toast('Ce déplacement croise un contour ou une exclusion. Modification annulée.');return;}
-    item.qty=isKitchenElevation(item)?lineLength(item.points)*S.scales[item.page]:netArea(item)*S.scales[item.page]**2;item.status='à valider';
-    if(isKitchenElevation(item)){item.wallTakeoff={...item.wallTakeoff,source:'manual',reviewed:false,elevation:{...item.wallTakeoff.elevation,geometryEdited:true}};item.method='Contour de dosseret corrigé manuellement';}
-    const parent=S.items.find(i=>i.id===item.parentId);if(parent){parent.subzones[item.id]=structuredClone(item.points);parent.qty=netArea(parent)*S.scales[parent.page]**2;parent.status='à valider';}
+    syncEditedSurface(item);syncEditedParent(item);
+    if(item.kind==='area')S.tool='edit';
   }
   S.history.push(drag.before);S.history=S.history.slice(-40);S.redo=[];save();refresh();
 }
@@ -18053,6 +18267,14 @@ canvas.onclick=event=>{
   if(S.tool==='sanitaryPoint'){placeManualSanitary(point);return;}
   if(S.tool==='wallSamples'){recordWallSample(point);return;}
   if(handleManualClick(point,event))return;
+  if(S.tool==='extendSurface'){
+    const target=actionableSurface(),first=S.draft[0],last=S.draft.at(-1);
+    if(!target)return;
+    if(!first&&!(insideItem(point,target.item)||onRing(point,target.item.points)))return toast('Commencez l’extension dans la surface sélectionnée.');
+    if(S.draft.length>=3&&dist(first,point)*S.zoom<=9)return finishSurfaceExtension();
+    if(!last||dist(last,point)>.5)S.draft.push(point);
+    refreshManualUI();return;
+  }
   if(['fixtureBox','fixturePolygon'].includes(S.tool)){if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);if(S.tool==='fixtureBox'&&S.draft.length===2)finishFixtureDrawing();}
   else if(S.tool==='select')selectSurfaceAt(point,event);
   else if(S.tool==='tileOrigin')setTileOrigin(S.selected,point);
@@ -18082,9 +18304,28 @@ const measurementContextMenu=measurementContextMenuFactory({
   openLocation:id=>{workDialog(id);$('#workBlock')?.focus();},
   openTileSettings:()=>{tileModal();$('#tileFormat')?.focus();},
   activateOrigin:()=>activateOrigin(),canSetOrigin:item=>item.kind==='area'&&(item.material.startsWith('CER')||!!item.tiling),
-  additionalEntries:item=>sanitaryMenuEntries(item),pageEntries:()=>sanitaryMenuEntries(null),
+  additionalEntries:item=>[
+    ...(item.kind==='area'?[
+      {id:'custom-move-surface',label:'Déplacer',run:()=>activateTool('moveSurface')},
+      {id:'custom-edit-surface',label:'Modifier la surface',run:()=>activateTool('edit')},
+      {id:'custom-extend-surface',label:'Extension',run:()=>activateTool('extendSurface')},
+    ]:[]),...sanitaryMenuEntries(item),
+  ],pageEntries:()=>sanitaryMenuEntries(null),
 });
 measurementContextMenu.install();
+canvas.insertAdjacentHTML('afterend',`<div id="surfaceQuickActions" role="group" aria-label="Outils de la surface sélectionnée" hidden>
+  <button type="button" id="surfaceMoveBtn" aria-label="Déplacer la surface" title="Déplacer la surface"><i data-lucide="move" aria-hidden="true"></i></button>
+  <button type="button" id="surfaceExtendBtn" aria-label="Extension de surface" title="Extension de surface"><i data-lucide="square-plus" aria-hidden="true"></i></button>
+</div>`);
+document.head.insertAdjacentHTML('beforeend',`<style>
+#surfaceQuickActions:not([hidden]){position:absolute;z-index:7;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:6px;box-shadow:0 2px 7px #17354d25}
+#surfaceQuickActions button{display:grid;place-items:center;width:30px;height:27px;padding:0;border:0;background:transparent;color:var(--aite-blue,#236d95);border-radius:3px;cursor:pointer}
+#surfaceQuickActions button:hover,#surfaceQuickActions button:focus-visible{background:#e5eeff}
+#surfaceQuickActions svg{width:17px;height:17px}
+</style>`);
+$('#surfaceMoveBtn').onclick=()=>activateTool('moveSurface');
+$('#surfaceExtendBtn').onclick=()=>activateTool('extendSurface');
+lucide.createIcons();
 canvas.onpointerdown=event=>{
   draw();
   if(!S.plan||S.loading)return;S.dragged=false;canvas.focus();
@@ -18095,10 +18336,16 @@ canvas.onpointerdown=event=>{
   if(planOverlayUI?.pointerDown(event,canvasPoint(event))||planOverlayUI?.aligning())return;
   const item=S.items.find(i=>i.id===S.selected),point=canvasPoint(event);
   if(fixturePointerDown(event,point))return;
+  if(S.tool==='moveSurface'){
+    const target=actionableSurface();
+    if(target)startSurfaceMove(target,point,event);
+    return;
+  }
   const editable=focusedSurfaceEdit();
   if(editable) {
     const index=editable.item.points.findIndex(p=>dist(p,point)<=10/S.zoom);
-    if(index>=0){S.dragging={type:editable.preview?'previewVertex':'vertex',id:editable.item.id,index,indexInReview:editable.index,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();}
+    const midpoint=index<0&&S.tool==='edit'&&surfaceEditing.midpoints(editable.item.points,24/S.zoom).find(p=>dist(p,point)<=8/S.zoom);
+    if(index>=0||midpoint){S.dragging={type:editable.preview?'previewVertex':'vertex',id:editable.item.id,index:midpoint?midpoint.index:index,insert:!!midpoint,indexInReview:editable.index,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();}
   }else if(S.tool==='tileOrigin'&&item&&dist(tileLayout(item).origin,point)<=14/S.zoom) {
     S.dragging={type:'origin',id:item.id,before:snapshot(),start:point};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();
   }
@@ -18111,7 +18358,8 @@ canvas.onpointerdown=event=>{
 };
 canvas.onpointermove=event=>{
   if(!S.panning&&planOverlayUI?.pointerMove(event,canvasPoint(event)))return;
-  const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;refreshManualUI();
+  if(!S.plan||S.loading)return;
+  const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;draw();
   if(S.panning){S.pan={x:S.panning.pan.x+event.clientX-S.panning.x,y:S.panning.pan.y+event.clientY-S.panning.y};return;}
   if(S.selectionBox) {
     const rect=canvas.getBoundingClientRect(),box=S.selectionBox;box.end={x:event.clientX-rect.left,y:event.clientY-rect.top};
@@ -18119,9 +18367,11 @@ canvas.onpointermove=event=>{
   }
   if(S.dragging) {
     if(dist(point,S.dragging.start)*S.zoom>3)S.dragged=true;
+    if(['moveSurface','previewMoveSurface'].includes(S.dragging.type)){if(S.dragged)applySurfaceMove(S.dragging,point);return;}
     const item=S.dragging.type==='previewVertex'?S.reviewByPage[S.page]?.items[S.dragging.indexInReview]:S.items.find(i=>i.id===S.dragging.id);if(!item)return;
     if(S.dragging.type==='fixtureVertex'){const cut=item.fixtureCuts?.find(c=>c.id===S.dragging.cutId);if(cut)cut.points[S.dragging.index]=point;}
     else if(S.dragging.type==='origin')setTileOrigin(item.id,point,false);
+    else if(S.dragging.insert){if(S.dragged){item.points.splice(S.dragging.index,0,point);S.dragging.insert=false;}}
     else item.points[S.dragging.index]=point;
   }
 };
