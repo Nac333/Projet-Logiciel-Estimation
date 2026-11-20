@@ -2231,7 +2231,10 @@ function surfaceToolIcon(tool) {
   const shapes={
     move:'<path d="M12 8V2.8m-2.8 2.8L12 2.8l2.8 2.8M12 16v5.2m-2.8-2.8 2.8 2.8 2.8-2.8M8 12H2.8m2.8-2.8L2.8 12l2.8 2.8M16 12h5.2m-2.8-2.8 2.8 2.8-2.8 2.8"/><rect x="10" y="10" width="4" height="4" rx=".8"/>',
     edit:'<path d="M7 5h8l4 5v7M17 19H7m-2-2V7"/><rect x="3" y="3" width="4" height="4" rx=".8"/><rect x="3" y="17" width="4" height="4" rx=".8"/><rect x="17" y="17" width="4" height="4" rx=".8"/>',
-    extend:'<path d="M13 7H5a1 1 0 0 0-1 1v11h10V8a1 1 0 0 0-1-1Z"/><path d="M15 5h4m2 2v3m0 5v3h-4" stroke-dasharray="1.8 2.3"/><path d="M18.5 10v4m-2-2h4"/>'
+    extend:'<path d="M13 7H5a1 1 0 0 0-1 1v11h10V8a1 1 0 0 0-1-1Z"/><path d="M15 5h4m2 2v3m0 5v3h-4" stroke-dasharray="1.8 2.3"/><path d="M18.5 10v4m-2-2h4"/>',
+    subtract:'<path d="M13 7H5a1 1 0 0 0-1 1v11h7m3-11V7"/><rect x="11" y="10" width="9" height="9" rx="1" stroke-dasharray="1.6 2"/><path d="M13.5 14.5h4"/>',
+    split:'<path d="M5 9V6a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M5 15v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/><path d="M2.5 12h19" stroke-dasharray="2.3 2.1"/>',
+    merge:'<path d="M4 8h6V5h9a1 1 0 0 1 1 1v10h-6v3H5a1 1 0 0 1-1-1Z"/><path d="m8 10 2 2-2 2m8-4-2 2 2 2"/>'
   };
   return `<svg data-surface-icon="${tool}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[tool]}</svg>`;
 }
@@ -2276,7 +2279,7 @@ function initManualUI() {
     const button=$(selector);if(!button)return;
     button.type='button';button.className='manual-button';
     if(icon){
-      const symbol=icon==='surface-edit'?surfaceToolIcon('edit'):`<i data-lucide="${icon}" aria-hidden="true"></i>`;
+      const symbol=icon.startsWith('surface-')?surfaceToolIcon(icon.slice('surface-'.length)):`<i data-lucide="${icon}" aria-hidden="true"></i>`;
       button.innerHTML=`${symbol}<span>${label}</span>${button.id==='stepReview'?'<b id="reviewCount">0</b>':''}`;
     }
     if(title){button.title=title;button.setAttribute('aria-label',title);}
@@ -2296,7 +2299,7 @@ function initManualUI() {
   $('#wallLayersToggle').insertAdjacentHTML('afterend','<button type="button" id="wallSamplesBtn" class="manual-button manual-area" title="Trois exemples : mur extérieur, séparateur de logements, mur de corridor"><i data-lucide="scan-line"></i><span>3 exemples<br>de murs</span></button>');
   $('#wallSamplesBtn').onclick=startWallSamples;
   moveButton('[data-tool="edit"]',corrections,'surface-edit','Sommets','Modifier les sommets de la surface sélectionnée · E');
-  moveButton('[data-tool="split"]',corrections,'scissors','Découpe','Découper une surface par une ligne · F');
+  moveButton('[data-tool="split"]',corrections,'surface-split','Découpe','Découper une surface par une ligne · F');
   moveButton('#deleteSelection',corrections,'trash-2','Supprimer','Supprimer les mesures sélectionnées · Suppr');
   moveButton('#tileSettings',layout,'grid-3x3','Carreaux','Régler le format et la pose des carreaux');
   moveButton('#tileOriginBtn',layout,'locate-fixed','Origine','Choisir le point de départ de la céramique · T');
@@ -2428,6 +2431,7 @@ function manualStatusText() {
   if(S.tool==='edit')return 'Modifier la surface · Glissez un carré pour déplacer un sommet ou un losange pour en ajouter un.';
   if(S.tool==='moveSurface')return 'Déplacer la surface · Glissez son tracé à la nouvelle position.';
   if(S.tool==='extendSurface')return S.draft.length?'Extension · Continuez le contour, puis cliquez le premier point ou faites un double-clic.':'Extension · Cliquez le premier point dans la surface sélectionnée.';
+  if(S.tool==='mergeSurface')return 'Fusionner · Cliquez une deuxième surface contiguë du même fini. Échap pour annuler.';
   if(S.tool==='tileOrigin')return 'Point de départ : cliquez l’origine de pose de la céramique sélectionnée.';
   if(S.tool==='fixtureBox')return 'Bain ou douche : cliquez les deux coins opposés de l’emprise à retrancher · Échap pour annuler.';
   if(S.tool==='fixturePolygon')return 'Bain ou douche : cliquez les coins de l’emprise, puis Entrée pour la retrancher.';
@@ -3406,6 +3410,24 @@ const surfaceEditing = (function createSurfaceEditing(geometry, clipping) {
     return {points,holes};
   }
 
+  function merge(first, second) {
+    const surfaces=[first,second].map(item=>{
+      const rings=[item.points,...getHoles(item)];
+      if(!rings.every(ring=>ring.length<=20000&&validPolygon(ring))){
+        throw new Error('Corrigez les contours et les exclusions avant de fusionner.');
+      }
+      const [outer,...holes]=rings.map(ringToClip);
+      return holes.length?clipping.difference([outer],...holes.map(hole=>[hole])):[[outer]];
+    });
+    const union=clipping.union(...surfaces);
+    if(union.length!==1)throw new Error('Choisissez deux surfaces qui se touchent par un bord ou se recouvrent.');
+    const [points,...holes]=union[0].map(ringFromClip);
+    if(![points,...holes].every(ring=>ring.length<=20000&&validPolygon(ring))){
+      throw new Error('La fusion crée un contour invalide.');
+    }
+    return {points,holes};
+  }
+
   function midpoints(points, minimumLength) {
     return points.flatMap((start,index)=>{
       const end=points[(index+1)%points.length];
@@ -3434,7 +3456,7 @@ const surfaceEditing = (function createSurfaceEditing(geometry, clipping) {
     return result;
   }
 
-  return {extend,midpoints,translate};
+  return {extend,merge,midpoints,translate};
 })(geometry, surfaceClipper);
 const branding = (function createBranding() {
   const maxLogoCharacters = 350000;
@@ -16244,9 +16266,23 @@ function renderSurfaceQuickActions() {
   const bounds=boundsOf(target.item.points.map(point=>view.planToScreen(point,transform)));
   const width=canvas.clientWidth,height=canvas.clientHeight;
   if(bounds.right<0||bounds.x>width||bounds.bottom<0||bounds.y>height){actions.hidden=true;return;}
-  const left=Math.max(8,Math.min(width-82,(bounds.x+bounds.right)/2-37));
-  const top=Math.max(8,Math.min(height-40,bounds.y>=40?bounds.y-37:bounds.y+8));
   actions.hidden=false;
+  const barWidth=actions.offsetWidth,barHeight=actions.offsetHeight;
+  const maxLeft=width-barWidth-8,maxTop=height-barHeight-8;
+  let left=Math.max(8,Math.min(maxLeft,(bounds.x+bounds.right-barWidth)/2));
+  let top=Math.max(8,Math.min(maxTop,bounds.y>=barHeight+8?bounds.y-barHeight-8:bounds.y+8));
+  const navigation=$('#floatingPlanNavigation')?.getBoundingClientRect();
+  if(navigation?.width&&navigation.height){
+    const viewer=canvas.getBoundingClientRect();
+    const rail={left:navigation.left-viewer.left,right:navigation.right-viewer.left,
+      top:navigation.top-viewer.top,bottom:navigation.bottom-viewer.top};
+    if(left<rail.right+6&&left+barWidth>rail.left-6&&top<rail.bottom+6&&top+barHeight>rail.top-6){
+      if(rail.right+6<=maxLeft)left=rail.right+6;
+      else if(rail.left-barWidth-6>=8)left=rail.left-barWidth-6;
+      else if(rail.bottom+6<=maxTop)top=rail.bottom+6;
+      else if(rail.top-barHeight-6>=8)top=rail.top-barHeight-6;
+    }
+  }
   actions.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
 }
 draw();
@@ -17022,7 +17058,9 @@ function finishArea(points,method='Tracé polygonal') {
   const target=actionableSurface(),parent=target?.item;
   if(['split','exclude'].includes(S.tool)&&(!parent||!containsRing(parent,points)))return toast('La sous-zone doit rester entièrement à l’intérieur de la surface sélectionnée, sans croiser une exclusion.');
   if(S.tool==='exclude') {
-    remember();parent.holes=[...(parent.holes||[]),structuredClone(points)];parent.qty=netArea(parent)*S.scale*S.scale;parent.status='à valider';if(target.preview){parent.geometryEdited=true;parent.method='Contour détecté corrigé';}S.draft=[];S.tool='select';save();refresh();return;
+    remember();parent.holes=[...(parent.holes||[]),structuredClone(points)];syncEditedSurface(parent);
+    if(target.preview)parent.method='Contour détecté corrigé';
+    S.draft=[];S.tool='select';save();refresh();return;
   }
   const material=mat(S.material),item={id:uid(),kind:'area',name:'Zone '+(S.items.filter(i=>i.kind==='area').length+1),material:material.code,
     points:structuredClone(points),holes:[],qty:area(points)*S.scale*S.scale,waste:0,wasteConfirmed:false,work:{layer:S.settings.activeLayer||'finish'},page:S.page,status:'à valider',method:S.tool==='split'?'Sous-zone retranchée':method};
@@ -17125,8 +17163,8 @@ function activateTool(tool) {
   S.fixtureDrawing=null;S.fixtureEditing=null;
   if(tool==='calibrate')return calibrationModal();
   if(tool==='tileOrigin')return activateOrigin();
-  if(['rectangle','segment','dimension'].includes(tool)&&!S.scale)return calibrationModal();
-  if(['split','exclude','edit','moveSurface','extendSurface'].includes(tool)) {
+  if(['rectangle','segment','dimension','mergeSurface'].includes(tool)&&!S.scale)return calibrationModal();
+  if(['split','exclude','edit','moveSurface','extendSurface','mergeSurface'].includes(tool)) {
     const parent=actionableSurface()?.item;
     if(!parent)return toast('Sélectionnez une surface avant d’utiliser cet outil.');
     if(tool==='split'&&(parent.parentId||Object.keys(parent.subzones||{}).length))return toast('Cette surface contient des sous-zones liées. Découpez une surface indépendante pour conserver ces liens.');
@@ -17429,6 +17467,45 @@ function finishSurfaceSplit() {
     else {S.items=S.items.flatMap(item=>item.id===source.id?items:[item]);setSelection(items.map(item=>item.id));}
     S.draft=[];S.tool='select';save();refresh();toast(items.length+' surfaces obtenues · superficie nette conservée · à valider.'+(source.work?.baseboard?.enabled?' Plinthes liées désactivées : vérifiez les nouveaux parcours.':''));
   }catch(error){S.draft=[];refresh();toast(error.message);}
+}
+function surfaceMergeKey(item) {
+  const work=workOf(item);
+  return JSON.stringify([item.material,work.layer,work.included,work.roomBoundary,
+    work.block,work.level,work.unitId,work.roomId,work.unit,item.detectedUnit?.code||'',
+    work.repeat,work.productId,work.specificationId,work.specificationUsage,
+    item.waste??0,!!item.bathroom,!!item.laundry]);
+}
+function finishSurfaceMerge(point) {
+  const target=actionableSurface();
+  if(!target)return toast('Sélectionnez d’abord la surface à fusionner.');
+  const source=target.item,proposals=S.reviewByPage[S.page]?.items||[];
+  const pool=target.preview?proposals:S.items;
+  const other=pool.findLast(item=>item!==source&&item.kind==='area'&&(item.page||S.page)===S.page&&!item.duplicate&&insideItem(point,item));
+  if(!other)return toast('Cliquez dans la deuxième surface à fusionner.');
+  try {
+    if(target.preview&&linkedDetectedItem(other))throw new Error('Fusionnez deux propositions ou deux mesures du relevé.');
+    if(surfaceMergeKey(source)!==surfaceMergeKey(other))throw new Error('Choisissez des surfaces du même fini, avec des affectations et réglages compatibles.');
+    const hasLinks=item=>item.parentId||Object.keys(item.subzones||{}).length||item.wallTakeoff||
+      item.fixtureCuts?.length||item.fixturePending?.length||item.sanitaryEvidence?.length||workOf(item).revisionMatchId;
+    if([source,other].some(hasLinks)||S.items.some(item=>item.sanitarySource?.parentId&&[source.id,other.id].includes(item.sanitarySource.parentId))){
+      throw new Error('Les sous-zones, repères de révision et appareils liés doivent conserver leur surface.');
+    }
+    const result=surfaceEditing.merge(source,other);
+    const baseboard=workOf(source).baseboard.enabled||workOf(other).baseboard.enabled;
+    remember();
+    Object.assign(source,result,{method:'Fusion de surfaces'});
+    if(baseboard)source.work={...source.work,baseboard:{...workOf(source).baseboard,enabled:false}};
+    syncEditedSurface(source);
+    if(target.preview){
+      proposals.splice(proposals.indexOf(other),1);
+      S.previewSelection=new Set();S.previewFocus=proposals.indexOf(source);
+    }else{
+      forgetAutomaticMeasures(new Set([other.id]));
+      S.previewSelection=new Set();S.previewFocus=null;setSelection([source.id]);
+    }
+    S.draft=[];S.tool='select';save();refresh();
+    toast('Surfaces fusionnées. Ctrl+Z pour annuler.'+(baseboard?' Vérifiez le nouveau parcours des plinthes.':''));
+  }catch(error){toast(error.message);}
 }
 function validPreviewEditedItem(item,index) {
   if(!validPolygon(item.points)||!strictInteriorHoles(item).every(hole=>hole.every(point=>inside(point,item.points)||onRing(point,item.points))&&!ringsCross(hole,item.points)))return false;
@@ -18274,6 +18351,7 @@ canvas.onclick=event=>{
   if(!S.plan||S.loading||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
   if(planOverlayUI?.pick(canvasPoint(event)))return;
+  if(S.tool==='mergeSurface')return finishSurfaceMerge(canvasPoint(event));
   const point=snapPoint(canvasPoint(event),event);
   if(S.tool==='sanitaryPoint'){placeManualSanitary(point);return;}
   if(S.tool==='wallSamples'){recordWallSample(point);return;}
@@ -18326,16 +18404,25 @@ const measurementContextMenu=measurementContextMenuFactory({
 measurementContextMenu.install();
 canvas.insertAdjacentHTML('afterend',`<div id="surfaceQuickActions" role="group" aria-label="Outils de la surface sélectionnée" hidden>
   <button type="button" id="surfaceMoveBtn" aria-label="Déplacer la surface" title="Déplacer la surface">${surfaceToolIcon('move')}</button>
-  <button type="button" id="surfaceExtendBtn" aria-label="Extension de surface" title="Extension de surface">${surfaceToolIcon('extend')}</button>
+  <div class="surface-shape-actions" role="group" aria-label="Modifier le contour">
+    <button type="button" id="surfaceExtendBtn" aria-label="Extension de surface" title="Extension de surface">${surfaceToolIcon('extend')}</button>
+    <button type="button" id="surfaceSubtractBtn" aria-label="Soustraire de la surface" title="Soustraire de la surface · X">${surfaceToolIcon('subtract')}</button>
+    <button type="button" id="surfaceSplitBtn" aria-label="Couper la surface" title="Couper la surface · F">${surfaceToolIcon('split')}</button>
+    <button type="button" id="surfaceMergeBtn" aria-label="Fusionner les surfaces" title="Fusionner avec une deuxième surface">${surfaceToolIcon('merge')}</button>
+  </div>
 </div>`);
 document.head.insertAdjacentHTML('beforeend',`<style>
-#surfaceQuickActions:not([hidden]){position:absolute;z-index:7;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:6px;box-shadow:0 2px 7px #17354d25}
+#surfaceQuickActions:not([hidden]){position:absolute;z-index:3;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:6px;box-shadow:0 2px 7px #17354d25}
+#surfaceQuickActions .surface-shape-actions{display:flex;gap:3px;padding-left:3px;border-left:1px solid var(--aite-border,#7d8999)}
 #surfaceQuickActions button{display:grid;place-items:center;width:30px;height:27px;padding:0;border:0;background:transparent;color:var(--aite-blue,#236d95);border-radius:3px;cursor:pointer}
 #surfaceQuickActions button:hover,#surfaceQuickActions button:focus-visible{background:#e5eeff}
 #surfaceQuickActions svg{width:17px;height:17px}
 </style>`);
 $('#surfaceMoveBtn').onclick=()=>activateTool('moveSurface');
 $('#surfaceExtendBtn').onclick=()=>activateTool('extendSurface');
+$('#surfaceSubtractBtn').onclick=()=>activateTool('exclude');
+$('#surfaceSplitBtn').onclick=()=>activateTool('split');
+$('#surfaceMergeBtn').onclick=()=>activateTool('mergeSurface');
 lucide.createIcons();
 canvas.onpointerdown=event=>{
   draw();
