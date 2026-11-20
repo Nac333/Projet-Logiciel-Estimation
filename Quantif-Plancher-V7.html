@@ -4702,8 +4702,10 @@ const planRenderingFactory = (function createPlanRendering(options){
  const {canvas,render}=options,doc=canvas.ownerDocument,win=doc.defaultView;
  const requestFrame=options.requestFrame||win.requestAnimationFrame.bind(win),cancelFrame=options.cancelFrame||win.cancelAnimationFrame.bind(win);
  let pending=null,disposed=false;
- let detail=null,detailJob=null;
- const detailThreshold=1.07;
+ let pdfView=null,detailJob=null;
+ const maximumPixels=4_000_000;
+ const covers=(tile,region)=>tile.x<=region.x&&tile.y<=region.y&&tile.right>=region.right&&tile.bottom>=region.bottom;
+ const intersects=(tile,region)=>tile.x<region.right&&tile.y<region.bottom&&tile.right>region.x&&tile.bottom>region.y;
  function request(){
   if(disposed||pending!==null)return;
   pending=requestFrame(()=>{pending=null;if(!disposed&&!doc.hidden)render();});
@@ -4713,13 +4715,42 @@ const planRenderingFactory = (function createPlanRendering(options){
  function stopDetailJob(){
   if(!detailJob)return;
   const stopped=detailJob;detailJob=null;
-  win.clearTimeout(stopped.timer);
-  stopped.renderTask?.cancel();
+  stopped.task?.cancel();
  }
- function clearDetail(){stopDetailJob();detail=null;}
+ function clearDetail(){stopDetailJob();pdfView=null;}
+ function setPdfPreview(pdf,page,preview){
+  clearDetail();
+  pdfView={pdf,page,preview,tiles:[]};
+ }
+ function rasterTile(source,region,ratio,baseScale){
+  const tile=doc.createElement('canvas');
+  const leftPx=Math.floor(region.x*ratio),topPx=Math.floor(region.y*ratio);
+  tile.width=Math.ceil(region.right*ratio)-leftPx;
+  tile.height=Math.ceil(region.bottom*ratio)-topPx;
+  const task=source.render({canvasContext:tile.getContext('2d'),viewport:source.getViewport({scale:baseScale*ratio}),
+   transform:[1,0,0,1,-leftPx,-topPx]});
+  return {task,tile,x:leftPx/ratio,y:topPx/ratio,right:(leftPx+tile.width)/ratio,bottom:(topPx+tile.height)/ratio,ratio};
+ }
+ async function preparePdfPreview(source,{width,height,baseScale,density}){
+  if(density>1.05||Math.abs(density-1)<.04||density<.08||
+     Math.ceil(width*density)*Math.ceil(height*density)>maximumPixels||Math.max(width,height)*density>4092)return null;
+  try{
+   const {task,...preview}=rasterTile(source,{x:0,y:0,right:width,bottom:height},density,baseScale);
+   await task.promise;return preview;
+  }catch{return null;}
+ }
+ function drawTile(context,tile,transform,density){
+  context.save();
+  if(Math.abs(tile.ratio-density)<1e-5){
+   context.setTransform(transform.a,transform.b,transform.c,transform.d,Math.round(transform.e),Math.round(transform.f));
+  }
+  context.drawImage(tile.tile,tile.x,tile.y,tile.tile.width/tile.ratio,tile.tile.height/tile.ratio);
+  context.restore();
+ }
  function paintPdfDetail(context,{pdf,page,width,height,baseScale}){
+  if(disposed||!pdf)return;
+  if(pdfView?.pdf!==pdf||pdfView.page!==page)setPdfPreview(pdf,page,null);
   const transform=context.getTransform(),density=Math.hypot(transform.a,transform.b);
-  if(disposed||!pdf||density<=detailThreshold){clearDetail();return;}
   const inverse=transform.inverse(),corners=[
    {x:0,y:0},{x:canvas.width,y:0},{x:0,y:canvas.height},{x:canvas.width,y:canvas.height}
   ].map(p=>inverse.transformPoint(p));
@@ -4729,45 +4760,46 @@ const planRenderingFactory = (function createPlanRendering(options){
    right:Math.min(width,Math.ceil(Math.max(...corners.map(p=>p.x)))),
    bottom:Math.min(height,Math.ceil(Math.max(...corners.map(p=>p.y))))
   };
-  if(visible.x>=visible.right||visible.y>=visible.bottom){clearDetail();return;}
-  const margin=Math.ceil(48/density),x=Math.max(0,visible.x-margin),y=Math.max(0,visible.y-margin);
-  const right=Math.min(width,visible.right+margin),bottom=Math.min(height,visible.bottom+margin);
-  const w=right-x,h=bottom-y;
-  const ratio=Math.min(density*1.25,16,4095/w,4095/h,Math.sqrt(4_000_000/(w*h)));
-  if(!(ratio>detailThreshold)){clearDetail();return;}
-  const key=[page,x,y,right,bottom,ratio].join(':');
-  if(detail?.pdf===pdf&&detail.key===key){
-   context.drawImage(detail.tile,detail.x,detail.y,detail.tile.width/detail.ratio,detail.tile.height/detail.ratio);
-   stopDetailJob();return;
-  }
-  if(detail?.pdf!==pdf||detail.page!==page)detail=null;
-  if(detailJob?.pdf===pdf&&detailJob.key===key)return;
+  if(!Number.isFinite(density)||visible.x>=visible.right||visible.y>=visible.bottom){stopDetailJob();return;}
+  const view=pdfView,preview=view.preview;
+  if(preview&&Math.abs(preview.ratio-density)<density*.08)drawTile(context,preview,transform,density);
+  if(density<=1.07){stopDetailJob();return;}
+  // Keep usable high-definition pixels visible while a wider or finer crop renders.
+  const tiles=view.tiles.filter(tile=>intersects(tile,visible)).sort((a,b)=>a.ratio-b.ratio);
+  for(const tile of tiles)drawTile(context,tile,transform,density);
+
+  const w=visible.right-visible.x,h=visible.bottom-visible.y;
+  const budget=Math.max(maximumPixels,Math.min(8_000_000,Math.ceil(canvas.width*canvas.height*1.16)));
+  const level=Math.pow(2,Math.ceil(Math.log2(density*1.38)*2)/2);
+  const limit=region=>Math.min(32,4092/(region.right-region.x),4092/(region.bottom-region.y),
+   Math.sqrt((budget-16_384)/((region.right-region.x)*(region.bottom-region.y))));
+  const margin=Math.ceil(132/density);
+  let region={x:Math.max(0,visible.x-margin),y:Math.max(0,visible.y-margin),
+   right:Math.min(width,visible.right+margin),bottom:Math.min(height,visible.bottom+margin)};
+  if(limit(region)<density&&limit(visible)>limit(region))region=visible;
+  const ratio=Math.min(level,limit(region)),adequate=Math.min(ratio,density*1.07);
+  if(!(ratio>1.07)||!(w*h>0))return;
+  if(tiles.some(tile=>covers(tile,visible)&&tile.ratio>=adequate*0.999)){stopDetailJob();return;}
+  if(detailJob?.ratio>=adequate*0.999&&covers(detailJob.region,visible))return;
   stopDetailJob();
-  const job={pdf,key,renderTask:null,timer:null};
+  const job={region,ratio,task:null};
   detailJob=job;
-  // Keep the first raster responsive during a gesture. Only the viewport
-  // crop is re-read, in a separate canvas with the original plan coordinates.
-  job.timer=win.setTimeout(async()=>{
+  (async()=>{
    try{
     const source=await pdf.getPage(page);
     if(detailJob!==job)return;
-    const tile=doc.createElement('canvas');
-    // Use the same page pixel grid for neighboring crops. This avoids moving
-    // the samples of a thin stroke when the viewport shifts.
-    const leftPx=Math.floor(x*ratio),topPx=Math.floor(y*ratio);
-    tile.width=Math.ceil(right*ratio)-leftPx;tile.height=Math.ceil(bottom*ratio)-topPx;
-    job.renderTask=source.render({canvasContext:tile.getContext('2d'),viewport:source.getViewport({scale:baseScale*ratio}),
-     transform:[1,0,0,1,-leftPx,-topPx]});
-    await job.renderTask.promise;
+    const {task,...tile}=rasterTile(source,region,ratio,baseScale);
+    job.task=task;
+    await task.promise;
     if(detailJob!==job)return;
-    detail={pdf,page,key,tile,x:leftPx/ratio,y:topPx/ratio,ratio};request();
+    view.tiles=[...view.tiles.slice(-1),tile];request();
    }catch{
-    // A late or failed detail render leaves the original sheet available.
-   }finally{job.renderTask=null;}
-  },48);
+    // Keep the previous crop or the canonical sheet after a failed raster.
+   }finally{if(detailJob===job)detailJob=null;}
+  })();
  }
  function dispose(){disposed=true;if(pending!==null)cancelFrame(pending);pending=null;clearDetail();observer?.disconnect();win.removeEventListener('resize',request);win.removeEventListener('focus',request);doc.removeEventListener('visibilitychange',request);}
- return {request,dispose,paintPdfDetail,clearDetail};
+ return {request,dispose,paintPdfDetail,clearDetail,suspendDetail:stopDetailJob,preparePdfPreview,setPdfPreview};
 });
 const physicalUnits = (function createPhysicalUnits() {
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
@@ -16221,15 +16253,20 @@ function finishLine(points){if(!S.scale)return toast('Calibrez d’abord le plan
 function draw() {planRendering.request();}
 function renderPlanScene() {
   const d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;
-  if(canvas.width!==w*d||canvas.height!==h*d){canvas.width=w*d;canvas.height=h*d;}
+  const pixelWidth=Math.round(w*d),pixelHeight=Math.round(h*d);
+  if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
   ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#f1f4f7';ctx.fillRect(0,0,w,h);
   ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);
   if(S.plan){const rotation=viewRotation();if(rotation===90)ctx.transform(0,1,-1,0,S.plan.height,0);else if(rotation===180)ctx.transform(-1,0,0,-1,S.plan.width,S.plan.height);else if(rotation===270)ctx.transform(0,-1,1,0,0,S.plan.width);}
-  if(!S.plan||S.loading||planOverlayUI?.aligning())planRendering.clearDetail();
+  if(!S.plan)planRendering.clearDetail();
+  else if(S.loading||planOverlayUI?.aligning())planRendering.suspendDetail();
   if(!planOverlayUI?.paintAlignment(ctx)){
   if(S.plan){
+    ctx.save();
+    if(S.pdf){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='medium';}
     ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';
     if(!S.loading)planRendering.paintPdfDetail(ctx,{pdf:S.pdf,page:S.page,width:S.plan.width,height:S.plan.height,baseScale:PDF_RENDER_SCALE});
+    ctx.restore();
   }
   planOverlayUI?.paint(ctx);
   for(const item of S.items.filter(item=>item.page===S.page)) {
@@ -16589,14 +16626,21 @@ async function showPage(number,options={}) {
     const page = await document.getPage(number), viewport = page.getViewport({scale:PDF_RENDER_SCALE});
     const offscreen = window.document.createElement('canvas');
     offscreen.width = Math.ceil(viewport.width); offscreen.height = Math.ceil(viewport.height);
-    const [,info] = await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise, inspectPdfScale(page,true)]);
+    const fitted=view.fit({width:offscreen.width,height:offscreen.height,
+      canvasWidth:canvas.clientWidth||800,canvasHeight:canvas.clientHeight||600,rotation:S.settings?.pageRotations?.[number]||0});
+    const density=(previousView||fitted).zoom*(devicePixelRatio||1);
+    const [,info,preview] = await Promise.all([
+      page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true),
+      planRendering.preparePdfPreview(page,{width:offscreen.width,height:offscreen.height,baseScale:PDF_RENDER_SCALE,density})
+    ]);
     if (token !== S.renderVersion || document !== S.pdf) return;
     S.page=number;S.plan=offscreen;S.pageInfo[number]=info;rememberSheet(number,info);pdfIntelligenceUI?.capture(S.documentKey,number,info);S.detectorCache=null;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.dragging=null;S.tool='select'; S.draft = []; setSelection([]); S.anchorId = null;
     if (!options.preserveQuantities && !S.scales[number] && info.candidates.length === 1 && !info.ambiguous) {
       const candidate = info.candidates[0]; S.scales[number] = candidate.feetPerInch / PDF_DPI;
       S.scaleMeta[number] = {...candidate,source:'automatic',verified:false}; recalculatePage(number);
     }
-    S.scale = S.scales[number] || null; S.loading = false;if(previousView){S.zoom=previousView.zoom;S.pan=previousView.pan;}else fitPlan(offscreen);save();refresh();
+    S.scale = S.scales[number] || null; S.loading = false;if(previousView){S.zoom=previousView.zoom;S.pan=previousView.pan;}else fitPlan(offscreen);
+    planRendering.setPdfPreview(document,number,preview);save();refresh();
   } catch (error) {
     if (token === S.renderVersion) { S.loading = false; refresh(); toast('Cette feuille ne peut pas être affichée : '+error.message); }
   }
