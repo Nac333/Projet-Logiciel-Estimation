@@ -1745,6 +1745,7 @@ function validateFloorEvidence(item) {
   if(item.kind!=='area'||!value||typeof value!=='object'||Object.keys(value).some(key=>!keys.includes(key))||value.source!=='local-envelope'||value.status!=='proposed'||value.maximumClosureInches!==144||!['inside','outside','walls','total'].every(key=>Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=100000000)||value.inside+value.outside+value.walls!==value.total)throw new Error('La preuve d’enveloppe intérieure est invalide.');
 }
 function validateDetectionOptions(settings,pages=S.pages) {
+  if(settings?.unitInventory!==undefined)physicalUnits.validateInventory(settings.unitInventory,pages);
   if(settings?.wallSamples!==undefined)validateWallSamples(settings,pages);
   if(settings?.kitchenBacksplash!==undefined)kitchenBacksplashes.validateConfig(settings.kitchenBacksplash);
   if(settings?.kitchenBacksplashRejects!==undefined&&(!Array.isArray(settings.kitchenBacksplashRejects)||settings.kitchenBacksplashRejects.length>20000||new Set(settings.kitchenBacksplashRejects).size!==settings.kitchenBacksplashRejects.length||settings.kitchenBacksplashRejects.some(key=>typeof key!=='string'||!key.startsWith('kitchen:')||key.length>4000)))throw new Error('Refus de dosserets invalides.');
@@ -2103,10 +2104,11 @@ function getLocalRoomEngine() {
   return localRoomEngine;
 }
 async function runDetectionPages(pages) {
-  const job={cancelled:false,key:S.documentKey,pdf:S.pdf,requestId:uid(),generation:S.detectionGeneration=(S.detectionGeneration||0)+1},notes=[],modelsByPage=new Map();S.detectJob=job;S.detectionNotes=[];
+  const job={cancelled:false,key:S.documentKey,pdf:S.pdf,requestId:uid(),generation:S.detectionGeneration=(S.detectionGeneration||0)+1},notes=[],modelsByPage=new Map(),unitPages=new Map();S.detectJob=job;S.detectionNotes=[];
   S.reviewMode='area';S.reviewBatchPages=[...pages];S.previewFocus=null;S.previewSelection=new Set();S.selectionBox=null;S.fixturePreview=null;S.reviewOffset=0;S.reviewFilter='all';
   for(const page of pages)delete S.reviewByPage[page];
   openDialog('Analyse des feuilles',`<p id="detectionProgress" role="status" aria-live="polite">Préparation…</p><progress id="detectionProgressBar" max="${pages.length}" value="0"></progress><p>L’arrêt prend effet entre deux feuilles. Les résultats déjà obtenus sont conservés.</p><button type="button" id="stopDetection">Arrêter après cette feuille</button>`);
+  renderUnitInventory();
   $('#stopDetection').onclick=()=>{job.cancelled=true;$('#stopDetection').disabled=true;$('#stopDetection').textContent='Arrêt demandé…';};
   const settings=structuredClone(S.settings),material=S.material,engine=getLocalRoomEngine();
   for(let index=0;index<pages.length;index++) {
@@ -2116,6 +2118,12 @@ async function runDetectionPages(pages) {
     try {
       const {image,info}=await detectionSource(page);if(job.cancelled||job.key!==S.documentKey||S.detectJob!==job)break;
       S.pageInfo[page]=info;rememberSheet(page,info);
+      const floor=quantityTransfer.floorContext(S.sheetNames[page],page,info);
+      if(!info.readError&&(floor.primary||!floor.title)) {
+        const units=physicalUnits.roster((info.labels||[]).map(label=>label.physicalUnit||{label:label.text}));
+        if(units.length<=3000)unitPages.set(page,units);
+        else notes.push({page,message:'Plus de 3 000 repères de logements sur cette feuille : comptage à vérifier.'});
+      }
       if(!S.scales[page]&&info.candidates?.length===1&&!info.ambiguous){const candidate=info.candidates[0];S.scales[page]=candidate.feetPerInch/PDF_DPI;S.scaleMeta[page]={...candidate,source:'automatic',verified:false};}
       if(settings.kitchenBacksplash?.enabled&&kitchenBacksplashes.isView(info)){notes.push({page,message:'Élévation cuisine réservée au relevé des dosserets, hors plancher.'});continue;}
       const scale=S.scales[page];
@@ -2164,7 +2172,9 @@ async function runDetectionPages(pages) {
   S.detectionNotes=notes;closeDialog();
   const first=Object.keys(S.reviewByPage).map(Number).find(page=>pages.includes(page));
   if(first&&(!pages.includes(S.page)||!S.reviewByPage[S.page]))await showPage(first);
+  if(S.documentKey!==job.key||S.pdf!==job.pdf||S.detectionGeneration!==job.generation)return;
   remember();
+  S.settings.unitInventory={...S.settings.unitInventory,...Object.fromEntries(unitPages)};
   for(const entry of kitchen.scales)if(!S.scales[entry.page]){S.scales[entry.page]=entry.scale;S.scaleMeta[entry.page]=entry.meta;}
   const batch=reviewBatchCandidates(),refreshed=refreshAutomaticContours(batch,modelsByPage);
   if(refreshed.updates.length)notes.push({page:S.page,message:refreshed.updates.length+' ancien(s) contour(s) automatique(s) actualisé(s) · brouillons à valider'});
@@ -2633,9 +2643,44 @@ function initFoldersUI() {
   if(!Array.isArray(S.folders))S.folders=[];
   if($('#measureFolderTools'))return;
   $('#measureTree').insertAdjacentHTML('beforebegin',`<div id="measureFolderTools" class="measure-folder-tools" aria-label="Organisation des mesures"><button type="button" id="newMeasureFolder" title="Créer un dossier de mesures"><i data-lucide="folder-plus" aria-hidden="true"></i><span>Dossier +</span></button><button type="button" id="assignMeasureFolder" title="Classer les mesures sélectionnées"><i data-lucide="folder-input" aria-hidden="true"></i><span>Classer</span></button></div>`);
+  $('#measureTree').insertAdjacentHTML('beforebegin',`<details id="unitInventoryFolder" class="finish-measure-group" hidden><summary>${measureFolders.svg('folder')}<span class="finish-group-name"><b>Nombre d’unités</b><small id="unitInventoryScope">Document actif</small></span><b id="unitInventoryTotal"></b></summary><div id="unitInventoryContents"></div></details>`);
   $('#newMeasureFolder').onclick=()=>folderDialog(null,selectedFolderItems().length>0);
   $('#assignMeasureFolder').onclick=assignFolderDialog;
   lucide.createIcons();
+}
+function renderUnitInventory() {
+  const folder=$('#unitInventoryFolder');
+  if(!folder)return;
+  const saved=S.settings.unitInventory,scanning=!!S.detectJob,legacy=new Map(),byPage=new Map(Object.entries(saved||{}).map(([page,units])=>[+page,units]));
+  for(const item of S.items) {
+    if(item.kind!=='area'||!item.detectedUnit||byPage.has(item.page))continue;
+    if(!legacy.has(item.page))legacy.set(item.page,[]);
+    legacy.get(item.page).push(item.detectedUnit);
+  }
+  for(const [page,units] of legacy) {
+    const roster=physicalUnits.roster(units);
+    if(roster.length)byPage.set(page,roster);
+  }
+  folder.hidden=!S.plan||(!scanning&&!saved&&!byPage.size);
+  if(folder.hidden){folder.open=false;return;}
+  const pages=[...byPage].sort(([a],[b])=>a-b),total=pages.reduce((sum,[,units])=>sum+units.length,0);
+  $('#unitInventoryScope').textContent=scanning?'Lecture des feuilles…':'Document actif · repères à vérifier';
+  $('#unitInventoryTotal').textContent=scanning?'…':String(total);
+  const contents=$('#unitInventoryContents'),signature=JSON.stringify([S.documentKey,scanning,pages.map(([page,units])=>[page,pageName(page),units])]);
+  if(contents.dataset.signature===signature)return;
+  contents.dataset.signature=signature;
+  const opened=new Set($$('details[open]',contents).map(level=>level.dataset.unitLevel));
+  contents.innerHTML=pages.map(([page,units])=>{
+    const level=quantityTransfer.floorContext(S.sheetNames[page],page,S.pageInfo[page]),name=level.level||pageName(page),types=new Map();
+    for(const unit of units){
+      const key=unit.type?.toUpperCase()||'';
+      if(!types.has(key))types.set(key,{label:unit.type||'Type à vérifier',numbers:[]});
+      types.get(key).numbers.push(unit.code);
+    }
+    const rows=[...types].sort(([a],[b])=>a.localeCompare(b,'fr-CA',{numeric:true})).map(([,type])=>
+      `<div class="unit-inventory-row"><span><b>${esc(type.label)}</b><small>${esc(type.numbers.join(', '))}</small></span><strong>${type.numbers.length}</strong></div>`).join('');
+    return `<details class="finish-measure-level" data-unit-level="${page}" ${opened.has(String(page))?'open':''}><summary title="${esc(pageName(page))}">${measureFolders.svg('folder')}<span>${esc([name,level.code].filter(Boolean).join(' · '))}</span><strong>${units.length}</strong></summary>${rows||'<p class="measure-folder-empty">Aucun repère de logement reconnu.</p>'}</details>`;
+  }).join('')||`<p class="measure-folder-empty">${scanning?'Lecture des numéros de logement en cours.':'Aucun repère de logement reconnu sur les feuilles analysées.'}</p>`;
 }
 function folderMeasureRow(item) {
   const nature=item.measureOnly?'Cote':isWallTakeoff(item)?'Mural':item.kind==='area'?'Surface':item.kind==='linear'?'Linéaire':'Comptage',symbol=measureFolders.symbolFor({...item,name:labelForItem(item),usage:isWallTakeoff(item)?item.wallTakeoff?.type:''});
@@ -2655,6 +2700,7 @@ async function selectFolderMeasure(id,event={},edit=false) {
 let lastFolderSelection='';
 function renderMeasureTree(visibleItems) {
   if(!Array.isArray(S.folders))S.folders=[];
+  renderUnitInventory();
   const selectedIds=JSON.stringify(selectedFolderItems().map(item=>[item.id,item.folderId||'']));if(selectedIds!==lastFolderSelection){lastFolderSelection=selectedIds;for(const item of selectedFolderItems())for(const folder of measureFolders.path(S.folders,item.folderId))folder.collapsed=false;}
   const tree=$('#measureTree'),busy=folderBusy(),folderIds=new Set(S.folders.map(folder=>folder.id));
   const unclassified=item=>!folderIds.has(item.folderId),unfiled=visibleItems.filter(unclassified),allUnfiled=S.items.filter(unclassified).length;
@@ -4507,6 +4553,8 @@ const planRenderingFactory = (function createPlanRendering(options){
 });
 const physicalUnits = (function createPhysicalUnits() {
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+  const unitNumber=/^(?:\d{2,5}|[A-Z]\d{2,4}[A-Z]?)$/;
+  const unitType=/^[A-Z][A-Z0-9._-]{0,15}$/i;
   const code=value=>{const match=norm(value).match(/^TYPE\s+([A-Z][A-Z0-9._-]{0,15})$/);return match&&!/^(?:DE|DES|DU|LE|LA|LES|MUR|PORTE|FENETRE|COUPE|DETAIL|NIVEAU)$/.test(match[1])?match[1]:null;};
   const valid=row=>row&&typeof row.text==='string'&&['x','y','width','height','cx','cy'].every(k=>Number.isFinite(row[k]))&&row.width>0&&row.height>0;
   const bounds=row=>({x:row.x,y:row.y,width:row.width,height:row.height});
@@ -4524,9 +4572,9 @@ const physicalUnits = (function createPhysicalUnits() {
       const near=rows.filter(t=>code('TYPE '+t.text)&&t.x>=token.x+token.width-.1&&t.x-token.x-token.width<=token.height*2&&Math.abs(t.cy-token.cy)<=Math.min(t.height,token.height)*.35);
       if(near.length!==1)continue;
       const value=near[0],x=token.x,y=Math.min(token.y,value.y),width=value.x+value.width-x,h=Math.max(token.y+token.height,value.y+value.height)-y;
-      types.push({text:'TYPE '+norm(value.text),x,y,width,height:h,cx:x+width/2,cy:y+h/2});
+      types.push({text:'TYPE '+value.text.trim(),x,y,width,height:h,cx:x+width/2,cy:y+h/2});
     }
-    const names=unique(types.slice(0,512)),numbers=unique(rows.filter(t=>/^(?:\d{2,5}|[A-Z]\d{2,4}[A-Z]?)$/.test(norm(t.text))).slice(0,8192)),pairs=[];
+    const names=unique(types.slice(0,512)),numbers=unique(rows.filter(t=>unitNumber.test(norm(t.text))).slice(0,8192)),pairs=[];
     for(const type of names)for(const number of numbers) {
       const h=Math.max(type.height,number.height),dy=number.cy-type.cy,dx=Math.abs(number.cx-type.cx),ratio=number.height/type.height;
       if(dy<Math.min(type.height,number.height)*.3||dy>h*2.5||dx>h*.65||ratio<.5||ratio>2.5)continue;
@@ -4536,7 +4584,7 @@ const physicalUnits = (function createPhysicalUnits() {
     const result=[];
     for(const type of names) {
       const pair=winner(pairs,'type',type);if(!pair||winner(pairs,'number',pair.number)!==pair)continue;
-      result.push({...type,text:'UNITÉ '+norm(pair.number.text),physicalUnit:{code:norm(pair.number.text),type:code(type.text),source:'type-number-pair',typeBounds:bounds(type),numberBounds:bounds(pair.number)}});
+      result.push({...type,text:'UNITÉ '+norm(pair.number.text),physicalUnit:{code:norm(pair.number.text),type:code(type.text),typeLabel:type.text.trim().split(/\s+/).at(-1),source:'type-number-pair',typeBounds:bounds(type),numberBounds:bounds(pair.number)}});
     }
     return result;
   }
@@ -4545,7 +4593,32 @@ const physicalUnits = (function createPhysicalUnits() {
     if(label.physicalUnit)Object.assign(result,{code:label.physicalUnit.code,type:label.physicalUnit.type,identitySource:label.physicalUnit.source,typeBounds:{...label.physicalUnit.typeBounds},numberBounds:{...label.physicalUnit.numberBounds}});
     return result;
   }
-  return {labels,identity};
+  function roster(units) {
+    const numbers=new Map();
+    for(const unit of units) {
+      if(!unit)continue;
+      const number=norm(unit.code)||norm(unit.label).match(/^(?:UNITE|LOGEMENT|APPARTEMENT) (\S+)$/)?.[1];
+      if(!unitNumber.test(number))continue;
+      const type=unit.typeLabel||unit.type;
+      if(!numbers.has(number))numbers.set(number,new Map());
+      const types=numbers.get(number);
+      if(typeof type==='string'&&unitType.test(type)&&!types.has(norm(type)))types.set(norm(type),type);
+    }
+    return [...numbers].sort(([a],[b])=>a.localeCompare(b,'fr-CA',{numeric:true})||a.localeCompare(b)).map(([code,types])=>({
+      code,type:types.size===1?types.values().next().value:null
+    }));
+  }
+  function validateInventory(inventory,pages) {
+    const fail=()=>{throw new Error('Le registre des logements est invalide.');};
+    if(!inventory||typeof inventory!=='object'||Array.isArray(inventory))fail();
+    for(const [page,units] of Object.entries(inventory)) {
+      if(!/^[1-9]\d*$/.test(page)||+page>pages||!Array.isArray(units)||units.length>3000)fail();
+      if(units.some(unit=>!unit||typeof unit.code!=='string'||!unitNumber.test(unit.code)||
+        (unit.type!==null&&(typeof unit.type!=='string'||!unitType.test(unit.type))))||
+        new Set(units.map(unit=>unit.code)).size!==units.length)fail();
+    }
+  }
+  return {labels,identity,roster,validateInventory};
 })();
 const planAnnotations = (function createPlanAnnotations() {
   const norm = value => String(value || '').trim().toUpperCase();
@@ -12891,6 +12964,10 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace #measureTree{padding:0;margin:0}.aite-workspace .measure-folder-heading{background:var(--aite-sky);border-color:var(--aite-line)}.aite-workspace .measure-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;min-height:40px;margin:0;padding:6px 10px;gap:7px;border-bottom:1px solid var(--aite-line)}.aite-workspace .measure-row b{display:block;font-size:13px;font-weight:500;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.aite-workspace .measure-row small{font-size:11px;color:var(--aite-muted)}.aite-workspace .measure-row strong{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}.aite-workspace .measure-row.active{background:#e5eeff;box-shadow:inset 3px 0 var(--aite-blue)}
     .measure-view-switch{display:flex;flex-shrink:0;gap:3px;padding:5px 6px 0}.measure-view-switch button{flex:1;font-size:11px;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--aite-muted)}.measure-view-switch button[aria-pressed=true]{border-color:var(--aite-border);color:var(--aite-blue);background:white;font-weight:600}
     .finish-measure-tree{flex:1 1 auto;min-height:0;overflow:auto}.finish-tree-note{font-size:11px;color:var(--aite-muted);margin:4px 8px 6px}.finish-measure-group{border-bottom:1px solid var(--aite-line)}.finish-measure-group>summary{position:relative;list-style:none;display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:43px;padding:6px 8px;cursor:pointer;background:var(--aite-surface);border-left:3px solid transparent}.finish-measure-group>summary::-webkit-details-marker{display:none}.finish-measure-group[open]>summary{border-left-color:var(--aite-blue)}.finish-measure-group>summary>svg{color:var(--aite-blue)}
+    #unitInventoryFolder{flex:none}#unitInventoryFolder>summary{background:var(--aite-sky)}#unitInventoryTotal{font-variant-numeric:tabular-nums}
+    #unitInventoryContents{max-height:min(34vh,19rem);overflow:auto}
+    .unit-inventory-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:7px;padding:5px 10px 5px 27px;border-bottom:1px solid var(--aite-line);font-size:12px}
+    .unit-inventory-row small{display:block;color:var(--aite-muted);overflow-wrap:anywhere}
     .finish-group-name{min-width:0}.finish-group-name b,.finish-group-name small,.finish-group-total b,.finish-group-total small{display:block}.finish-group-name b{font-size:13px;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.finish-group-name small{font-size:10px;color:var(--aite-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.finish-group-total{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finish-group-total b{font-size:12px;font-weight:600}.finish-group-total small{font-size:10px;color:var(--aite-muted)}.aite-measures-empty{padding:12px;color:var(--aite-muted);font-size:11px}.aite-measures-empty b{color:var(--aite-ink)}
     .aite-workspace #inspector.specification-inspector{width:288px;flex:0 0 288px;background:var(--aite-surface);border-left:1px solid var(--aite-line);font:12px/1.4 'Segoe UI',Arial,sans-serif}.aite-workspace .specification-tabs-header{background:var(--aite-paper);padding:0 6px;gap:0;border-bottom:1px solid var(--aite-line)}.aite-workspace .specification-tabs{gap:0;min-width:0}.aite-workspace .specification-tabs button{font-size:12px;padding:12px 7px 10px;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--aite-muted);white-space:nowrap}.aite-workspace .specification-tabs button[aria-selected=true]{background:transparent;color:var(--aite-blue);border-bottom-color:var(--aite-blue);box-shadow:none;font-weight:600}.aite-workspace #closeInspector{background:transparent;border:0;color:var(--aite-muted);min-width:22px;width:22px;font-size:19px}
     .aite-workspace .specification-pane{padding:12px}.aite-workspace .panel-head{padding:4px 0 12px;margin-bottom:12px;background:transparent;border:0;border-bottom:1px solid var(--aite-line);border-radius:0}.aite-workspace .panel-head h2{font:600 15px/1.3 'Segoe UI',Arial,sans-serif}.aite-workspace .panel-head span,.aite-workspace .panel-section>span{color:var(--aite-muted);font-size:9px;letter-spacing:.04em}.aite-workspace .panel-section{margin-bottom:12px;padding-bottom:12px}.aite-workspace .inspector input,.aite-workspace .inspector select{height:31px;font-size:12px;border-color:var(--aite-border);color:var(--aite-ink);background:white}.aite-workspace .inspector label{font-size:12px;color:var(--aite-muted);margin-block:10px}.aite-workspace .quantity{padding:12px 0;margin:12px 0;background:transparent;border:0;border-block:1px solid var(--aite-line);border-radius:0}.aite-workspace .quantity strong{font:600 25px/1.2 'Segoe UI',Arial,sans-serif}.aite-workspace .specification-card,.aite-workspace .specification-quantity-row{background:white;border-color:var(--aite-line);border-radius:5px}.aite-workspace .specification-code{color:var(--aite-blue)}.aite-workspace .specification-intro h2{font-size:15px}.aite-workspace .specification-help,.aite-workspace .empty-copy{color:var(--aite-muted);font-size:11px}
@@ -17126,7 +17203,7 @@ async function importProject(file) {
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
-    for(const key of ['detectionChoices','detectionBaseboardChoices','splitSingleDwelling','sanitaryRejects','sanitaryCountChoices','sanitaryCountRejects','detectionFinishes','wallSamples','kitchenBacksplash','kitchenBacksplashRejects']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
+    for(const key of ['detectionChoices','detectionBaseboardChoices','splitSingleDwelling','sanitaryRejects','sanitaryCountChoices','sanitaryCountRejects','detectionFinishes','wallSamples','kitchenBacksplash','kitchenBacksplashRejects','unitInventory']){if(data.settings&&Object.hasOwn(data.settings,key))S.settings[key]=data.settings[key];else delete S.settings[key];}
     S.project=String(data.project||S.project).slice(0,200);S.detectorCache=null;S.scale=S.scales[S.page]||null;
     for(let n=1;n<=S.pages;n++)recalculatePage(n);applyAutomaticFiling(S.items.filter(item=>item.autoTakeoff||item.sanitarySource||item.takeoffFiling?.mode==='auto').map(item=>item.id));setSelection([]);save();refresh();toast('Relevé restauré. Les surfaces dont le calcul a changé sont à valider de nouveau.');
   }catch(error){toast('Restauration impossible : '+error.message);}
