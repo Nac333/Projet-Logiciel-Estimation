@@ -2546,7 +2546,7 @@ function manualStatusText() {
     if(!n)return name+' : cliquez les deux extrémités'+(S.tool==='dimension'?' · exclue des commandes.':' · chaque paire crée une ligne indépendante.');
     return name+' : cliquez l’autre extrémité'+(quantity!==null?' · aperçu '+formatFeet(quantity):'')+'.';
   }
-  if(S.tool==='split')return n?'Découpe : cliquez l’autre extrémité de la ligne traversant la surface.':'Découpe : cliquez deux extrémités d’une ligne traversant la surface sélectionnée.';
+  if(S.tool==='split')return n?`Découpe · ${n} point${n===1?'':'s'} · Double-cliquez sur le dernier point ou appuyez sur Entrée pour couper.`:'Découpe · Tracez une ligne d’un bord à l’autre. Double-cliquez sur le dernier point pour couper.';
   if(['area','exclude'].includes(S.tool))return `${S.tool==='exclude'?'Exclusion':'Surface'} : ${n} point${n>1?'s':''}${n>=3&&scale?' · '+fmt(area(S.draft)*scale*scale)+' pi²':''} · Cliquez les coins, puis Terminer ou Entrée.`;
   if(S.tool==='wallTrace')return `Parcours mural : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+formatFeet(lineLength(S.draft)*scale):''} · Cliquez les pans, puis Terminer pour vérifier la hauteur.`;
   if(S.tool==='linear')return `Ligne : ${n} point${n>1?'s':''}${n>=2&&scale?' · '+formatFeet(lineLength(S.draft)*scale):''} · Cliquez les points, puis Terminer ou Entrée.`;
@@ -3514,9 +3514,125 @@ const geometry = (function createGeometry() {
   return { dist, area, perimeter, inside, boundsOf, getHoles, netArea, excludedArea, distanceToSegment, onRing, cross, segmentsCross, validPolygon, lineLength };
 })();
 const surfaceEditing = (function createSurfaceEditing(geometry, clipping) {
-  const {validPolygon, inside, onRing, getHoles, netArea, dist}=geometry;
+  const {validPolygon, inside, onRing, getHoles, netArea, dist, area, cross, boundsOf, distanceToSegment}=geometry;
   const ringToClip=ring=>[...ring,ring[0]].map(({x,y})=>[x,y]);
   const ringFromClip=ring=>ring.slice(0,-1).map(([x,y])=>({x,y}));
+  const cutEpsilon=1e-7;
+  const samePoint=(a,b)=>dist(a,b)<=cutEpsilon;
+  const onEdge=(point,a,b)=>distanceToSegment(point,a,b)<=cutEpsilon;
+  const onOutline=(point,ring)=>ring.some((p,i)=>onEdge(point,p,ring[(i+1)%ring.length]));
+  const interior=(point,ring)=>inside(point,ring)&&!onOutline(point,ring);
+  const midpoint=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+
+  function outlineHits(a,b,ring) {
+    const length=dist(a,b),ux=(b.x-a.x)/length,uy=(b.y-a.y)/length,hits=[];
+    const add=point=>{
+      const offset=(point.x-a.x)*ux+(point.y-a.y)*uy;
+      if(offset>=-cutEpsilon&&offset<=length+cutEpsilon)hits.push({offset,point});
+    };
+    for(let i=0;i<ring.length;i++){
+      const p=ring[i],q=ring[(i+1)%ring.length],dp=cross(a,b,p)/length,dq=cross(a,b,q)/length;
+      if(Math.abs(dp)<=cutEpsilon)add(p);
+      else if((dp>cutEpsilon&&dq<-cutEpsilon)||(dp<-cutEpsilon&&dq>cutEpsilon)){
+        const fraction=dp/(dp-dq);
+        add({x:p.x+(q.x-p.x)*fraction,y:p.y+(q.y-p.y)*fraction});
+      }
+    }
+    return hits.sort((left,right)=>left.offset-right.offset).map(hit=>hit.point);
+  }
+
+  function extendCutEnd(endpoint,neighbor,ring,reach) {
+    if(!interior(endpoint,ring))return endpoint;
+    const factor=reach/dist(endpoint,neighbor);
+    const outside={x:endpoint.x+(endpoint.x-neighbor.x)*factor,y:endpoint.y+(endpoint.y-neighbor.y)*factor};
+    return outlineHits(endpoint,outside,ring)[0]||endpoint;
+  }
+
+  function cutArcs(path,ring) {
+    const arcs=[];
+    let arc=[];
+    for(let i=1;i<path.length;i++){
+      const a=path[i-1],b=path[i],stops=[a,...outlineHits(a,b,ring),b];
+      for(let j=1;j<stops.length;j++){
+        const p=stops[j-1],q=stops[j];
+        if(samePoint(p,q))continue;
+        if(!interior(midpoint(p,q),ring))continue;
+        if(!arc.length)arc.push(p);
+        arc.push(q);
+        if(onOutline(q,ring)){
+          if(onOutline(arc[0],ring)&&!samePoint(arc[0],q))arcs.push(arc);
+          arc=[];
+        }
+      }
+    }
+    return arcs;
+  }
+
+  function boundaryPath(ring,a,b) {
+    const locate=point=>{
+      const vertex=ring.findIndex(p=>samePoint(p,point));
+      if(vertex!==-1)return vertex;
+      const edge=ring.findIndex((p,i)=>onEdge(point,p,ring[(i+1)%ring.length]));
+      if(edge===-1)throw new Error('La coupe ne rejoint pas le contour. Déplacez un point du tracé.');
+      return edge+dist(ring[edge],point)/dist(ring[edge],ring[(edge+1)%ring.length]);
+    };
+    const from=locate(a),to=locate(b),end=to>from?to:to+ring.length,path=[a];
+    for(let i=Math.floor(from)+1;i<end;i++)path.push(ring[i%ring.length]);
+    return [...path,b];
+  }
+
+  function validateOpenCut(path) {
+    for(let i=1;i<path.length-1;i++){
+      const a=path[i-1],b=path[i],c=path[i+1];
+      if(onEdge(a,b,c)||onEdge(c,a,b))throw new Error('Le tracé de coupe se replie sur lui-même.');
+    }
+    for(let i=0;i<path.length-1;i++){
+      const a=path[i],b=path[i+1];
+      for(let j=i+2;j<path.length-1;j++){
+        const c=path[j],d=path[j+1];
+        if((cross(a,b,c)*cross(a,b,d)<0&&cross(c,d,a)*cross(c,d,b)<0)||
+            onEdge(a,c,d)||onEdge(b,c,d)||onEdge(c,a,b)||onEdge(d,a,b))throw new Error('Le tracé de coupe se croise.');
+      }
+    }
+  }
+
+  function splitPath(item,points) {
+    const ring=item.points,holes=getHoles(item);
+    if(![ring,...holes].every(validPolygon))throw new Error('Corrigez le contour et les exclusions avant de couper.');
+    if(!points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))throw new Error('Le tracé de coupe contient un point invalide.');
+    const path=points.filter((p,i)=>i===0||!samePoint(p,points[i-1]));
+    if(path.length<2)throw new Error('Cliquez au moins deux points distincts pour couper.');
+    const bounds=boundsOf(ring),reach=Math.hypot(bounds.right-bounds.x,bounds.bottom-bounds.y)+1;
+    const from=extendCutEnd(path[0],path[1],ring,reach),to=extendCutEnd(path.at(-1),path.at(-2),ring,reach);
+    if(!samePoint(from,path[0]))path.unshift(from);
+    if(!samePoint(to,path.at(-1)))path.push(to);
+    validateOpenCut(path);
+    const outlines=[ring];
+    // Chaque passage à l’intérieur est limité par deux points du contour.
+    // Le partager en deux permet aux deux morceaux de réutiliser le même trait.
+    for(const arc of cutArcs(path,ring)){
+      const index=outlines.findIndex(outline=>interior(midpoint(arc[0],arc[1]),outline));
+      if(index===-1)throw new Error('Un passage de la coupe est ambigu. Déplacez un point du tracé.');
+      const outline=outlines[index],start=arc[0],end=arc.at(-1),middle=arc.slice(1,-1);
+      const first=boundaryPath(outline,start,end).concat([...middle].reverse());
+      const second=boundaryPath(outline,end,start).concat(middle);
+      if(![first,second].every(r=>r.length<=20000&&validPolygon(r)))throw new Error('Un morceau est trop petit ou invalide. Ajustez le tracé de coupe.');
+      outlines.splice(index,1,first,second);
+    }
+    if(outlines.length<2)throw new Error('Le tracé doit traverser le contour et créer au moins deux morceaux.');
+    const parts=outlines.map(points=>{
+      const outer=[ringToClip(points)];
+      const exclusions=holes.flatMap(hole=>{
+        const clips=clipping.intersection(outer,[ringToClip(hole)]).map(poly=>ringFromClip(poly[0]));
+        if(clips.length===1&&Math.abs(area(clips[0])-area(hole))<=cutEpsilon)return [hole.map(p=>({...p}))];
+        return clips;
+      });
+      return {points,holes:exclusions};
+    }).filter(part=>netArea(part)>cutEpsilon);
+    const before=netArea(item),after=parts.reduce((sum,part)=>sum+netArea(part),0);
+    if(parts.length<2||Math.abs(before-after)>Math.max(cutEpsilon,before*1e-9))throw new Error('Le tracé doit créer au moins deux morceaux et conserver la superficie nette.');
+    return parts;
+  }
 
   function extend(item, addition) {
     if(item.points.length>20000||addition.length>20000||!validPolygon(item.points)||!validPolygon(addition)) {
@@ -3584,7 +3700,7 @@ const surfaceEditing = (function createSurfaceEditing(geometry, clipping) {
     return result;
   }
 
-  return {extend,merge,midpoints,translate};
+  return {extend,merge,midpoints,translate,splitPath};
 })(geometry, surfaceClipper);
 const branding = (function createBranding() {
   const maxLogoCharacters = 350000;
@@ -17031,7 +17147,7 @@ function refreshBase() {
     area:'Cliquez les coins, puis Entrée ou double-clic pour terminer',
     linear:'Tracez le parcours, puis Entrée ou double-clic',
     calibrate:'Cliquez les deux extrémités d’une cote connue',
-    split:'Cliquez deux points pour définir la ligne de découpe',
+    split:'Cliquez les points de coupe, puis double-cliquez sur le dernier',
     auto:'Cliquez au centre d’une pièce fermée',
     select:'Double-clic : modifier la surface · Ctrl/Cmd+clic : sélection multiple · Suppr : supprimer · Échap : désélectionner'
   }[S.tool];
@@ -17560,6 +17676,10 @@ function drawGuides(context) {
     context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(S.mouseWorld.x,S.mouseWorld.y);context.stroke();
   }
   context.setLineDash([]);
+  if(S.tool==='split')for(const point of S.draft){
+    context.beginPath();context.arc(point.x,point.y,3.5/S.zoom,0,Math.PI*2);
+    context.fillStyle='#fff';context.strokeStyle='#b73f24';context.lineWidth=1.5/S.zoom;context.fill();context.stroke();
+  }
   const editable=focusedSurfaceEdit();
   if(editable) {
     for(const p of editable.item.points){const r=4/S.zoom;context.fillStyle='#ffffff';context.fillRect(p.x-r,p.y-r,r*2,r*2);context.strokeStyle='#256d54';context.lineWidth=1.5/S.zoom;context.strokeRect(p.x-r,p.y-r,r*2,r*2);}
@@ -17747,11 +17867,12 @@ function finishSelectionBox(box) {
 }
 function finishSurfaceSplit() {
   const target=actionableSurface();
-  if(!target||S.draft.length!==2)return toast('Sélectionnez une surface, puis cliquez deux points pour définir la ligne de découpe.');
+  if(!target||S.draft.length<2)return toast('Sélectionnez une surface, puis tracez au moins deux points pour couper.');
   const source=target.item;
   if(source.parentId||Object.keys(source.subzones||{}).length)return toast('Découpez une surface indépendante : les sous-zones liées doivent conserver leurs limites.');
   try {
-    const pieces=splitSurfaceByLine(source,...S.draft);
+    const pieces=S.draft.length===2?splitSurfaceByLine(source,...S.draft):surfaceEditing.splitPath(source,S.draft);
+    if(!target.preview&&S.items.length+pieces.length-1>3000)throw new Error('La coupe dépasserait la limite de 3 000 mesures du relevé.');
     const items=pieces.map((piece,index)=>{
       const item={...structuredClone(source),...piece,id:uid(),name:source.name+' · '+(index+1),status:'à valider',method:'Découpe du contour',geometryEdited:true};
       delete item.fixtureCuts;delete item.subzones;delete item.parentId;
@@ -17765,7 +17886,7 @@ function finishSurfaceSplit() {
     if(target.preview){S.reviewByPage[S.page].items.splice(target.index,1,...items);S.previewFocus=target.index;setSelection([]);}
     else {S.items=S.items.flatMap(item=>item.id===source.id?items:[item]);setSelection(items.map(item=>item.id));}
     S.draft=[];S.tool='select';save();refresh();toast(items.length+' surfaces obtenues · superficie nette conservée · à valider.'+(source.work?.baseboard?.enabled?' Plinthes liées désactivées : vérifiez les nouveaux parcours.':''));
-  }catch(error){S.draft=[];refresh();toast(error.message);}
+  }catch(error){refresh();toast(error.message);}
 }
 function surfaceMergeKey(item) {
   const work=workOf(item);
@@ -18671,7 +18792,6 @@ canvas.onclick=event=>{
   else if(['area','split','exclude','linear','wallTrace','calibrate','divider','region'].includes(S.tool)) {
     if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);
     if(S.tool==='calibrate'&&S.draft.length===2){if(dist(...S.draft)<2){S.draft.pop();toast('Choisissez deux points distincts.');}else calibrationModal(S.calibrationMode||'imperial');}
-    else if(S.tool==='split'&&S.draft.length===2)finishSurfaceSplit();
     else if(['divider','region'].includes(S.tool))finishTwoPointTool(point);
   }
   refreshManualUI();
