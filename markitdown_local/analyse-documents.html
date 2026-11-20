@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analyse documentaire — Quantif Plancher V7</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#18354d;background:#eff5f9;font-size:15px}
+*{box-sizing:border-box}body{margin:0}a{color:#176493}button{font:inherit;cursor:pointer}
+.header{background:#17201c;color:white;padding:20px max(20px,calc((100% - 1060px)/2));display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.header a{color:#d1ede9;text-decoration:none;font-size:14px}.header small{display:block;color:#abd1c7;letter-spacing:.08em;margin-bottom:5px}
+.header strong{font-size:21px}.layout{max-width:1060px;margin:34px auto;padding:0 18px 50px}
+.badge{background:#e7f7eb;color:#16763b;border:1px solid #c4e8cf;border-radius:100px;display:inline-block;padding:7px 12px;font-size:12px;font-weight:bold}
+h1{font-size:30px;margin:16px 0 8px;letter-spacing:-.03em}p{line-height:1.55;color:#516576}
+.card{background:#fff;border-radius:14px;box-shadow:0 9px 30px #0a375019;padding:24px;margin:20px 0;border:1px solid #dce7ed}
+.drop{border:2px dashed #8bb5cc;background:#f5fbff;border-radius:12px;min-height:162px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:9px;padding:22px;outline-offset:3px}
+.drop.over{border-color:#236b99;background:#e7f5ff}.drop strong{font-size:18px}.drop span{color:#59768b;font-size:13px}
+button,.button{border:1px solid #2a789e;background:#247ba5;color:#fff;border-radius:8px;padding:10px 14px;font-weight:600}
+button:disabled{opacity:.55;cursor:wait}button.secondary{background:#fff;color:#247ba5}button.small{padding:6px 9px;font-size:12px}
+.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:15px}.hint{font-size:12px;margin:6px 0;color:#71818b}
+.notice{background:#fff9e9;border-left:4px solid #e6a538;padding:13px 16px;border-radius:4px;color:#5d4f2a;font-size:14px;margin:18px 0}
+#progress{font-size:14px;font-weight:bold}#progress.error{color:#b32d30}.result{border:1px solid #dce6eb;border-radius:11px;padding:16px;margin-top:17px}
+.result h3{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 9px;font-size:17px;overflow-wrap:anywhere}
+.count{background:#e8f3fb;border-radius:15px;padding:5px 9px;color:#226990;font-size:12px}
+.table-box{max-height:280px;overflow:auto;margin-top:10px;border-radius:8px;border:1px solid #e3ebef}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:9px 11px;text-align:left;border-bottom:1px solid #e4ebef;vertical-align:top}th{position:sticky;top:0;background:#eef6fb;z-index:1}td:first-child{white-space:nowrap;font-weight:bold}
+pre{background:#152333;color:#f2f7fc;padding:15px;border-radius:8px;white-space:pre-wrap;max-height:350px;overflow:auto;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+details{margin-top:14px}summary{cursor:pointer;color:#216c97;font-weight:bold}footer{font-size:12px;color:#657682;padding:10px 0}
+@media(max-width:600px){h1{font-size:24px}.card{padding:16px}.header{padding:17px}.actions{gap:8px}}
+</style>
+</head>
+<body>
+<header class="header"><div><small>QUANTIF PLANCHER V7 • MODULE LOCAL</small><strong>📄 Analyse des devis et des finis</strong></div><a href="/">← Retour au logiciel</a></header>
+<main class="layout">
+<span class="badge">✓ Conversion locale • Sans API payante</span>
+<h1>Lire vos plans et devis plus rapidement</h1>
+<p>MarkItDown extrait le texte de vos PDF, Word et Excel. Les codes de matériaux sont <b>repérés comme candidats</b> et doivent être vérifiés dans les documents originaux.</p>
+<div class="notice"><b>Important :</b> ce module ne calcule aucune superficie, ne reconnaît pas les pièces d'un plan et ne réalise pas d'OCR sur les PDF numérisés. Les originaux restent sur votre ordinateur et les fichiers temporaires sont supprimés après conversion.</div>
+<section class="card" aria-label="Importer des documents">
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choisir ou déposer des fichiers">
+    <strong>Déposez vos devis et tableaux de finis ici</strong>
+    <span>PDF · DOCX · XLSX · XLS · PPTX · HTML · CSV · TXT — maximum 20 Mo par fichier</span>
+    <button type="button" id="choose">Choisir des fichiers</button>
+    <input id="files" type="file" hidden multiple accept=".pdf,.docx,.xlsx,.xls,.pptx,.html,.htm,.csv,.txt">
+  </div>
+  <div class="actions"><button type="button" id="convert">Analyser les documents</button><span id="selected">Aucun fichier sélectionné</span></div>
+  <p id="progress" role="status" aria-live="polite"></p>
+  <p class="hint">Un traitement à la fois, sur cet ordinateur. Aucune transmission à un service distant par ce module.</p>
+</section>
+<section id="results" class="card" hidden aria-label="Résultats documentaires"><h2>Résultats à vérifier</h2><div class="actions"><button type="button" id="exportCsv">Exporter les codes candidats (.csv)</button><button type="button" id="clear" class="secondary">Effacer les résultats</button></div><div id="resultList"></div></section>
+<footer>Version initiale : extraction documentaire uniquement. Pour les relevés de surfaces, utiliser les outils de Quantif Plancher V7.</footer>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const input = $('files');
+const results = [];
+function showFiles(){const files=Array.from(input.files||[]);$('selected').textContent=files.length?files.length+' fichier(s) : '+files.map(f=>f.name).join(', '):'Aucun fichier sélectionné';}
+$('choose').addEventListener('click',event=>{event.stopPropagation();input.click();});
+$('drop').addEventListener('click',()=>input.click());
+$('drop').addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();input.click();}});
+input.addEventListener('change',showFiles);
+$('drop').addEventListener('dragover',event=>{event.preventDefault();$('drop').classList.add('over');});
+$('drop').addEventListener('dragleave',()=>{$('drop').classList.remove('over');});
+$('drop').addEventListener('drop',event=>{event.preventDefault();$('drop').classList.remove('over');input.files=event.dataTransfer.files;showFiles();});
+function setStatus(message,isError=false){$('progress').textContent=message;$('progress').classList.toggle('error',isError);}
+function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function safeStem(name){return name.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,90)||'document';}
+function el(tag,content,cls){const node=document.createElement(tag);if(content!==undefined)node.textContent=content;if(cls)node.className=cls;return node;}
+function renderDocument(record){
+ const section=el('article',undefined,'result');const heading=el('h3');heading.append(el('span',record.filename),el('span',record.finishes.length+' code(s) candidat(s)','count'));section.append(heading);
+ for(const warning of record.warnings||[])section.append(el('p',warning,'hint'));
+ if(record.finishes.length){const box=el('div',undefined,'table-box');const table=el('table');const head=el('thead');const header=el('tr');header.append(el('th','Code'),el('th','Extrait original'));head.append(header);table.append(head);const body=el('tbody');for(const item of record.finishes){const row=el('tr');row.append(el('td',item.code),el('td',item.extrait));body.append(row);}table.append(body);box.append(table);section.append(box);}
+ else section.append(el('p','Aucun code reconnu dans le texte extrait. Consultez le document source.'));
+ const controls=el('div',undefined,'actions');const save=el('button','Télécharger Markdown (.md)','secondary small');save.addEventListener('click',()=>download(safeStem(record.filename)+'.md',record.markdown,'text/markdown;charset=utf-8'));controls.append(save);section.append(controls);
+ const details=el('details');const summary=el('summary','Voir le texte extrait');details.append(summary,el('pre',record.markdown));section.append(details);$('resultList').append(section);
+}
+function csvCell(value){let str=String(value==null?'':value);if(/^[\s]*[=+\-@]/.test(str))str="'"+str;return '"'+str.replace(/"/g,'""')+'"';}
+$('exportCsv').addEventListener('click',()=>{const lines=[['Fichier','Code candidat','Extrait à vérifier']];for(const record of results)for(const item of record.finishes)lines.push([record.filename,item.code,item.extrait]);const csv='\ufeff'+lines.map(row=>row.map(csvCell).join(';')).join('\r\n');download('codes-finis-candidats.csv',csv,'text/csv;charset=utf-8');});
+$('clear').addEventListener('click',()=>{results.length=0;$('resultList').replaceChildren();$('results').hidden=true;setStatus('Résultats effacés.');});
+$('convert').addEventListener('click',async()=>{
+ const selected=Array.from(input.files||[]);if(!selected.length){setStatus('Choisissez au moins un fichier.',true);return;}
+ $('convert').disabled=true;let errors=0;
+ try{for(let i=0;i<selected.length;i++){
+  const file=selected[i];setStatus('Analyse '+(i+1)+'/'+selected.length+' : '+file.name);
+  if(file.size>20*1024*1024){setStatus('Fichier trop volumineux : '+file.name,true);errors++;continue;}
+  try{const response=await fetch('/api/convert?name='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file,credentials:'omit'});const value=await response.json();if(!response.ok)throw Error(value.error||'Conversion refusée');results.push(value);$('results').hidden=false;renderDocument(value);}
+  catch(error){errors++;const errorBox=el('p',file.name+' : '+error.message,'hint');errorBox.setAttribute('role','alert');$('resultList').append(errorBox);$('results').hidden=false;}
+ }
+ setStatus(results.length+' document(s) converti(s) ; '+errors+' erreur(s).',errors>0);
+ }finally{$('convert').disabled=false;}
+});
+</script>
+</body>
+</html>
