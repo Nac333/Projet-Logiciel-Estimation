@@ -2083,7 +2083,7 @@ async function detectionSource(pageNumber) {
   const [,info]=await Promise.all([page.render({canvasContext:offscreen.getContext('2d'),viewport}).promise,inspectPdfScale(page,true)]);
   return {image:offscreen,info};
 }
-const LOCAL_ROOM_ENGINE_VERSION='local-rooms-21-fixtures-wall-boundaries';
+const LOCAL_ROOM_ENGINE_VERSION='local-rooms-22-cabinet-bounds';
 let localRoomEngine=null;
 function localDetectionContext({page,image,info,requestId,generation,settings=S.settings,material=S.material,bounds=S.detectBounds[page]||null,dividers=S.dividers[page]||[],point=null}) {
   const meta=S.scaleMeta[page]||{},sheet=S.pageInfo[page]||info;
@@ -4542,14 +4542,71 @@ const planRenderingFactory = (function createPlanRendering(options){
  const {canvas,render}=options,doc=canvas.ownerDocument,win=doc.defaultView;
  const requestFrame=options.requestFrame||win.requestAnimationFrame.bind(win),cancelFrame=options.cancelFrame||win.cancelAnimationFrame.bind(win);
  let pending=null,disposed=false;
+ let detail=null,detailJob=null;
  function request(){
   if(disposed||pending!==null)return;
   pending=requestFrame(()=>{pending=null;if(!disposed&&!doc.hidden)render();});
  }
  win.addEventListener('resize',request);win.addEventListener('focus',request);doc.addEventListener('visibilitychange',request);
  const observer=win.ResizeObserver?new win.ResizeObserver(request):null;observer?.observe(canvas);
- function dispose(){disposed=true;if(pending!==null)cancelFrame(pending);pending=null;observer?.disconnect();win.removeEventListener('resize',request);win.removeEventListener('focus',request);doc.removeEventListener('visibilitychange',request);}
- return {request,dispose};
+ function stopDetailJob(){
+  if(!detailJob)return;
+  const stopped=detailJob;detailJob=null;
+  win.clearTimeout(stopped.timer);
+  stopped.renderTask?.cancel();
+ }
+ function clearDetail(){stopDetailJob();detail=null;}
+ function paintPdfDetail(context,{pdf,page,width,height,baseScale}){
+  const transform=context.getTransform(),density=Math.hypot(transform.a,transform.b);
+  if(disposed||!pdf||density<=1.15){clearDetail();return;}
+  const inverse=transform.inverse(),corners=[
+   {x:0,y:0},{x:canvas.width,y:0},{x:0,y:canvas.height},{x:canvas.width,y:canvas.height}
+  ].map(p=>inverse.transformPoint(p));
+  const visible={
+   x:Math.max(0,Math.floor(Math.min(...corners.map(p=>p.x)))),
+   y:Math.max(0,Math.floor(Math.min(...corners.map(p=>p.y)))),
+   right:Math.min(width,Math.ceil(Math.max(...corners.map(p=>p.x)))),
+   bottom:Math.min(height,Math.ceil(Math.max(...corners.map(p=>p.y))))
+  };
+  if(visible.x>=visible.right||visible.y>=visible.bottom){clearDetail();return;}
+  const margin=Math.ceil(48/density),x=Math.max(0,visible.x-margin),y=Math.max(0,visible.y-margin);
+  const right=Math.min(width,visible.right+margin),bottom=Math.min(height,visible.bottom+margin);
+  const w=right-x,h=bottom-y;
+  const ratio=Math.min(density*1.1,14,4095/w,4095/h,Math.sqrt(4_000_000/(w*h)));
+  if(!(ratio>1.15)){clearDetail();return;}
+  const key=[page,x,y,right,bottom,ratio].join(':');
+  if(detail?.pdf===pdf&&detail.key===key){
+   context.drawImage(detail.tile,detail.x,detail.y,detail.tile.width/detail.ratio,detail.tile.height/detail.ratio);
+   stopDetailJob();return;
+  }
+  if(detail?.pdf!==pdf||detail.page!==page)detail=null;
+  if(detailJob?.pdf===pdf&&detailJob.key===key)return;
+  stopDetailJob();
+  const job={pdf,key,renderTask:null,timer:null};
+  detailJob=job;
+  // Keep the first raster responsive during a gesture. Only the viewport
+  // crop is re-read, in a separate canvas with the original plan coordinates.
+  job.timer=win.setTimeout(async()=>{
+   try{
+    const source=await pdf.getPage(page);
+    if(detailJob!==job)return;
+    const tile=doc.createElement('canvas');
+    // Use the same page pixel grid for neighboring crops. This avoids moving
+    // the samples of a thin stroke when the viewport shifts.
+    const leftPx=Math.floor(x*ratio),topPx=Math.floor(y*ratio);
+    tile.width=Math.ceil(right*ratio)-leftPx;tile.height=Math.ceil(bottom*ratio)-topPx;
+    job.renderTask=source.render({canvasContext:tile.getContext('2d'),viewport:source.getViewport({scale:baseScale*ratio}),
+     transform:[1,0,0,1,-leftPx,-topPx]});
+    await job.renderTask.promise;
+    if(detailJob!==job)return;
+    detail={pdf,page,key,tile,x:leftPx/ratio,y:topPx/ratio,ratio};request();
+   }catch{
+    // A late or failed detail render leaves the original sheet available.
+   }finally{job.renderTask=null;}
+  },80);
+ }
+ function dispose(){disposed=true;if(pending!==null)cancelFrame(pending);pending=null;clearDetail();observer?.disconnect();win.removeEventListener('resize',request);win.removeEventListener('focus',request);doc.removeEventListener('visibilitychange',request);}
+ return {request,dispose,paintPdfDetail,clearDetail};
 });
 const physicalUnits = (function createPhysicalUnits() {
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
@@ -5963,9 +6020,14 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
   }
   function absorbable(item, options) {
     const work = item.work || {};
+    // An unnamed piece provisionally attached by the structural envelope
+    // can be a cabinet fragment, even though it already carries a unit ID.
+    const sameUnitFragment=options.unitId&&item.detectedUnit?.id===options.unitId&&
+      item.detectedUnit.source==='structural-envelope'&&item.detectedUnit.status==='proposed'&&
+      !options.choices.some(choice=>choice.key===item.autoTakeoff?.key);
     const inheritedLaundry=options.inheritedLaundry && item.laundry===true && item.laundryInBathroom===false &&
       item.materialSource==='héritage du plancher principal' && /^(?:L\.?\s*S\.?|LAVAGE|LAUNDRY)$/i.test(item.name||'');
-    return pristine(item,options) && !item.detectedUnit && !item.bathroom && item.spaceType === 'room' && (!item.laundry||inheritedLaundry) &&
+    return pristine(item,options) && (!item.detectedUnit||sameUnitFragment) && !item.bathroom && item.spaceType === 'room' && (!item.laundry||inheritedLaundry) &&
       !item.fixturePending?.length && !item.sanitaryEvidence?.length && !item.bathroomGrouping &&
       (item.unnamed === true && /^Pièce détectée(?: \d+)?$/.test(item.name) || inheritedLaundry) &&
       item.materialNeedsReview !== false && !['choix estimateur','localisation choisie','code du plan'].includes(item.materialSource) && work.included !== false &&
@@ -6091,7 +6153,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
         if(!source.selected||source.mixedBathroom||source.needsSeparation||!pristine(previous,options))continue;
         if(source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
         const area=netArea(source),tolerance=Math.max(1e-6,area*1e-8),absorbed=[];let blocked=false;
-        const absorptionOptions={...options,inheritedLaundry:rasterMatches(newFrame)};
+        const absorptionOptions={...options,inheritedLaundry:rasterMatches(newFrame),unitId:source.detectedUnit.id,choices};
         for(const peer of items){
           if(peer===previous||peer.kind!=='area'||peer.page!==source.page||peer.measureOnly||peer.work?.roomBoundary||(peer.work?.layer||'finish')!=='finish')continue;
           const shared=overlap(peer,source);if(shared<=tolerance)continue;
@@ -6773,11 +6835,11 @@ const bathroomFurniture = (function createBathroomFurniture() {
     }
     function bounds(points,o,u,v){let lo=Infinity,hi=-Infinity,bottom=Infinity,top=-Infinity;
       for(const p of points){spend();const x=project(p,o,u),y=project(p,o,v);lo=Math.min(lo,x);hi=Math.max(hi,x);bottom=Math.min(bottom,y);top=Math.max(top,y);}return {lo,hi,bottom,top};}
-    function arc(p,minimumSweep=160){if(p.closed||p.points.length<5)return null;const pts=p.points,a=pts[0],b=minus(pts[Math.floor(pts.length/2)],a),c=minus(pts.at(-1),a);
+    function arc(p,minimumSweep=160,minRadius=.4,maxRadius=1.1){if(p.closed||p.points.length<5)return null;const pts=p.points,a=pts[0],b=minus(pts[Math.floor(pts.length/2)],a),c=minus(pts.at(-1),a);
       b.x*=scale;b.y*=scale;c.x*=scale;c.y*=scale;const den=2*cross(b,c);if(Math.abs(den)<1e-9)return null;
       const bb=dot(b,b),cc=dot(c,c),ox=(bb*c.y-cc*b.y)/den,oy=(b.x*cc-c.x*bb)/den,
         center={x:a.x+ox/scale,y:a.y+oy/scale},radius=Math.hypot(ox,oy);
-      if(!point(center)||radius<.4||radius>1.1)return null;
+      if(!point(center)||radius<minRadius||radius>maxRadius)return null;
       let sweep=0,last,sign=0,mx=0,my=0;
       for(const q of pts){spend();if(Math.abs(dist(q,center)*scale-radius)>Math.min(.02,radius*.025))return null;
         const angle=Math.atan2(q.y-center.y,q.x-center.x);if(last!==undefined){const d=Math.atan2(Math.sin(angle-last),Math.cos(angle-last));
@@ -6785,6 +6847,22 @@ const bathroomFurniture = (function createBathroomFurniture() {
       if(Math.abs(sweep)<minimumSweep*Math.PI/180||Math.abs(sweep)>200*Math.PI/180)return null;
       const norm=Math.hypot(mx,my);if(!norm)return null;const u={x:mx/norm,y:my/norm};
       return {path:p,center,radius,u,v:{x:-u.y,y:u.x}};
+    }
+    function burnerCenters(paths,near) {
+      const halves=new Map(),centers=[];
+      for(const path of paths)if(!path.line) {
+        const half=arc(path,160,.16,.42);if(half)halves.set(path,half);
+      }
+      for(const [path,half] of halves) {
+        const [a,b]=[path.points[0],path.points.at(-1)];
+        const opposite=near(a,TOL).some(other=>{
+          const second=halves.get(other);
+          return second&&other!==path&&coherent(other,path)&&dot(half.u,second.u)<-.98&&dist(half.center,second.center)*scale<=TOL&&
+            Math.min(dist(b,other.points[0]),dist(b,other.points.at(-1)))*scale<=TOL;
+        });
+        if(opposite&&!centers.some(q=>dist(q,half.center)*scale<=TOL))centers.push(half.center);
+      }
+      return centers;
     }
     function connectedArcs(local,nearAll){
       const result=[],partials=new Map(),complete=new Set(),seen=new Set();
@@ -7082,6 +7160,40 @@ const bathroomFurniture = (function createBathroomFurniture() {
             const spans=[...found.values()].sort((x,y)=>x.lo-y.lo);let covered=0;
             for(const s of spans){if(s.lo>covered+TOL)return null;covered=Math.max(covered,s.hi);}
             return covered>=size-TOL?spans.map(s=>s.p):null;
+          }
+          // Two wall-backed cabinets can share the cooking range's side.
+          // A C label and four paired burner circles establish the range;
+          // uninterrupted dark backing establishes the depth of the run.
+          if(bath.kitchenAnchor.text==='C'){
+            const ranges=[],burners=burnerCenters(local,nearAll),q={x:bath.kitchenAnchor.cx,y:bath.kitchenAnchor.cy};
+            const supported=panels.filter(panel=>panel.open).flatMap(panel=>{
+              const wall=wallRun(...panel.openSide);
+              return wall?[{panel,wall}]:[];
+            });
+            for(const proof of supported){
+              const {panel,wall}=proof,{lo,hi,bottom,top}=panel.bounds;
+              if(hi-lo<1.45||hi-lo>3.6||top-bottom<1.45||top-bottom>3.6)continue;
+              if(!inside(q,panel.ring)&&!panel.ring.some((a,i)=>segmentDistance(q,a,panel.ring[(i+1)%panel.ring.length])*scale<=1))continue;
+              const rows=new Set(burners.filter(p=>inside(p,panel.ring)).map(p=>
+                [project(p,panel.origin,panel.u)>(lo+hi)/2,project(p,panel.origin,panel.v)>(bottom+top)/2].join(':')));
+              if(rows.size!==4)continue;
+              ranges.push(panel);emit('kitchen',panel.parts,[panel.ring],[],wall,local,bath);
+            }
+            for(const {panel,wall} of supported){
+              const [a,b]=panel.openSide,back=minus(b,a),len=dist(a,b);
+              const sizes=[panel.bounds.hi-panel.bounds.lo,panel.bounds.top-panel.bounds.bottom];
+              if(Math.min(...sizes)<.75||Math.max(...sizes)>4.5)continue;
+              const center=ring=>({x:(ring[0].x+ring[2].x)/2,y:(ring[0].y+ring[2].y)/2});
+              const adjacent=ranges.some(range=>range!==panel&&coherent(panel.parts[0],range.parts[0])&&
+                panel.faces.some(face=>{
+                  const start=face.points[0],d=minus(face.points.at(-1),start);
+                  if(Math.abs(dot(back,d)/len/Math.hypot(d.x,d.y))>.005)return false;
+                  if(cross(d,minus(center(range.ring),start))*cross(d,minus(center(panel.ring),start))>=0)return false;
+                  return range.faces.some(side=>face.points.every(p=>segmentDistance(p,side.points[0],side.points.at(-1))*scale<=TOL)&&
+                    coherent(side,face));
+                }));
+              if(adjacent)emit('kitchen',panel.parts,[panel.ring],[],wall,local,bath);
+            }
           }
           // A cabinet end may coincide with a real wall instead of a fourth
           // grey face. Require that complete end, a complete backing wall,
@@ -15952,8 +16064,12 @@ function renderPlanScene() {
   ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#f1f4f7';ctx.fillRect(0,0,w,h);
   ctx.save();ctx.translate(S.pan.x,S.pan.y);ctx.scale(S.zoom,S.zoom);
   if(S.plan){const rotation=viewRotation();if(rotation===90)ctx.transform(0,1,-1,0,S.plan.height,0);else if(rotation===180)ctx.transform(-1,0,0,-1,S.plan.width,S.plan.height);else if(rotation===270)ctx.transform(0,-1,1,0,0,S.plan.width);}
+  if(!S.plan||S.loading||planOverlayUI?.aligning())planRendering.clearDetail();
   if(!planOverlayUI?.paintAlignment(ctx)){
-  if(S.plan){ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';}
+  if(S.plan){
+    ctx.shadowColor='#0f18132d';ctx.shadowBlur=22;ctx.shadowOffsetY=8;ctx.drawImage(S.plan,0,0);ctx.shadowColor='transparent';
+    if(!S.loading)planRendering.paintPdfDetail(ctx,{pdf:S.pdf,page:S.page,width:S.plan.width,height:S.plan.height,baseScale:PDF_RENDER_SCALE});
+  }
   planOverlayUI?.paint(ctx);
   for(const item of S.items.filter(item=>item.page===S.page)) {
     if(isKitchenElevation(item))continue;
