@@ -1416,6 +1416,31 @@ function confirmationIssues(item,state=S) {
 function isConfirmed(item) {
   return item.status==='confirmée' && confirmationIssues(item).length===0;
 }
+const TAKEOFF_LEARNING_KEY='aite-takeoff-lessons-v1';
+function takeoffLessons() {
+  const stored=readSaved(TAKEOFF_LEARNING_KEY,null);
+  try{takeoffLearning.validate(stored);return stored;}catch{return takeoffLearning.empty();}
+}
+function learnConfirmedTakeoff(items) {
+  let lessons=takeoffLessons(),changed=false;
+  for(const item of items){
+    if(item.status!=='confirmée'||!item.bathroom)continue;
+    const outcome=takeoffLearning.learn(lessons,{item,scale:S.scales[item.page],scaleVerified:S.scaleMeta[item.page]?.verified===true});
+    if(outcome.learned){lessons=outcome.memory;changed=true;}
+  }
+  if(changed)try{localStorage.setItem(TAKEOFF_LEARNING_KEY,JSON.stringify(lessons));}
+  catch{toast('La mémoire commune des corrections n’a pas pu être enregistrée.');}
+}
+function takeoffLessonFor(item,lessons) {
+  if(!item.bathroom||!lessons.templates.length)return null;
+  const page=item.page||S.page;
+  return takeoffLearning.inspect(lessons,{item,scale:S.scales[page],scaleVerified:S.scaleMeta[page]?.verified===true}).suggestion;
+}
+function takeoffLessonNote(lesson) {
+  if(lesson.issue==='missing-footprint')return 'Mémoire AITE · Emprise comparable de '+fmt(lesson.deduction,2)+' pi² à vérifier sur le plan.';
+  if(lesson.issue==='different-footprint')return 'Mémoire AITE · Emprise différente du cas validé ('+fmt(lesson.deduction,2)+' pi²). Vérifiez ses limites.';
+  return '';
+}
 function confirmSelected() {
   const items=S.items.filter(item=>S.selection.has(item.id)&&item.page===S.page);
   if (!items.length) return toast('Sélectionnez les mesures à confirmer dans le tableau.');
@@ -1423,8 +1448,9 @@ function confirmSelected() {
   if (blocked) return toast(`${blocked.name} : ${confirmationIssues(blocked).join(' · ')}.`);
   remember();
   for (const item of items) item.status='confirmée';
-  save();refresh();
+  const saved=save();refresh();
   toast(`${items.length} mesure(s) confirmée(s). Les cotes restent exclues des commandes.`);
+  if(saved)learnConfirmedTakeoff(items);
 }
 // Les résultats choisis sont des brouillons persistants; fermer l'aperçu
 // ne change ni leur géométrie ni leur présence dans le relevé.
@@ -1634,7 +1660,7 @@ function synchronizeDetectionChoice(candidate) {
   synchronizeDetected([candidate]);
 }
 function closeReview() {
-  S.reviewOpen=false;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();
+  S.roomRepair=null;S.reviewOpen=false;S.preview=null;S.previewFocus=null;S.previewSelection=new Set();
   $('#reviewPanel').hidden=true;
   $('.app').classList.remove('review-open');
   $('#inspector').hidden=innerWidth<780;
@@ -1899,6 +1925,7 @@ function previewSanitary(index) {
 function renderDetectionPanel() {
   const panel=$('#reviewPanel'),pack=S.reviewByPage?.[S.page];
   if(!panel||!S.reviewOpen)return;
+  if(S.roomRepair)return renderRoomRepair(panel,S.roomRepair);
   if(S.reviewBatchPages?.length&&!S.reviewBatchPages.includes(S.page))return closeReview();
   const firstOpen=!$('.app').classList.contains('review-open');
   panel.hidden=false;$('#inspector').hidden=true;$('.app').classList.add('review-open');
@@ -1917,10 +1944,15 @@ function renderDetectionPanel() {
     filtered=candidates.map((item,index)=>({item,index})).filter(({item})=>filter==='all'||filter==='sanitary'&&(item.bathroom||item.sanitaryEvidence?.length)||filter==='unnamed'&&item.unnamed),
     totalPages=Math.max(1,Math.ceil(filtered.length/100)),offset=Math.max(0,Math.min(S.reviewOffset||0,totalPages-1));
   S.reviewOffset=offset;const visible=filtered.slice(offset*100,(offset+1)*100);
-  const mode=['area','baseboard','count'].includes(S.reviewMode)?S.reviewMode:'area',baseboardChoices={},baseboardLengths={};
+  const mode=['area','baseboard','count'].includes(S.reviewMode)?S.reviewMode:'area',baseboardChoices={},baseboardLengths={},learnedNotes={},
+    lessons=takeoffLessons();
   for(const {item,index}of visible){const work=workOf(item);baseboardChoices[index]=work.baseboard.enabled?work.baseboard.code:'';baseboardLengths[index]=perimeter(item.points)*(S.scales[S.page]||0);}
+  if(mode==='area'&&lessons.templates.length)for(const {item,index}of visible){
+    const lesson=takeoffLessonFor(item,lessons);
+    if(lesson)learnedNotes[index]=takeoffLessonNote(lesson);
+  }
   panel.innerHTML=detectionReviewUI.render({candidates,visible,pages:pages.map(page=>({page,title:pageName(page)})),page:S.page,pageTitle:pageName(S.page),engineSource:pack?.engineSource,filter,offset,totalPages,filteredCount:filtered.length,focus:S.previewFocus,sanitaryMarkup:sanitaryReviewMarkup(pack),pendingSanitaryCount:pack?.sanitary?.pending?.length||0,warningCount:pack?.sanitary?.warnings?.length||0,notes,mode,kitchenStatus:S.settings.kitchenBacksplash?.enabled?{count:S.items.filter(isKitchenElevation).length}:null,materials:MATERIALS,
-    baseboardProducts:Object.entries(catalogDefaults()).filter(([code])=>code.startsWith('PL-')).map(([code])=>({code,name:profile(code).name})),baseboardChoices,baseboardLengths,autoSave:true,sanitaryCounts:S.items.filter(item=>item.page===S.page&&item.sanitarySource)});
+    baseboardProducts:Object.entries(catalogDefaults()).filter(([code])=>code.startsWith('PL-')).map(([code])=>({code,name:profile(code).name})),baseboardChoices,baseboardLengths,learnedNotes,autoSave:true,sanitaryCounts:S.items.filter(item=>item.page===S.page&&item.sanitarySource)});
   updateDetectionChoiceButton();
   if($('#reviewKitchenSummary'))$('#reviewKitchenSummary').onclick=()=>{if(S.items.some(isKitchenElevation))return openKitchenBacksplashReview();const notes=$('.review-notes',panel);if(notes){for(let node=notes;node&&panel.contains(node);node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;notes.scrollIntoView({block:'nearest'});}};
   const selectMode=next=>{S.reviewMode=next;renderDetectionPanel();$(`[data-review-mode="${next}"]`)?.focus({preventScroll:true});};
@@ -2441,6 +2473,8 @@ function initManualUI() {
   moveButton('#saveProjectBtn',project,'save','Sauver','Sauvegarder le relevé · Ctrl+S');
   const detection=$('#ribbonDetection'),corrections=$('#ribbonCorrection'),layout=$('#ribbonLayout'),management=$('#ribbonManagement');
   moveButton('[data-tool="auto"]',detection,'wand-sparkles','Au clic','Détecter la pièce au clic · A');
+  detection.insertAdjacentHTML('beforeend','<button type="button" id="repairBathroom" class="manual-button" data-tool="roomRepair" aria-label="Reprendre le contour d’une salle de bain au clic"><i data-lucide="scan-search" aria-hidden="true"></i><span>Reprendre<br>une salle</span></button>');
+  $('#repairBathroom').onclick=()=>activateTool('roomRepair');
   moveButton('[data-tool="divider"]',detection,'door-closed','Passage','Fermer un passage pour séparer les surfaces · B');
   moveButton('[data-tool="region"]',detection,'scan','Cadre','Limiter la détection à un cadre · R');
   detection.insertAdjacentHTML('beforeend',manualButton('wallLayersToggle','brick-wall','Murs','Afficher les murs extérieurs, intérieurs et de corridor proposés'));
@@ -2575,6 +2609,7 @@ function manualStatusText() {
   if(S.tool==='calibrate')return 'Échelle : cliquez les extrémités d’une cote connue, puis saisissez sa longueur.';
   if(S.tool==='hand')return 'Déplacer : glissez le plan · molette pour zoomer · V pour sélectionner.';
   if(S.tool==='auto')return 'Pièce au clic : cliquez à l’intérieur d’une pièce fermée.';
+  if(S.tool==='roomRepair')return 'Reprendre une salle · Cliquez dans le sol d’une salle de bain pour comparer son contour.';
   if(S.tool==='divider')return 'Fermer un passage : cliquez ses deux extrémités, puis relancez Détecter.';
   if(S.tool==='region')return 'Cadre de détection : cliquez deux coins opposés autour des pièces à analyser.';
   if(S.tool==='edit')return 'Modifier la surface · Glissez un carré pour déplacer un sommet ou un losange pour en ajouter un.';
@@ -6492,7 +6527,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       compatibleFootprint(a,b,proof,other)));
   const frameKey = value => value ? JSON.stringify([value.width,value.height,value.units,value.pdfRenderScale]) : '';
   const relatives = (item, items) => item.parentId || Object.keys(item.subzones || {}).length || items.some(other => other.parentId === item.id || other.sanitarySource?.parentId === item.id);
-  function pristine(item, {documentKey, version, items=[],sanitary=false}={}) {
+  function pristine(item, {documentKey, version, items=[],sanitary=false,allowSameVersion=false}={}) {
     const source = item.autoTakeoff, provenance = source?.provenance;
     const automaticBathroom = sanitary && bathroomFloor(item) && !item.parentId && !Object.keys(item.subzones||{}).length &&
       items.every(other=>other.parentId!==item.id && (other.sanitarySource?.parentId!==item.id || other.kind==='count' &&
@@ -6500,20 +6535,20 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       (item.fixtureCuts||[]).every(cut=>item.sanitaryEvidence.some(proof=>provenCut(item.page,cut,proof)));
     if (item.kind !== 'area' || item.status === 'confirmée' || item.geometryEdited || item.measureOnly || item.work?.roomBoundary ||
         (item.work?.layer || 'finish') !== 'finish' || source?.documentKey !== documentKey ||
-        provenance?.engineId !== 'local-rooms' || provenance.engineVersion === version ||
+        provenance?.engineId !== 'local-rooms' || !allowSameVersion && provenance.engineVersion === version ||
         !provenance.context?.frame || !automaticBathroom && (relatives(item,items) || item.fixtureCuts?.length)) return false;
     try { return source.key === shapeKey(documentKey,item); } catch { return false; }
   }
   function matchingBathrooms(items, source, documentKey) {
     return items.filter(item=>item.page===source.page&&item.autoTakeoff?.documentKey===documentKey&&sameBathroom(item,source));
   }
-  function wallFacePredecessor(source, {items, documentKey, version, frame}) {
+  function wallFacePredecessor(source, {items, documentKey, version, frame, allowSameVersion=false}) {
     if(!frame||!bathroomFloor(source))return null;
     const matches=matchingBathrooms(items,source,documentKey);
     if(matches.length!==1)return null;
     const previous=matches[0];
     return frameKey(previous.autoTakeoff.provenance?.context?.frame)===frameKey(frame)&&
-      pristine(previous,{items,documentKey,version,sanitary:true})?previous:null;
+      pristine(previous,{items,documentKey,version,sanitary:true,allowSameVersion})?previous:null;
   }
   function absorbable(item, options) {
     const work = item.work || {};
@@ -6553,7 +6588,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
     if(!retractableDraft(item,options))return false;
     try {return shapeKey(options.documentKey,options.source)===item.autoTakeoff.key;}catch{return false;}
   }
-  function plan({items=[],candidates=[],choices=[],documentKey,version,raster=null,wallCores=null}={}) {
+  function plan({items=[],candidates=[],choices=[],documentKey,version,raster=null,wallCores=null,allowSameVersion=false}={}) {
     const output={updates:[],removeIds:[],links:[],bathroomInsertions:[],refusals:[],deferred:[],warnings:[]};
     const warn=message=>{if(!output.warnings.includes(message))output.warnings.push(message);};
     if(!Array.isArray(items)||!Array.isArray(candidates)||!Array.isArray(choices)||items.length>3000||candidates.length>3000||choices.length>5000||typeof documentKey!=='string'||typeof version!=='string'){
@@ -6636,7 +6671,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
       }
       return seen;
     };
-    const options={documentKey,version,items},primary=candidates.map((item,index)=>({item,index})).filter(({item})=>mainFloor(item)),consumed=new Set(),removedCores=new Set();
+    const options={documentKey,version,items,allowSameVersion},primary=candidates.map((item,index)=>({item,index})).filter(({item})=>mainFloor(item)),consumed=new Set(),removedCores=new Set();
     try {
       const coreContext=wallCores?.provenance?.context;
       if(wallCores?.provenance?.engineId==='local-rooms'&&wallCores.provenance.engineVersion===version&&
@@ -6719,7 +6754,7 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
           });
           if(powderRooms.length===1){previous=powderRooms[0];restoredPowderRoom=true;}
         }
-        if(previous?.autoTakeoff?.provenance?.engineVersion===version||source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
+        if(!allowSameVersion&&previous?.autoTakeoff?.provenance?.engineVersion===version||source.detectionProvenance?.engineId!=='local-rooms'||source.detectionProvenance.engineVersion!==version)continue;
         if(!newFrame||previous&&frameKey(previous.autoTakeoff?.provenance?.context?.frame)!==frameKey(newFrame)){output.deferred.push(index);warn('Le repère de la salle de bain a changé : ancien contour conservé.');continue;}
         const protectedContour=previous&&!pristine(previous,{...options,sanitary:true});
         if(previous)output.links.push({index,itemId:previous.id,protected:protectedContour});
@@ -6810,6 +6845,133 @@ const automaticContourRefresh = (function createAutomaticContourRefresh(geometry
   }
   return {plan,pristine,retractable,wallFacePredecessor};
 })(geometry, detectionDecisions);
+const takeoffLearning = (function createTakeoffLearning(geometry) {
+  const {area,inside,distanceToSegment,excludedArea}=geometry;
+  const MAX_TEMPLATES=64,MAX_POINTS=64,ROOM_DISTANCE=.08,BASIN_DISTANCE=.04,FOOTPRINT_DISTANCE=.08;
+  const finite=Number.isFinite,copy=value=>JSON.parse(JSON.stringify(value));
+  const empty=()=>({schemaVersion:1,templates:[]});
+  const object=value=>value&&typeof value==='object'&&!Array.isArray(value)&&[Object.prototype,null].includes(Object.getPrototypeOf(value));
+  const keys=(value,allowed)=>object(value)&&Object.keys(value).length===allowed.length&&Object.keys(value).every(key=>allowed.includes(key));
+  const point=p=>keys(p,['x','y'])&&finite(p.x)&&finite(p.y);
+  const distance=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
+  const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+  function intersects(a,b,c,d) {
+    const abC=cross(a,b,c),abD=cross(a,b,d),cdA=cross(c,d,a),cdB=cross(c,d,b),epsilon=1e-8;
+    return abC*abD<0&&cdA*cdB<0||
+      Math.abs(abC)<epsilon&&distanceToSegment(c,a,b)<epsilon||Math.abs(abD)<epsilon&&distanceToSegment(d,a,b)<epsilon||
+      Math.abs(cdA)<epsilon&&distanceToSegment(a,c,d)<epsilon||Math.abs(cdB)<epsilon&&distanceToSegment(b,c,d)<epsilon;
+  }
+  function ringValid(ring) {
+    if(!Array.isArray(ring)||ring.length<3||ring.length>MAX_POINTS||!ring.every(p=>point(p)&&Math.abs(p.x)<=32&&Math.abs(p.y)<=32)||area(ring)<.1)return false;
+    for(let i=0;i<ring.length;i++){
+      const a=ring[i],b=ring[(i+1)%ring.length];if(distance(a,b)<.0001)return false;
+      for(let j=i+1;j<ring.length;j++)if(j!==i+1&&!(i===0&&j===ring.length-1)&&intersects(a,b,ring[j],ring[(j+1)%ring.length]))return false;
+    }
+    return true;
+  }
+  function contains(outer,inner) {
+    return inner.every(p=>inside(p,outer)||outer.some((a,i)=>distanceToSegment(p,a,outer[(i+1)%outer.length])<=.002))&&
+      !inner.some((p,i)=>outer.some((q,j)=>cross(p,inner[(i+1)%inner.length],q)*cross(p,inner[(i+1)%inner.length],outer[(j+1)%outer.length])<-1e-10&&
+        cross(q,outer[(j+1)%outer.length],p)*cross(q,outer[(j+1)%outer.length],inner[(i+1)%inner.length])<-1e-10));
+  }
+  function usable(room,basin,footprint=null) {
+    return ringValid(room)&&ringValid(basin)&&area(room)>=12&&area(room)<=256&&area(basin)<=30&&
+      (!footprint||ringValid(footprint)&&area(footprint)<=40&&contains(footprint,basin)&&area(footprint)>area(basin)+.05&&excludedArea(room,[footprint])>.1);
+  }
+  function validate(memory) {
+    const fail=()=>{throw new Error('Mémoire géométrique locale invalide.');};
+    if(!keys(memory,['schemaVersion','templates'])||memory.schemaVersion!==1||!Array.isArray(memory.templates)||memory.templates.length>MAX_TEMPLATES)fail();
+    for(const template of memory.templates)if(!keys(template,['kind','room','basin','footprint','support'])||!['bath','shower'].includes(template.kind)||template.support!==1||
+      !usable(template.room,template.basin,template.footprint)||Math.hypot(...Object.values(centroid(template.basin)))>.005)fail();
+    return true;
+  }
+  function centroid(ring) {
+    // Subtraction before products also makes large source offsets harmless.
+    const origin=ring[0];let sum=0,x=0,y=0;
+    for(let i=0;i<ring.length;i++){
+      const a={x:ring[i].x-origin.x,y:ring[i].y-origin.y},b={x:ring[(i+1)%ring.length].x-origin.x,y:ring[(i+1)%ring.length].y-origin.y},c=a.x*b.y-b.x*a.y;
+      sum+=c;x+=(a.x+b.x)*c;y+=(a.y+b.y)*c;
+    }
+    return {x:origin.x+x/(3*sum),y:origin.y+y/(3*sum)};
+  }
+  function prepare({item,scale,scaleVerified}={},training=false) {
+    if(scaleVerified!==true||!finite(scale)||scale<=0)return {reason:'unverified-scale'};
+    if(!item||item.holes!==undefined&&!Array.isArray(item.holes)||item.fixturePending!==undefined&&!Array.isArray(item.fixturePending)||
+      item.fixtureCuts!==undefined&&!Array.isArray(item.fixtureCuts)||item.subzones!==undefined&&!object(item.subzones))return {reason:'invalid-geometry'};
+    if(!item||item.kind!=='area'||item.bathroom!==true||training&&item.status!=='confirmée'||item.needsSeparation||item.mixedBathroom||item.measureOnly||item.work?.roomBoundary||
+      item.parentId||Object.keys(item.subzones||{}).length||(item.holes||[]).length||training&&(item.fixturePending||[]).length)return {reason:'ineligible-room'};
+    const proofs=item.sanitaryEvidence,cuts=item.fixtureCuts||[];
+    if(!Array.isArray(proofs)||proofs.length!==1||!Array.isArray(cuts)||cuts.length>1)return {reason:'ambiguous-evidence'};
+    const proof=proofs[0],cut=cuts[0];
+    if(!proof||proof.source!=='vector-shape'||proof.status!=='proposed'||!['bath','shower'].includes(proof.kind)||proof.typeNeedsReview||typeof proof.symbolId!=='string'||!proof.symbolId)return {reason:'unverified-symbol'};
+    const pending=item.fixturePending||[];
+    if(pending.length>1||pending.some(hint=>!hint||hint.key!==proof.symbolId||hint.type!==proof.kind||hint.source!==undefined&&hint.source!=='vector-shape'))return {reason:'ambiguous-evidence'};
+    if(training&&(!cut||cut.source!=='manual')||cut&&(cut.hintKey!==proof.symbolId||cut.type!==proof.kind))return {reason:'unlinked-manual-footprint'};
+    const rawRings=[item.points,proof.basinRing,...(cut?[cut.points]:[])];
+    if(!rawRings.every(ring=>Array.isArray(ring)&&ring.length>=3&&ring.length<=MAX_POINTS&&ring.every(p=>p&&finite(p.x)&&finite(p.y)&&Math.abs(p.x)<=1e8&&Math.abs(p.y)<=1e8)))return {reason:'invalid-geometry'};
+    const center=centroid(proof.basinRing);
+    if(!finite(center.x)||!finite(center.y))return {reason:'invalid-geometry'};
+    const toFeet=p=>({x:(p.x-center.x)*scale,y:(p.y-center.y)*scale}),[room,basin,footprint]=rawRings.map(r=>r.map(toFeet));
+    if(!usable(room,basin,training?footprint:null)||footprint&&!ringValid(footprint))return {reason:'invalid-geometry'};
+    return {room,basin,footprint,kind:proof.kind,scale,center};
+  }
+  const rotate=(p,axis,sign)=>({x:p.x*axis.x+p.y*axis.y,y:sign*(-p.x*axis.y+p.y*axis.x)});
+  const unrotate=(p,axis,sign)=>({x:p.x*axis.x-p.y*sign*axis.y,y:p.x*axis.y+p.y*sign*axis.x});
+  const round=value=>Math.round(value*10000)/10000;
+  const rounded=ring=>ring.map(p=>({x:round(p.x),y:round(p.y)}));
+  function axes(room) {
+    const result=[];
+    for(let i=0;i<room.length;i++){
+      const a=room[i],b=room[(i+1)%room.length],length=distance(a,b);if(length<.25)continue;
+      for(const direction of [1,-1]){
+        const axis={x:(b.x-a.x)/length*direction,y:(b.y-a.y)/length*direction};
+        if(!result.some(other=>distance(axis,other)<.0001))result.push(axis);
+      }
+    }
+    return result;
+  }
+  function boundaryDistance(a,b) {
+    const directed=(first,second)=>Math.max(...first.flatMap((p,i)=>[p,{x:(p.x+first[(i+1)%first.length].x)/2,y:(p.y+first[(i+1)%first.length].y)/2}])
+      .map(p=>Math.min(...second.map((q,i)=>distanceToSegment(p,q,second[(i+1)%second.length])))));
+    return Math.max(directed(a,b),directed(b,a));
+  }
+  const areaClose=(a,b,tolerance)=>Math.abs(area(a)-area(b))/Math.max(area(a),area(b))<=tolerance;
+  function matches(template,query) {
+    if(template.kind!==query.kind||!areaClose(template.room,query.room,.025)||!areaClose(template.basin,query.basin,.025))return [];
+    const result=[];
+    for(const axis of axes(query.room))for(const sign of [1,-1]){
+      const room=query.room.map(p=>rotate(p,axis,sign)),basin=query.basin.map(p=>rotate(p,axis,sign));
+      if(boundaryDistance(template.room,room)>ROOM_DISTANCE||boundaryDistance(template.basin,basin)>BASIN_DISTANCE)continue;
+      const footprint=template.footprint.map(p=>unrotate(p,axis,sign));
+      if(usable(query.room,query.basin,footprint))result.push({footprint,template});
+    }
+    return result;
+  }
+  function learn(memory,input) {
+    try{validate(memory);}catch{return {memory,learned:false,reason:'invalid-memory'};}
+    const query=prepare(input,true);if(query.reason)return {memory:copy(memory),learned:false,reason:query.reason};
+    for(const template of memory.templates)if(matches(template,query).some(match=>boundaryDistance(match.footprint,query.footprint)<=.015&&areaClose(match.footprint,query.footprint,.01)))
+      return {memory:copy(memory),learned:false,reason:'already-known'};
+    const axis=axes(query.room)[0];if(!axis)return {memory:copy(memory),learned:false,reason:'invalid-geometry'};
+    const template={kind:query.kind,room:rounded(query.room.map(p=>rotate(p,axis,1))),basin:rounded(query.basin.map(p=>rotate(p,axis,1))),footprint:rounded(query.footprint.map(p=>rotate(p,axis,1))),support:1};
+    const next={schemaVersion:1,templates:[...copy(memory.templates).slice(-(MAX_TEMPLATES-1)),template]};
+    try{validate(next);}catch{return {memory:copy(memory),learned:false,reason:'invalid-geometry'};}
+    return {memory:next,learned:true,reason:'learned'};
+  }
+  function inspect(memory,input) {
+    try{validate(memory);}catch{return {suggestion:null,reason:'invalid-memory'};}
+    const query=prepare(input);if(query.reason)return {suggestion:null,reason:query.reason};
+    const candidates=memory.templates.flatMap(template=>matches(template,query));
+    if(!candidates.length)return {suggestion:null,reason:'no-match'};
+    const typical=candidates[0].footprint;
+    if(candidates.some(candidate=>boundaryDistance(typical,candidate.footprint)>.04||!areaClose(typical,candidate.footprint,.02)))return {suggestion:null,reason:'conflicting-footprints'};
+    const gross=area(query.room),deduction=excludedArea(query.room,[typical]),issue=!query.footprint?'missing-footprint':
+      boundaryDistance(typical,query.footprint)>FOOTPRINT_DISTANCE||!areaClose(typical,query.footprint,.03)?'different-footprint':null;
+    return {suggestion:{reviewOnly:true,status:'à valider',type:query.kind,points:typical.map(p=>({x:query.center.x+p.x/query.scale,y:query.center.y+p.y/query.scale})),
+      gross,net:Math.max(0,gross-deduction),deduction,issue,support:new Set(candidates.map(candidate=>candidate.template)).size},reason:'matched'};
+  }
+  return {empty,validate,learn,inspect};
+})(geometry);
 const detectionEngineFactory = (function createDetectionEngine({id,version,analyze}={}) {
   if(typeof id!=='string'||!/^[a-z][a-z0-9-]{0,60}$/.test(id)||typeof version!=='string'||!version||version.length>120||typeof analyze!=='function')throw new Error('Moteur de détection invalide.');
   function fail(message,code){const error=new Error(message);error.code=code;throw error;}
@@ -10391,6 +10553,7 @@ const detectionReviewUI = (function createDetectionReviewUI() {
     const materialReview = item.materialNeedsReview ? `<small class="review-warning">Fini à confirmer <button type="button" data-confirm-material="${index}" aria-label="Confirmer le fini de ${esc(item.name)}">Confirmer ce fini</button></small>` : `<small class="review-ok">${item.materialSource === 'choix estimateur' ? 'Fini choisi' : 'Fini renseigné'} · contour à valider</small>`;
     let controls = mode === 'baseboard' ? `<label class="sr-only" for="candidateBaseboard${index}">Plinthe de ${esc(item.name)}</label><select id="candidateBaseboard${index}" data-candidate-baseboard="${index}" ${item.duplicate ? 'disabled' : ''}><option value="" ${!input.baseboardChoices?.[index] ? 'selected' : ''}>Sans plinthe</option>${(input.baseboardProducts || []).map(product => `<option value="${esc(product.code)}" ${input.baseboardChoices?.[index] === product.code ? 'selected' : ''}>${esc(product.name)} · ${esc(product.code)}</option>`).join('')}</select><small>Brut · déductions à vérifier</small>` : materialSelect(item, index, input.materials || []) + materialReview;
     if(item.automaticFloorReviewReason==='unlabelled-surrounds-dwellings')controls+='<small class="review-warning">Zone entourant plusieurs logements : vérifiez son contour et son usage.</small>';
+    if(mode==='area'&&input.learnedNotes?.[index])controls+=`<small class="review-warning" data-takeoff-lesson>${esc(input.learnedNotes[index])}</small>`;
     const quantity = mode === 'baseboard' ? input.baseboardLengths?.[index] : item.qty;
     return `<article class="review-measure" data-review-candidate="${index}"><div class="review-check"><input type="checkbox" aria-label="Ajouter ${esc(item.name)}" data-candidate="${index}" ${item.selected ? 'checked' : ''} ${item.duplicate || item.needsSeparation ? 'disabled' : ''}></div><div class="review-measure-body"><button type="button" class="review-name" data-preview="${index}" aria-pressed="${index === input.focus}" aria-label="Afficher le contour de ${esc(item.name)}">${esc(item.name)} <span aria-hidden="true">Voir</span></button>${controls}
       ${item.unitGrouping ? `<small>${item.unitGrouping.sourceRoomIds.length} zones réunies · un seul sol de logement.</small>` : ''}${item.bathroomGrouping ? '<small>Salle de bain et lavage réunis.</small>' : ''}${item.autoSavedId ? '<small class="review-ok">Enregistré · à valider</small>' : item.duplicate ? '<small class="review-ok">Déjà mesurée</small>' : ''}${item.importIssue && !item.duplicate ? `<small class="review-warning" data-import-issue>Non ajouté : ${esc(item.importIssue)}.</small>` : ''}${item.needsSeparation ? '<small class="review-warning">Séparation à corriger avant ajout.</small>' : ''}${item.unnamed ? '<small>Zone sans nom · rattachement à vérifier.</small>' : ''}${pending ? '<small class="review-warning">Équipement à délimiter avant commande.</small>' : ''}${item.fixtureCuts?.length ? `<small>${item.fixtureCuts.length} emprise(s) à contrôler.</small>` : ''}${item.sanitaryEvidence?.length ? `<details class="review-row-details"><summary>Indice sanitaire à vérifier</summary><p>Vérifiez le sol et l’emprise extérieure.</p><button type="button" data-reject-sanitary="${index}">Refuser l’indice sanitaire</button></details>` : ''}</div><div class="review-measure-quantity">${number(quantity)}<small>${mode === 'baseboard' ? 'pi lin.' : 'pi²'}</small></div></article>`;
@@ -17160,6 +17323,7 @@ function remember() {
   S.history.push(snapshot()); S.history = S.history.slice(-40); S.redo = [];
 }
 function restoreSnapshot(state) {
+  S.roomRepairJob?.abort();S.roomRepair=null;
   S.items = state.items; S.scales = state.scales; S.scaleMeta = state.scaleMeta;
   S.scale=S.scales[S.page]||null;
   S.selection = new Set(state.selection.filter(id => S.items.some(i => i.id === id && i.page === S.page)));
@@ -17773,8 +17937,11 @@ function tileModal() {
   preview();
 }
 
+function wallModelCacheKey() {
+  return JSON.stringify([S.documentKey,S.page,S.settings,S.scales[S.page],S.dividers[S.page],S.detectBounds[S.page]]);
+}
 function detectorForPage() {
-  const key=JSON.stringify([S.documentKey,S.page,S.settings,S.scales[S.page],S.dividers[S.page],S.detectBounds[S.page]]);
+  const key=wallModelCacheKey();
   if(S.detectorCache?.image===S.plan&&S.detectorCache.key===key)return S.detectorCache.model;
   const model=makeWallModel(S.plan,S.pageInfo[S.page],{...S.settings,detectionPage:S.page},S.scale,S.dividers[S.page]||[],S.detectBounds[S.page]);
   S.detectorCache={key,image:S.plan,model};return model;
@@ -17839,6 +18006,121 @@ async function detectRoom(point) {
     const result=addDetected([candidate]);
     toast(result.accepted?`Pièce ajoutée · contour à valider.`:result.skipped[0]?.reason||'Aucune pièce ajoutée.');
   }catch(error){toast('Détection indisponible : '+error.message);}
+}
+function roomRepairPlan(candidate,model) {
+  const choices=S.settings.detectionChoices||[],raster={width:model.width,height:model.height,factor:model.factor,
+    wallMask:model.wallMask,closedMask:model.mask,labels:model.labels};
+  const prior=S.items.filter(item=>item.kind==='area'&&item.page===candidate.page&&!item.work?.roomBoundary&&
+    (item.work?.layer||'finish')==='finish'&&zones.intersectNet(item,candidate)>1e-6);
+  const plan=automaticContourRefresh.plan({items:S.items,candidates:[candidate],choices,documentKey:S.documentKey,
+    version:LOCAL_ROOM_ENGINE_VERSION,raster,allowSameVersion:true});
+  const update=plan.updates[0],linked=plan.links[0],fragmentIds=plan.bathroomInsertions[0]?.fragmentIds||[];
+  const previous=S.items.find(item=>item.id===(update?.itemId||linked?.itemId))||(prior.length===1?prior[0]:null);
+  let reason='';
+  if(!candidate.selected||plan.refusals.length)reason='Cette proposition a été refusée dans le relevé.';
+  else if(linked?.protected)reason='Ce contour a été confirmé, retouché ou lié. Utilisez ses outils de modification.';
+  else if(plan.aborted||plan.deferred.length)reason='Le rattachement au relevé doit être vérifié.';
+  else if(!update&&prior.some(item=>!fragmentIds.includes(item.id)))reason='Un relevé existant chevauche ce contour. Vérifiez ses limites.';
+  return {previous,update,removeIds:plan.removeIds,fragmentIds,reason};
+}
+function dismissRoomRepair() {
+  S.tool='select';closeReview();refreshManualUI();
+}
+function renderRoomRepair(panel,repair) {
+  if(!repair.isCurrent())return closeReview();
+  const {candidate,comparison,lesson}=repair,{previous,reason}=comparison,scale=S.scales[candidate.page];
+  const proposed=netArea(candidate)*scale**2,old=previous?netArea(previous)*scale**2:null;
+  const cuts=candidate.fixtureCuts||[],pending=candidate.fixturePending||[];
+  const deduction=(netArea({...candidate,fixtureCuts:[]})-netArea(candidate))*scale**2;
+  const fixtureNames=[...new Set((candidate.sanitaryEvidence||[]).map(proof=>proof.kind==='shower'?'Douche':'Baignoire'))];
+  panel.hidden=false;$('#inspector').hidden=true;$('.app').classList.add('review-open');
+  panel.innerHTML=`<header class="review-head"><div><h2>Reprendre une salle</h2></div><button type="button" id="roomRepairClose" aria-label="Fermer l’aperçu">×</button></header>
+    <div class="review-intro"><p>${esc(pageName(candidate.page))}</p>
+    <p id="roomRepairCurrent">Net actuel · <b>${old===null?'Aucun relevé':fmt(old,2)+' pi²'}</b></p>
+    <p id="roomRepairProposed">Net proposé · <b>${fmt(proposed,2)} pi²</b></p>
+    <p id="roomRepairFixtures">${fixtureNames.length?esc(fixtureNames.join(' et '))+' · ':''}${cuts.length} emprise(s) déduite(s)${cuts.length?' · '+fmt(deduction,2)+' pi²':''}${pending.length?' · '+pending.length+' à délimiter':''}</p>
+    ${lesson?.issue?`<p id="roomRepairMemory" class="review-warning">${esc(takeoffLessonNote(lesson))}</p>`:''}
+    ${reason?`<p class="review-warning" role="status">${esc(reason)}</p>`:''}</div>
+    <div class="review-pagination"><button type="button" id="roomRepairToggle" aria-pressed="${repair.showProposal}">Contour proposé</button>${lesson?.issue?`<button type="button" id="roomRepairMemoryToggle" aria-pressed="${!!repair.showMemory}">Repère mémorisé</button>`:''}</div>
+    <footer class="review-actions"><button type="button" id="roomRepairApply" class="primary" ${reason?'disabled':''}>${comparison.update?'Remplacer le contour':'Ajouter au relevé'} · à valider</button><div><button type="button" id="roomRepairCancel">Annuler</button></div></footer>`;
+  $('#roomRepairClose').onclick=$('#roomRepairCancel').onclick=dismissRoomRepair;
+  $('#roomRepairToggle').onclick=event=>{
+    repair.showProposal=!repair.showProposal;event.currentTarget.setAttribute('aria-pressed',String(repair.showProposal));
+    S.preview=repair.showProposal?{page:S.page,items:[candidate]}:null;draw();
+  };
+  if($('#roomRepairMemoryToggle'))$('#roomRepairMemoryToggle').onclick=event=>{
+    repair.showMemory=!repair.showMemory;event.currentTarget.setAttribute('aria-pressed',String(repair.showMemory));draw();
+  };
+  $('#roomRepairApply').onclick=()=>applyRoomRepair(repair);
+  S.preview=repair.showProposal?{page:S.page,items:[candidate]}:null;
+  draw();
+}
+function applyRoomRepair(repair) {
+  if(repair!==S.roomRepair||!repair.isCurrent())return dismissRoomRepair();
+  const {candidate,model,comparison}=repair,current=roomRepairPlan(candidate,model);
+  const signature=plan=>JSON.stringify([plan.previous,plan.update?.item,plan.removeIds,plan.fragmentIds,plan.reason]);
+  if(current.reason||signature(current)!==repair.signature){
+    repair.comparison=current;repair.signature=signature(current);
+    renderRoomRepair($('#reviewPanel'),repair);
+    return toast('Le relevé a changé. Vérifiez la proposition affichée.');
+  }
+  const {update,removeIds,fragmentIds}=current;
+  dismissRoomRepair();remember();
+  let id=update?.itemId;
+  if(update){
+    const removed=new Set(removeIds);
+    S.items=S.items.filter(item=>!removed.has(item.id)).map(item=>item.id===id?update.item:item);
+    syncSanitaryQuantities();applyAutomaticFiling([id,...S.items.filter(item=>item.sanitarySource?.parentId===id).map(item=>item.id)]);
+  }else{
+    const result=synchronizeDetected([candidate],{bathroomFragments:new Map([[candidate,fragmentIds]])});
+    id=result.acceptedIds[0];
+    if(!id){S.history.pop();return toast(result.skipped[0]?.reason||'La salle est déjà relevée.');}
+  }
+  delete S.reviewByPage[candidate.page];
+  setSelection([id]);save();refresh();
+  toast((comparison.update?'Contour remplacé':'Salle ajoutée')+' · à valider. Ctrl+Z pour annuler.');
+}
+async function findRoomRepair(point) {
+  if(!S.plan||!S.scale||S.detectJob)return toast('Ouvrez et calibrez la feuille avant la détection.');
+  S.roomRepairJob?.abort();
+  if(S.roomRepair)closeReview();
+  const job=new AbortController();S.roomRepairJob=job;
+  const key=S.documentKey,page=S.page,image=S.plan,pdf=S.pdf,info=S.pageInfo[page]||{},requestId=uid(),
+    generation=S.detectionGeneration=(S.detectionGeneration||0)+1,engine=getLocalRoomEngine(),cacheKey=wallModelCacheKey();
+  const settings=structuredClone(S.settings),material=S.material,bounds=structuredClone(S.detectBounds[page]||null),
+    dividers=structuredClone(S.dividers[page]||[]),context=localDetectionContext({page,image,info,requestId,generation,settings,material,bounds,dividers,point});
+  const isCurrent=()=>!job.signal.aborted&&!S.loading&&!S.detectJob&&S.tool==='roomRepair'&&S.detectionGeneration===generation&&
+    key===S.documentKey&&page===S.page&&image===S.plan&&pdf===S.pdf&&cacheKey===wallModelCacheKey()&&
+    engine.matchesContext(context,localDetectionContext({page,image,info,requestId,generation,point}));
+  const cached=S.detectorCache?.image===image&&S.detectorCache.key===cacheKey?S.detectorCache.model:null;
+  toast('Lecture des murs et des sanitaires de la feuille…');
+  try {
+    const detected=await engine.run({context,input:{image,info,settings,material,bounds,dividers,model:cached,background:!cached}},
+      {signal:job.signal,isCurrent});
+    const model=detected.diagnostics.model,scale=S.scales[page];
+    if(!isCurrent())return;
+    S.detectorCache={key:cacheKey,image,model};
+    const room=componentAt(model,point,model.factor,0);
+    if(!room)return toast('Cliquez dans le sol de la salle, à l’écart du mur ou du seuil.');
+    const {proposals}=detected;
+    applySanitaryProposals(proposals,info,scale,model,key,page,bounds);
+    const grouped=groupBathroomFloors(proposals,model,scale);
+    const source=grouped.find(item=>item.sourceRoomId===room.id||item.bathroomGrouping?.sourceRoomIds.includes(room.id));
+    if(!source?.bathroom||source.needsSeparation||source.mixedBathroom)return toast('Salle de bain à délimiter. Cliquez dans un sol sanitaire fermé.');
+    const previous=automaticContourRefresh.wallFacePredecessor(source,{items:S.items,documentKey:key,version:LOCAL_ROOM_ENGINE_VERSION,
+      frame:context.frame,allowSameVersion:true});
+    const peers=S.items.filter(item=>item!==previous&&!automaticContourRefresh.pristine(item,{items:S.items,documentKey:key,
+      version:LOCAL_ROOM_ENGINE_VERSION,allowSameVersion:true}));
+    const fitted=applyCandidateWallFaces(source,model,scale,[...grouped,...peers]);
+    const candidate=detectionDecisions.apply(S.settings.detectionChoices||[],detectionChoiceKey(key,page,fitted),fitted,MATERIALS.map(entry=>entry.code));
+    candidate.detectionProvenance={...detected.provenance,warnings:[...new Set([...detected.warnings,...model.wallDiagnostics?.faceWarnings||[]])]};
+    const comparison=roomRepairPlan(candidate,model);
+    S.roomRepair={candidate,comparison,model,isCurrent,showProposal:true,lesson:takeoffLessonFor(candidate,takeoffLessons()),
+      signature:JSON.stringify([comparison.previous,comparison.update?.item,comparison.removeIds,comparison.fragmentIds,comparison.reason])};
+    S.reviewOpen=true;setSelection([]);S.previewFocus=0;S.previewSelection=new Set();
+    renderDetectionPanel();$('#roomRepairClose').focus({preventScroll:true});
+  }catch(error){if(isCurrent())toast('Reprise indisponible : '+error.message);}
+  finally{if(S.roomRepairJob===job)S.roomRepairJob=null;}
 }
 function analyzeAll() { return openDetectionSettings(); }
 function detectionResults(candidates) {
@@ -17910,7 +18192,9 @@ function updateItem(id,patch) {
   if(patch.bathroom===false){delete item.bathroomGrouping;if(item.laundry)item.laundryInBathroom=false;}
   if(changed&&!('status'in patch))item.status='à valider';
   if(item.kind==='area'&&item.bathroom&&!item.fixtureScanDone)applyRecognizedFixtures(item,S.pageInfo[item.page]||{},S.scales[item.page]);
-  if(hasPendingFixtures(item))item.status='à valider';if('material'in patch||'work'in patch&&(item.autoTakeoff||item.sanitarySource||item.takeoffFiling?.mode==='auto'))applyAutomaticFiling([id]);save();refresh();
+  if(hasPendingFixtures(item))item.status='à valider';
+  if('material'in patch||'work'in patch&&(item.autoTakeoff||item.sanitarySource||item.takeoffFiling?.mode==='auto'))applyAutomaticFiling([id]);
+  const saved=save();if(saved&&patch.status==='confirmée')learnConfirmedTakeoff([item]);refresh();
 }
 function recalculatePage(page) {
   const scale=S.scales[page];
@@ -17951,6 +18235,8 @@ function zoomSelection() {
 }
 function activateTool(tool) {
   if(S.loading)return;
+  S.roomRepairJob?.abort();
+  if(S.roomRepair||tool==='roomRepair'&&S.reviewOpen)closeReview();
   planOverlayUI?.cancelAlignment();
   S.selectionBox=null;
   S.fixtureDrawing=null;S.fixtureEditing=null;
@@ -18031,7 +18317,7 @@ function keyboard(event) {
   if(key==='delete'||key==='backspace') {
     event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else deleteSelection();return;
   }
-  if(key==='escape'){event.preventDefault();S.sanitaryDraft=null;if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
+  if(key==='escape'){event.preventDefault();S.roomRepairJob?.abort();S.sanitaryDraft=null;if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
   if(key==='enter') {
     if(finishManualTool()){event.preventDefault();return;}
     const row=event.target.closest?.('[data-item]');
@@ -18074,6 +18360,10 @@ function drawGuides(context) {
   context.save();context.lineWidth=2/S.zoom;context.strokeStyle='#b73f24';context.setLineDash([6/S.zoom,4/S.zoom]);
   for(const divider of S.dividers[S.page]||[]){context.beginPath();divider.points.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.stroke();}
   const roi=S.detectBounds[S.page];if(roi){context.strokeStyle='#256d54';context.strokeRect(roi.x,roi.y,roi.right-roi.x,roi.bottom-roi.y);}
+  const remembered=S.roomRepair;
+  if(remembered?.showMemory&&remembered.candidate.page===S.page){
+    context.beginPath();traceRing(context,remembered.lesson.points);context.strokeStyle='#125cab';context.stroke();
+  }
   if(S.preview?.page===S.page)for(const item of S.preview.items)if(!item.duplicate&&!item.autoSavedId) {
     const focused=S.preview.items.indexOf(item)===S.previewFocus||S.previewSelectionPage===S.page&&S.previewSelection?.has(S.preview.items.indexOf(item));
     context.save();
@@ -19198,6 +19488,7 @@ canvas.onclick=event=>{
   else if(S.tool==='select')selectSurfaceAt(point,event);
   else if(S.tool==='tileOrigin')setTileOrigin(S.selected,point);
   else if(S.tool==='auto')detectRoom(point);
+  else if(S.tool==='roomRepair')findRoomRepair(point);
   else if(['area','split','exclude','linear','wallTrace','calibrate','divider','region'].includes(S.tool)) {
     if(!S.draft.length||dist(S.draft.at(-1),point)>.5)S.draft.push(point);
     if(S.tool==='calibrate'&&S.draft.length===2){if(dist(...S.draft)<2){S.draft.pop();toast('Choisissez deux points distincts.');}else calibrationModal(S.calibrationMode||'imperial');}
