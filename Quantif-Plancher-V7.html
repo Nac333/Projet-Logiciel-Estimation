@@ -85,11 +85,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 [data-dialog-handle][data-grabbing]{cursor:grabbing}
 [data-dialog-handle]:focus-visible{outline:2px solid var(--aite-blue,#2d5780);outline-offset:-3px}
 /* Fiche de surface : styles bornés au modal natif. */
-.v4-dialog:has(.aite-surface-editor){--sd-ink:var(--aite-ink,#25333d);--sd-muted:var(--aite-muted,#515b65);--sd-paper:var(--aite-paper,#f8f7f4);--sd-line:var(--aite-line,#c8cfd2);--sd-accent:var(--aite-blue,#2d5780);display:flex;flex-direction:column;width:min(650px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;overflow:hidden;background:var(--sd-paper);color:var(--sd-ink);font:13px/1.45 'Segoe UI',Arial,sans-serif}
+.v4-dialog:has(.aite-surface-editor){--sd-ink:var(--aite-ink,#25333d);--sd-muted:var(--aite-muted,#515b65);--sd-paper:var(--aite-paper,#f8f7f4);--sd-line:var(--aite-line,#c8cfd2);--sd-accent:var(--aite-blue,#2d5780);display:flex;flex-direction:column;padding:0;overflow:hidden;background:var(--sd-paper);color:var(--sd-ink);font:13px/1.45 'Segoe UI',Arial,sans-serif}
 .v4-dialog:has(.aite-surface-editor)>header{flex:none;padding:14px 20px;margin:0;border-bottom:1px solid var(--sd-line)}
 .v4-dialog:has(.aite-surface-editor)>header h2{font-size:18px;font-weight:600;line-height:1.35;margin:0}
-.aite-surface-editor{display:flex;flex-direction:column;min-height:0;max-height:calc(100dvh - 104px)}
-.aite-surface-editor *{box-sizing:border-box}.surface-editor-body{min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-block:12px;max-height:calc(100dvh - 180px);padding:18px 20px}
+.aite-surface-editor{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+.aite-surface-editor *{box-sizing:border-box}.surface-editor-body{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-block:10px;padding:12px 16px 8px}
 .aite-surface-editor p{font-size:12px;line-height:1.45;color:var(--sd-muted);margin:6px 0}
 .surface-product-summary{display:flex;align-items:baseline;justify-content:space-between;gap:8px 24px;padding:0 0 12px;margin:0 0 14px;border-bottom:1px solid var(--sd-line);overflow-wrap:anywhere}.surface-product-summary strong{font-size:16px;font-weight:600}.surface-product-summary p{margin:1px 0 0}.surface-product-summary>span{max-width:42%;text-align:right;color:var(--sd-muted);font-size:12px}
 .surface-qty-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 10px}.surface-qty-grid>div,.aite-surface-editor .surface-qty-grid>label{min-width:0;padding:8px 10px;border:1px solid var(--sd-line);border-radius:6px;background:#edf0f1;font-size:12px}.surface-qty-grid>div:last-child{background:#e5eef4}.surface-qty-grid>div>span{display:block;color:var(--sd-muted)}.surface-qty-grid strong,.aite-surface-editor .surface-qty-grid input:not([type=checkbox]){font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}.surface-qty-grid strong{display:block;margin-top:3px}.surface-loss-input{display:flex;align-items:center;gap:4px}.aite-surface-editor .surface-loss-input input{min-height:30px;margin-top:2px;padding:2px 6px}.aite-surface-editor .surface-loss-input input[readonly]{border-color:transparent;background:transparent;padding-left:0;appearance:textfield}.surface-loss-input input[readonly]::-webkit-inner-spin-button{appearance:none}.surface-loss-input small{font-size:12px}
@@ -101,7 +101,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .aite-surface-editor .v6-edit-section{margin-top:14px;padding-top:12px;border-color:var(--sd-line)}.aite-surface-editor .v6-edit-section h3{font-size:13px;font-weight:600;line-height:1.4;margin:0 0 6px}.surface-editor-section-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.surface-editor-pending-count{font-size:11px;font-weight:500;color:#755015;background:#fff1cc;padding:3px 7px;border-radius:4px}.aite-surface-editor .surface-editor-sanitary{border:1px solid var(--sd-line);border-radius:6px;padding:14px;background:#f3f4f2}.aite-surface-editor .surface-editor-sanitary-priority{border-left:3px solid var(--sd-accent)}.aite-surface-editor #surfaceAutoFixtures{width:auto;min-height:36px;font-weight:500;margin:8px 0;padding:8px 10px;background:#e0e9f1;border-color:var(--sd-accent);color:#24496c}.aite-surface-editor .v6-action-row{gap:8px;margin:10px 0 0}.aite-surface-editor .v6-action-row button,.aite-surface-editor .v6-fixture-row button{min-height:36px;font-weight:500;padding:7px 9px;font-family:inherit;font-size:12px;color:var(--sd-ink);background:#fff;border-color:#7d8999}.aite-surface-editor .v6-fixture-row{gap:8px;padding:10px 0}.aite-surface-editor .v6-fixture-row small{font:11px/1.4 'Segoe UI',Arial,sans-serif;color:var(--sd-muted)}.aite-surface-editor .v6-pending{margin:10px 0;padding:10px;background:#fff4dc;border-color:#b28b45;color:#755015}.aite-surface-editor .v6-pending p{color:#755015}.aite-surface-editor #fixtureShape{max-width:310px}.aite-surface-editor .surface-editor-geometry .v6-action-row button{flex:1 1 180px}
 .aite-surface-editor .surface-editor-footer.modal-actions{flex:none;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0;padding:12px 20px;border-top:1px solid var(--sd-line);background:var(--sd-paper)}.surface-editor-footer>p{flex:1 1 180px;margin:0}.aite-surface-editor .surface-editor-footer button{width:auto;min-height:38px;margin:0;padding:8px 12px;font:500 13px/1.4 'Segoe UI',Arial,sans-serif}.aite-surface-editor .surface-editor-footer .primary{background:var(--sd-accent);border-color:var(--sd-accent);color:#fff}.aite-surface-editor :is(input,select,button):focus-visible{outline:2px solid var(--sd-accent);outline-offset:2px}
 @media(max-width:620px){.aite-surface-editor .v6-fixture-row>div:first-child{flex-basis:100%}.surface-editor-fields{gap:10px}}
-@media(max-width:480px){.v4-dialog:has(.aite-surface-editor){width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}.v4-dialog:has(.aite-surface-editor)>header{padding:12px 14px}.surface-editor-body{padding:14px;max-height:calc(100dvh - 190px)}.surface-editor-fields{grid-template-columns:minmax(0,1fr)}.surface-editor-location{grid-column:auto}.aite-surface-editor input:not([type=checkbox]),.aite-surface-editor select,.aite-surface-editor button{min-height:42px}.aite-surface-editor .surface-editor-sanitary{padding:12px}.aite-surface-editor .v6-action-row{display:flex;flex-wrap:wrap}.aite-surface-editor .v6-action-row button{width:auto;flex:1 1 130px;margin:0}.aite-surface-editor #surfaceAutoFixtures{width:100%}.aite-surface-editor #fixtureShape{max-width:none}.aite-surface-editor .surface-editor-footer.modal-actions{padding:10px 14px;gap:8px}.aite-surface-editor .surface-editor-footer button{flex:1 1 110px;min-height:42px}}
+@media(max-width:480px){.surface-editor-fields{grid-template-columns:minmax(0,1fr)}.surface-editor-location{grid-column:auto}.aite-surface-editor input:not([type=checkbox]),.aite-surface-editor select,.aite-surface-editor button{min-height:42px}.aite-surface-editor .surface-editor-sanitary{padding:12px}.aite-surface-editor .v6-action-row{display:flex;flex-wrap:wrap}.aite-surface-editor .v6-action-row button{width:auto;flex:1 1 130px;margin:0}.aite-surface-editor #surfaceAutoFixtures{width:100%}.aite-surface-editor #fixtureShape{max-width:none}.aite-surface-editor .surface-editor-footer.modal-actions{padding:10px 14px;gap:8px}.aite-surface-editor .surface-editor-footer button{flex:1 1 110px;min-height:42px}}
 @media(max-width:420px){.surface-product-summary{flex-wrap:wrap;gap:3px}.surface-product-summary>span{max-width:none;text-align:left}.surface-qty-grid{gap:5px}.surface-qty-grid>div,.aite-surface-editor .surface-qty-grid>label{padding:6px}.surface-qty-grid strong,.aite-surface-editor .surface-qty-grid input:not([type=checkbox]){font-size:15px}}
 
 .v6-surface-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.v6-surface-numbers>div{border:1px solid #718078;background:#e6f3fc;border-radius:6px;padding:12px;min-width:0}.v6-surface-numbers span{display:block;font:12px/1.45 Arial,sans-serif;color:#4b5550;margin-bottom:6px}.v6-surface-numbers b{font:700 18px/1.3 Arial,sans-serif;font-variant-numeric:tabular-nums;color:#18354d}.v6-edit-section{border-top:1px solid #b7c4bc;margin-top:18px;padding-top:6px}.v6-edit-section h3{margin-top:12px}.v6-action-row{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.v6-action-row button,.v6-fixture-row button,.v6-edit-section>.selection-action{min-height:38px;max-width:100%;border:1px solid #718078;border-radius:4px;background:#fff;color:#236b99;font:600 12px/1.45 Arial,sans-serif;padding:8px 10px;white-space:normal}.v6-fixture-row{display:flex;gap:9px;align-items:center;border-bottom:1px solid #d9dedb;padding:12px 0}.v6-fixture-row>div:first-child{flex:1;min-width:0}.v6-fixture-row b,.v6-fixture-row small{display:block;line-height:1.45}.v6-fixture-row small{font-size:11px;color:#4b5550;margin-top:4px}.v6-pending{background:#fff5ed;border:1px solid #b65335;border-radius:6px;color:#873b23;padding:12px;margin:12px 0}.v6-pending p{color:#75412c}.v6-fixture-row button{flex:0 1 auto}.v6-action-row button:hover,.v6-fixture-row button:hover{background:#e6f3fc}
@@ -540,14 +540,20 @@ body[data-aite-theme="nuit"] {
 #overlay .takeoff td { font-variant-numeric: tabular-nums; }
 #overlay .takeoff footer p { color: var(--form-muted); font-size: 11px; }
 
-#overlay .v4-dialog.surface-editor { overflow: hidden; }
+#overlay .modal-back:has(> .surface-editor) { background: #10171348; }
+#overlay .v4-dialog.surface-editor {
+  width: min(600px, calc(100vw - 24px));
+  max-height: min(580px, calc(100dvh - 24px));
+  overflow: hidden;
+}
 #overlay .v4-dialog.surface-editor > header {
-  min-height: 55px;
+  min-height: 44px;
   margin: 0;
-  padding: 10px 20px;
+  padding: 6px 16px;
   border-radius: 0;
   border-width: 0 0 1px;
 }
+#overlay .surface-editor > header h2 { font-size: 16px; }
 #overlay .aite-surface-editor {
   --sd-accent: var(--form-accent);
   --sd-paper: var(--form-paper);
@@ -555,34 +561,47 @@ body[data-aite-theme="nuit"] {
   --sd-muted: var(--form-muted);
   --sd-line: var(--form-line);
 }
-#overlay .surface-product-summary { align-items: center; }
+#overlay .surface-product-summary {
+  align-items: center;
+  gap: 6px 12px;
+  margin-bottom: 9px;
+  padding-bottom: 8px;
+}
+#overlay .surface-product-summary > div { min-width: 0; }
 #overlay .surface-product-summary strong {
   color: var(--form-ink);
-  font-size: 18px;
+  font-size: 15px;
+  line-height: 1.25;
   letter-spacing: -.015em;
 }
-#overlay .surface-product-summary p { color: var(--form-muted); }
+#overlay .surface-product-summary p { color: var(--form-muted); line-height: 1.35; }
 #overlay .surface-product-summary > span {
   padding-left: 9px;
   border-left: 2px solid var(--form-line);
   color: var(--form-muted);
 }
-#overlay .surface-editor-fields { gap: 11px 14px; }
+#overlay .surface-editor-fields { gap: 8px 11px; }
 #overlay .surface-editor-primary {
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  align-items: end;
 }
-#overlay :is(.surface-location-fields, .surface-editor-name) {
-  grid-column: 1 / -1;
-  min-width: 0;
+#overlay .surface-editor-primary > * { min-width: 0; }
+#overlay :is(.surface-location-fields, .surface-editor-baseboard) { grid-column: span 4; }
+#overlay :is(.surface-editor-name, .surface-editor-finish) { grid-column: span 6; }
+#overlay .surface-editor-primary :is(input, select) {
+  height: 35px;
+  min-height: 35px;
+  margin-top: 4px;
+  padding-block: 5px;
 }
 #overlay .surface-location-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: end;
-  gap: 12px;
+  gap: 7px;
 }
 #overlay .surface-location-fields:has(#surfaceUnitField:not([hidden])) {
-  grid-template-columns: minmax(0, 1fr) clamp(92px, 28%, 132px);
+  grid-template-columns: minmax(0, 1fr) clamp(86px, 36%, 105px);
 }
 #overlay .surface-location-fields label {
   min-width: 0;
@@ -597,15 +616,16 @@ body[data-aite-theme="nuit"] {
 #overlay .surface-name-heading .surface-editor-link {
   max-width: 60%;
   min-width: 0;
-  min-height: 24px;
+  min-height: 20px;
   margin: 0;
-  padding-block: 2px;
+  padding-block: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 #overlay .surface-qty-grid {
   gap: 1px;
+  margin: 10px 0 7px;
   overflow: hidden;
   grid-template-columns: 1fr .85fr 1fr;
   border: 1px solid var(--form-line);
@@ -617,7 +637,7 @@ body[data-aite-theme="nuit"] {
   flex-direction: column;
   justify-content: space-between;
   gap: 3px;
-  padding: 9px 11px;
+  padding: 7px 9px;
   border: 0;
   border-radius: 0;
   background: var(--form-field);
@@ -631,42 +651,72 @@ body[data-aite-theme="nuit"] {
 #overlay .surface-qty-grid #surfaceWaste {
   margin: 0;
   color: var(--form-ink);
-  font: 650 21px/1.25 var(--form-font);
+  font: 650 17px/1.25 var(--form-font);
   font-variant-numeric: tabular-nums;
   letter-spacing: -.025em;
 }
 #overlay .surface-qty-grid #surfaceWaste { min-height: 27px; height: 27px; }
-#overlay .surface-loss-input { gap: 5px; align-items: baseline; }
+#overlay .surface-qty-grid #surfaceWaste::placeholder { font-size: 12px; font-weight: 500; letter-spacing: 0; }
+#overlay .surface-loss-input { gap: 4px; align-items: center; }
 #overlay .surface-loss-input input[readonly] {
-  width: 6.6ch;
   padding: 0;
   border-color: transparent;
   background: transparent;
 }
-#overlay .surface-editor-tiles { background: var(--form-chrome); border-color: var(--form-line); }
+#overlay .surface-editor-tiles {
+  margin-bottom: 7px;
+  padding: 6px 9px;
+  background: var(--form-chrome);
+  border-color: var(--form-line);
+}
+#overlay .surface-editor-tiles p { margin: 3px 0 0; line-height: 1.3; }
 #overlay .surface-editor-section-heading button {
-  min-height: 32px;
-  padding: 5px 9px;
+  min-height: 29px;
+  padding: 4px 8px;
   background: var(--form-field);
   border: 1px solid var(--form-control);
   color: var(--form-accent);
 }
-#overlay .surface-editor-details > summary { padding: 10px 2px; }
-#overlay .surface-editor-footer { border-top-color: var(--form-line); background: var(--form-paper); }
+#overlay .surface-editor-details { margin-top: 7px; }
+#overlay .surface-editor-details > summary { padding: 6px 2px; }
+#overlay .aite-surface-editor #surfaceEditError {
+  flex: none;
+  max-height: 18dvh;
+  overflow: auto;
+  margin: 0;
+  padding: 6px 16px;
+}
+#overlay .surface-editor-footer.modal-actions {
+  padding: 7px 16px;
+  border-top-color: var(--form-line);
+  background: var(--form-paper);
+}
+#overlay .surface-editor-footer button { min-height: 35px; padding-block: 5px; }
 
 @media (max-width: 680px) {
   #overlay .takeoff .takeoff-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 520px) {
+  #overlay :is(.surface-location-fields, .surface-editor-name) { grid-column: 1 / -1; }
+}
 @media (max-width: 480px) {
   #overlay [data-dialog-handle] h2 { font-size: 18px; }
-  #overlay .v4-dialog.surface-editor > header { min-height: 52px; padding: 10px 14px; }
-  #overlay .surface-qty-grid > :is(div, label) { padding: 7px; }
+  #overlay .v4-dialog.surface-editor:has(#surfaceTileCalculation) { max-height: min(620px, calc(100dvh - 24px)); }
+  #overlay .v4-dialog.surface-editor > header { padding-inline: 12px; }
+  #overlay .surface-editor-body { padding: 10px 12px 7px; }
+  #overlay .surface-product-summary { flex-wrap: nowrap; }
+  #overlay .surface-product-summary > div { flex: 1 1 0; }
+  #overlay .surface-product-summary > span { max-width: 42%; text-align: right; }
+  #overlay .surface-editor-primary :is(input, select) { height: 39px; min-height: 39px; }
+  #overlay .surface-editor-footer.modal-actions { padding-inline: 12px; }
+  #overlay .surface-editor-footer button { min-height: 40px; }
+  #overlay .surface-qty-grid > :is(div, label) { padding: 6px; }
   #overlay .surface-qty-grid strong,
   #overlay .surface-qty-grid #surfaceWaste { font-size: 16px; }
-  #overlay .surface-editor-section-heading button { min-height: 38px; }
+  #overlay .surface-editor-section-heading button { min-height: 34px; }
 }
 @media (max-width: 359px) {
-  #overlay .surface-editor-primary { grid-template-columns: minmax(0, 1fr); }
+  #overlay .surface-editor-primary > * { grid-column: 1 / -1; }
 }
 /* Tableaux, légendes et états partagés hors du canevas. */
 .app.aite-workspace {
@@ -21146,15 +21196,15 @@ function surfaceEditor(id,showDetails=false) {
     <div class="surface-editor-fields surface-editor-primary">
       <div class="surface-location-fields">
         <label>Localisation<select id="surfaceLocation">${[['auto',recognized?'Automatique · Unité '+recognized:'Selon le plan'],['unit','Logement'],['common','Espace commun']].map(([value,label])=>`<option value="${value}" ${scope===value?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
-      <label id="surfaceUnitField" ${scope==='unit'?'':'hidden'}>N° de logement<input id="surfaceUnitNumber" maxlength="80" list="surfaceKnownUnits" value="${esc(known)}"><datalist id="surfaceKnownUnits">${unitRows.map(row=>`<option value="${esc(row.code)}" label="${esc(row.type||'')}"></option>`).join('')}</datalist></label>
+      <label id="surfaceUnitField" ${scope==='unit'?'':'hidden'}>N° logement<input id="surfaceUnitNumber" maxlength="80" list="surfaceKnownUnits" value="${esc(known)}"><datalist id="surfaceKnownUnits">${unitRows.map(row=>`<option value="${esc(row.code)}" label="${esc(row.type||'')}"></option>`).join('')}</datalist></label>
       </div>
       <div class="surface-editor-name"><div class="surface-name-heading"><label for="surfaceName">Nom de la pièce</label>${suggestion?`<button type="button" id="surfaceUseName" class="surface-editor-link" title="${esc(suggestion.source+' · '+suggestion.name)}">Reprendre ${esc(suggestion.name)}</button>`:''}</div><input id="surfaceName" maxlength="300" required value="${esc(nameValue)}"></div>
-      <label>Fini de plancher<select id="surfaceMaterial">${keepFinish?`<option value="__keep_surface_finish__" selected>${esc(specificationEntry(item)?.code||item.material)} · Référence actuelle</option>`:''}${finishMaterialOptions(keepFinish?null:item.material,work.specificationId,documentFinishes)}</select></label>
-      <label>Plinthe<select id="surfaceBaseboard"><option value="">Sans plinthe</option>${baseboardOptions(baseCode)}</select></label>
+      <label class="surface-editor-finish">Fini de plancher<select id="surfaceMaterial">${keepFinish?`<option value="__keep_surface_finish__" selected>${esc(specificationEntry(item)?.code||item.material)} · Référence actuelle</option>`:''}${finishMaterialOptions(keepFinish?null:item.material,work.specificationId,documentFinishes)}</select></label>
+      <label class="surface-editor-baseboard">Plinthe<select id="surfaceBaseboard"><option value="">Sans plinthe</option>${baseboardOptions(baseCode)}</select></label>
     </div>
     <section class="surface-qty-grid" aria-label="Quantités de la surface">
       <div><span>Quantité sans perte</span><strong>${pending.length?'À délimiter':fmt(q.net,2)+' pi²'}</strong></div>
-      <label><span id="surfaceLossLabel">${calculated?'Perte calculée':defaultLoss===null?'Perte saisie':'Perte par défaut'}</span><span class="surface-loss-input"><input id="surfaceWaste" type="number" min="0" max="1000" step="any" ${calculated?'readonly':''} value="${loss===null?'':calculated?Number(loss.toFixed(4)):loss}" placeholder="À renseigner"><small>%</small></span></label>
+      <label><span id="surfaceLossLabel">${calculated?'Perte calculée':defaultLoss===null?'Perte saisie':'Perte par défaut'}</span><span class="surface-loss-input"><input id="surfaceWaste" type="number" min="0" max="1000" step="any" ${calculated?'readonly':''} value="${loss===null?'':calculated?Number(loss.toFixed(4)):loss}" placeholder="À saisir"><small>%</small></span></label>
       <div><span>Quantité avec perte</span><strong id="surfaceNeed">${need===null?'À compléter':fmt(need,2)+' pi²'}</strong></div>
     </section>
     ${tileSurface?`<section class="surface-editor-tiles" id="surfaceTileCalculation" aria-labelledby="surfaceTileHeading">
@@ -21162,7 +21212,6 @@ function surfaceEditor(id,showDetails=false) {
       <p>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p>
       ${calculation?.complete?`<p>${calculation.proposal?'Calcul automatique · ':''}${calculation.consumedTiles} dalles consommées ${tileLossEquation(calculation)?`· <strong>${esc(tileLossEquation(calculation))}</strong>`:''}</p>`:`<p>${esc(calculation?.issues.join(' · ')||'Indiquez le format des dalles.')}</p>`}
       <p id="surfaceTileMessage" role="status" hidden></p></section>`:''}
-    <p id="surfaceEditError" class="v4-error" role="alert"></p>
     <details class="surface-editor-details" ${showDetails?'open':''}><summary>Détails du relevé</summary><div class="surface-editor-fields">
       <label>Dossier<select id="surfaceFolder">${folderOptions(folderId)}${S.folders.length<200?'<option value="__new_surface_folder__">Créer un dossier…</option>':''}</select></label>
       <label id="surfaceFolderNameField" hidden>Nom du nouveau dossier<input id="surfaceFolderName" maxlength="80" autocomplete="off"></label>
@@ -21179,7 +21228,7 @@ function surfaceEditor(id,showDetails=false) {
 
     <section class="v6-edit-section surface-editor-geometry"><h3>Corriger la géométrie</h3><p>Ces actions ouvrent le plan. Enregistrez d’abord les propriétés modifiées.</p><div class="v6-action-row"><button type="button" id="surfaceEditOutline">${surfaceToolIcon('edit')}Modifier les coins du contour</button><button type="button" id="surfaceExcludeOther">Soustraire une zone</button><button type="button" id="surfacePoseSheet">Ouvrir la fiche de pose · F5</button></div></section>
     ${(item.holes||[]).length?`<section class="v6-edit-section"><h3>Autres exclusions</h3>${item.holes.map((ring,n)=>`<div class="v6-fixture-row"><span>Exclusion ${n+1} · ${fmt(area(ring)*S.scales[item.page]**2,2)} pi²</span><button type="button" id="removeOtherHole${n}">Supprimer cette exclusion</button></div>`).join('')}</section>`:''}
-    </details></div><footer class="surface-editor-footer modal-actions"><button type="button" id="surfaceCancel">Fermer</button><button type="submit" class="primary">Enregistrer</button></footer></form>`,'wide surface-editor');
+    </details></div><p id="surfaceEditError" class="v4-error" role="alert"></p><footer class="surface-editor-footer modal-actions"><button type="button" id="surfaceCancel">Fermer</button><button type="submit" class="primary">Enregistrer</button></footer></form>`,'wide surface-editor');
   $('#surfaceMaterial').focus({preventScroll:true});
   if(tileSurface){
     const fields=$$('#surfaceEditForm input,#surfaceEditForm select'),
