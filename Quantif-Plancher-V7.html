@@ -15604,7 +15604,16 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     body[data-aite-theme="nuit"] .app.aite-workspace{color-scheme:dark}
     .aite-workspace *,.aite-workspace *::before,.aite-workspace *::after{box-sizing:border-box}.aite-workspace button,.aite-workspace input,.aite-workspace select{font-family:inherit}
     .aite-workspace button:focus-visible,.aite-workspace summary:focus-visible,.aite-workspace [role=button]:focus-visible,.aite-workspace input:focus-visible,.aite-workspace select:focus-visible{outline:2px solid var(--aite-focus);outline-offset:2px}
-    .aite-workspace.layout-compact .topbar{height:46px;flex-basis:46px;background:var(--aite-paper);border-color:var(--aite-line);padding:0 12px;gap:12px;color:var(--aite-ink)}
+    .aite-workspace.layout-compact .topbar{
+      --aite-ink:#f0f6fa;--aite-muted:#c1d4df;--aite-blue:#d4eaf6;--aite-on-accent:#172f3d;
+      --aite-field:#223e4d;--aite-hover:#294958;--aite-selection:#365666;
+      --aite-line:#496675;--aite-border:#85a0ae;--aite-focus:#c4e6f9;
+      --aite-success:#d5f0e4;--aite-success-bg:#25453e;
+      height:46px;flex-basis:46px;background:#172f3d;border-color:var(--aite-line);padding:0 12px;gap:12px;color:var(--aite-ink);color-scheme:dark
+    }
+    .aite-workspace .topbar :is(.brand,.menu button){color:var(--aite-ink)}
+    .aite-workspace .topbar .version-mark{color:var(--aite-muted);border-color:var(--aite-border)}
+    .aite-workspace .topbar :is(.menu button,.top-actions button):hover:not(:disabled){background:var(--aite-hover)}
     .aite-workspace .brand{font:700 15px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:0}.aite-workspace .brandmark{width:28px;height:28px;border-radius:8px;background:var(--aite-blue);color:var(--aite-on-accent)}.aite-workspace .brand b{color:var(--aite-blue)}
     .aite-workspace .project-title{border-color:var(--aite-line);padding-left:12px}.aite-workspace.layout-compact .project-title input{font-size:12px;color:var(--aite-ink)}.aite-workspace .project-title span{font-size:11px;color:var(--aite-muted)}
     .aite-workspace .topbar button{position:relative}.aite-workspace .top-actions button{height:32px;min-height:32px;border-radius:5px;font-size:12px;font-weight:500;color:var(--aite-ink);border-color:transparent;padding-inline:9px;background:transparent}.aite-workspace #exportBtn{background:var(--aite-success-bg);border-color:var(--aite-success);color:var(--aite-success)}.aite-workspace #exportBtn:hover:not(:disabled){background:var(--aite-hover);border-color:var(--aite-success)}.aite-workspace #count{background:var(--aite-selection);color:var(--aite-blue)}
@@ -15714,7 +15723,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace .atelier-command-rail #workspaceTools button:hover{background:#38485c;border-color:#8eafd9}.aite-workspace .atelier-command-rail #workspaceTools button:focus-visible{outline:2px solid #a5c7ff;outline-offset:-2px}
     .aite-workspace .atelier-command-rail #workspaceTools svg{width:18px;height:18px;color:inherit}.aite-workspace .atelier-view-controls{display:flex;flex:0 0 auto;gap:3px;align-items:center;border-left:1px solid var(--aite-line);padding-left:6px}
     .aite-workspace .atelier-view-controls button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--aite-muted);font-size:12px;white-space:nowrap}
-    .aite-workspace .atelier-view-controls button:hover{background:var(--aite-sky)}.aite-workspace .atelier-view-controls button[aria-pressed=true]{background:var(--aite-selection);color:var(--aite-blue)}
+    .aite-workspace .atelier-view-controls button:hover{background:var(--aite-hover)}.aite-workspace .atelier-view-controls button[aria-pressed=true]{background:var(--aite-selection);color:var(--aite-blue)}
     .aite-workspace .atelier-view-controls svg{flex:none}.aite-workspace #devisToolBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:500;white-space:nowrap}
     .aite-workspace .project-command-bar{margin-left:auto}.aite-workspace .manual-overflow-holder{flex-basis:auto;padding-inline:6px}.aite-workspace .manual-overflow-holder #advancedToggle{width:auto;min-width:64px}
     .aite-workspace .manual-ribbon-scroll{align-items:center}.aite-workspace .manual-group-buttons{align-items:center}.aite-workspace .top-actions{gap:3px}
@@ -15762,15 +15771,6 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     @media(max-width:1279px){.aite-workspace .aite-theme-control>span{display:none}.aite-workspace #aiteTheme{width:88px}}
     @media(max-width:779px){.aite-workspace #aiteTheme{width:82px;height:30px;min-height:30px;padding:3px 4px;font-size:11px}}
     @media(max-width:779px){.app.aite-workspace{--aite-icon-button:30px}}
-    /* Petroleum ribbon, independent of the surrounding Graphite/Nuit panels. */
-    .aite-workspace.layout-compact #manualRibbon,.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main{background:#172f3d;border-block-color:#38525f}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-group:not(.advanced-tools *){border-color:#405a68}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *){background:transparent;color:#edf3f7;border-color:transparent}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *) svg{color:inherit}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *):hover:not(:disabled){background:#294958;border-color:#6e91a3;color:#fff}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *):is([aria-pressed=true],[aria-expanded=true]){background:#d9e9f1;border-color:#9ec0d0;color:#172f3d}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *):focus-visible{outline:2px solid #d7ebf5;outline-offset:-2px}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button:not(.advanced-tools *):disabled{color:#cad5dc;opacity:.55}
     @media(prefers-reduced-motion:reduce){.aite-workspace *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
   `;}
   return {install,render,setView,organizeInspector};
