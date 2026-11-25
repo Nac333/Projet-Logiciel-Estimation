@@ -363,6 +363,23 @@ body {
   background: var(--aite-theme-sky);
   color: var(--aite-theme-ink);
 }
+body[data-aite-theme="brume"] {
+  --aite-theme-sky: #dfe8f3;
+  --aite-theme-paper: #f9fbff;
+  --aite-theme-surface: #f9fbff;
+  --aite-theme-chrome: #eff4fa;
+  --aite-theme-field: #ffffff;
+  --aite-theme-ink: #203148;
+  --aite-theme-muted: #4c6078;
+  --aite-theme-blue: #2c5d92;
+  --aite-theme-accent-hover: #2e557b;
+  --aite-theme-selection: #dce8f6;
+  --aite-theme-hover: #e6edf6;
+  --aite-theme-rail: #eff4fa;
+  --aite-theme-border: #75869a;
+  --aite-theme-line: #d2dce9;
+  --aite-theme-focus: #205b9a;
+}
 body[data-aite-theme="nuit"] {
   color-scheme: dark;
   --aite-theme-sky: #141b25;
@@ -391,7 +408,7 @@ body[data-aite-theme="nuit"] {
   --aite-theme-danger-bg: #4b2e32;
 }
 
-/* Fenêtres de travail et fiches : palettes Graphite et Nuit, en dehors du plan. */
+/* Couleurs thématiques des fenêtres de travail et des fiches. */
 #overlay {
   --form-font: 'Segoe UI', system-ui, Arial, sans-serif;
   --form-paper: var(--aite-theme-paper);
@@ -15467,6 +15484,7 @@ const quantityTransferUIFactory = (function createQuantityTransferUI({document,g
 });
 const workspaceAppearanceFactory = (function createWorkspaceAppearance({document,window,getGroups,getItemMarkup,onSelect,onEdit,onOpenRight,onRefresh,parkNavigation,parkPlanTools,onAddSanitary,onEditLocation,icons,onThemeChange,onFloatingChange}) {
   const key='aite-workspace-appearance-v1',find=id=>document.getElementById(id);
+  const themes=new Map([['graphite','Graphite'],['brume','Brume'],['nuit','Nuit']]);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=value=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:1}).format(value);
   let preferences={collapsed:false,floatingVisible:true,view:'finishes',closed:[],opened:[],toolbarPosition:null,theme:'graphite'},installed=false,focusSnapshot=null,lastRender='';
@@ -15475,7 +15493,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   const sectionOpen=new Map();
   const save=()=>{try{window.localStorage.setItem(key,JSON.stringify({...preferences,collapsed:focusSnapshot?focusSnapshot.collapsed:preferences.collapsed}));}catch{}};
   function setTheme(theme,persist=false){
-    preferences.theme=theme==='nuit'?'nuit':'graphite';
+    preferences.theme=themes.has(theme)?theme:'graphite';
     document.body.dataset.aiteTheme=preferences.theme;
     onThemeChange?.(preferences.theme);
     const select=find('aiteTheme');if(select)select.value=preferences.theme;
@@ -15641,7 +15659,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   }
   function install(){
     if(installed)return;installed=true;
-    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.floatingVisible=saved.floatingVisible!==false;preferences.view=saved.view==='folders'?'folders':'finishes';preferences.theme=saved.theme==='nuit'?'nuit':'graphite';for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
+    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.floatingVisible=saved.floatingVisible!==false;preferences.view=saved.view==='folders'?'folders':'finishes';preferences.theme=saved.theme;for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
     setTheme(preferences.theme);
     const app=document.querySelector('.app'),ribbon=find('manualRibbon'),main=ribbon.querySelector('.manual-ribbon-main');app.classList.add('aite-workspace');main.id='aiteRibbonTools';
     for(const [id,label]of [['layoutPanel-plans','Projet et pages'],['layoutPanel-measures','Mesures du plan']]){const title=find(id)?.querySelector('.pane-title>span');if(title&&!title.classList.contains('layout-panel-actions'))title.innerHTML=(icons?.svg(id==='layoutPanel-plans'?'folder':'area')||folderIcon)+esc(label);}
@@ -15654,8 +15672,10 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     devis.innerHTML=panelIcon+'<span>Devis.AI</span>';actions.prepend(devis);
     rail.append(find('workspaceTools'));
     const viewControls=heading.lastElementChild;viewControls.className='atelier-view-controls';
-    const appearance=document.createElement('label');appearance.className='aite-theme-control';appearance.htmlFor='aiteTheme';appearance.innerHTML='<span>Apparence</span><select id="aiteTheme" aria-label="Apparence" title="Apparence de l’atelier"><option value="graphite">Graphite</option><option value="nuit">Nuit</option></select>';viewControls.prepend(appearance);
-    find('aiteTheme').value=preferences.theme;find('aiteTheme').onchange=event=>setTheme(event.target.value,true);
+    const appearance=document.createElement('label');appearance.className='aite-theme-control';appearance.htmlFor='aiteTheme';appearance.innerHTML='<span>Apparence</span><select id="aiteTheme" aria-label="Apparence" title="Apparence de l’atelier"></select>';viewControls.prepend(appearance);
+    const themeSelect=appearance.querySelector('select');
+    for(const [value,label] of themes){const option=document.createElement('option');option.value=value;option.textContent=label;themeSelect.append(option);}
+    themeSelect.value=preferences.theme;themeSelect.onchange=event=>setTheme(event.target.value,true);
     const floatingToggle=document.createElement('button');floatingToggle.type='button';floatingToggle.id='toggleFloatingPlanTools';
     floatingToggle.setAttribute('aria-label','Ruban flottant');floatingToggle.setAttribute('aria-controls','floatingPlanNavigation');
     floatingToggle.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 7h4m-4 5h4m-4 5h4"/></svg>';
