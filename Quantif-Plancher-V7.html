@@ -3265,7 +3265,7 @@ function initRibbonOverflow() {
   toggle.onclick=()=>{if(!panel.hidden)return closeAdvancedTools(true);panel.hidden=false;toggle.setAttribute('aria-expanded','true');(panel.querySelector('.manual-button:not(:disabled)')||$('#closeAdvanced')).focus({preventScroll:true});};
   $('#closeAdvanced').onclick=()=>closeAdvancedTools(true);
   panel.addEventListener('click',event=>{
-    const button=event.target.closest('.manual-button');if(!button)return;
+    const button=event.target.closest('.manual-button');if(!button||panel.hidden)return;
     const dialog=$('#overlay')?.querySelector('[role="dialog"]');
     if(dialog&&panel.contains(S.dialogReturnFocus))S.dialogReturnFocus=toggle;
     closeAdvancedTools(false);
@@ -3285,7 +3285,9 @@ function layoutRibbonOverflow() {
   const {strip,main,panel,toggle,holder,groups,entries,order}=state,focused=document.activeElement,wasOpen=!panel.hidden;
   for(const entry of entries){entry.home.append(entry.button);entry.overflow.hidden=true;}
   for(const entry of entries.filter(row=>row.alwaysAdvanced)){entry.buttons.append(entry.button);entry.overflow.hidden=false;}
-  groups.forEach(group=>group.hidden=!$('.manual-group-buttons',group).children.length);holder.hidden=!entries.some(entry=>entry.alwaysAdvanced);
+  const planToolsMenu=$('#planToolsInMore');
+  groups.forEach(group=>group.hidden=!$('.manual-group-buttons',group).children.length);
+  holder.hidden=(!planToolsMenu||planToolsMenu.hidden)&&!entries.some(entry=>entry.alwaysAdvanced);
   if(strip.scrollWidth>strip.clientWidth+1){
     holder.hidden=false;
     for(const entry of order){
@@ -15463,11 +15465,11 @@ const quantityTransferUIFactory = (function createQuantityTransferUI({document,g
   }
   return {open};
 });
-const workspaceAppearanceFactory = (function createWorkspaceAppearance({document,window,getGroups,getItemMarkup,onSelect,onEdit,onOpenRight,onRefresh,parkNavigation,parkPlanTools,onAddSanitary,onEditLocation,icons,onThemeChange}) {
+const workspaceAppearanceFactory = (function createWorkspaceAppearance({document,window,getGroups,getItemMarkup,onSelect,onEdit,onOpenRight,onRefresh,parkNavigation,parkPlanTools,onAddSanitary,onEditLocation,icons,onThemeChange,onFloatingChange}) {
   const key='aite-workspace-appearance-v1',find=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=value=>new Intl.NumberFormat('fr-CA',{maximumFractionDigits:1}).format(value);
-  let preferences={collapsed:false,view:'finishes',closed:[],opened:[],toolbarPosition:null,theme:'graphite'},installed=false,focusSnapshot=null,lastRender='';
+  let preferences={collapsed:false,floatingVisible:true,view:'finishes',closed:[],opened:[],toolbarPosition:null,theme:'graphite'},installed=false,focusSnapshot=null,lastRender='';
   let toolbarDrag=null;
   let drawerPinned=false,drawerAnchor=null,drawerTimer=null,lastSelected='';
   const sectionOpen=new Map();
@@ -15485,12 +15487,25 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   const rightVisible=()=>!find('inspector').hidden&&window.getComputedStyle(find('inspector')).display!=='none';
   function setRibbon(collapsed,persist=true){
     preferences.collapsed=collapsed;find('aiteRibbonTools').hidden=collapsed;
-    find('advancedTools').hidden=true;find('advancedToggle').setAttribute('aria-expanded','false');
+    const more=find('advancedToggle');
+    find('advancedTools').hidden=true;more.setAttribute('aria-expanded','false');
     const toggle=find('toggleAiteRibbon');toggle.setAttribute('aria-expanded',String(!collapsed));
     toggle.querySelector('span').textContent=collapsed?'Afficher le ruban':'Replier le ruban';
     toggle.querySelector('svg').style.transform=collapsed?'rotate(180deg)':'';
-    find('manualRibbon').classList.toggle('aite-ribbon-folded',collapsed);
-    parkPlanTools?.(find('floatingPlanNavigation'),collapsed);
+    const ribbon=find('manualRibbon'),floating=preferences.floatingVisible;
+    ribbon.classList.toggle('aite-ribbon-folded',collapsed);
+    ribbon.classList.toggle('aite-floating-tools-hidden',!floating);
+    const visibility=find('toggleFloatingPlanTools');
+    visibility.setAttribute('aria-pressed',String(floating));
+    visibility.title=floating?'Masquer le ruban flottant':'Afficher le ruban flottant';
+    if(collapsed&&!floating){if(more.parentElement!==toggle.parentElement)toggle.before(more);}
+    else if(more.parentElement!==find('manualOverflowHolder'))find('manualOverflowHolder').prepend(more);
+    const nav=find('floatingPlanNavigation'),docked=find('planToolsInMore');
+    const host=floating?nav:docked,source=floating?docked:nav;
+    if(source.contains(document.activeElement))visibility.focus({preventScroll:true});
+    for(const group of source.querySelectorAll(':scope > [role="group"]'))host.append(group);
+    nav.hidden=!floating;docked.hidden=floating;
+    parkPlanTools?.(host,collapsed);
     if(persist)save();positionNavigation();
   }
   function setView(view,persist=true){
@@ -15500,16 +15515,20 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   }
   function positionNavigation(){
     const canvas=find('planCanvas'),nav=find('floatingPlanNavigation');if(!canvas||!nav)return;
-    const r=canvas.getBoundingClientRect();nav.setAttribute('aria-orientation','vertical');
-    nav.style.maxWidth='44px';nav.style.maxHeight=Math.max(44,r.height-74)+'px';
-    const n=nav.getBoundingClientRect(),position=preferences.toolbarPosition||{x:0,y:0};
-    const width=Math.max(0,r.width-n.width-20),height=Math.max(0,r.height-n.height-20);
-    nav.style.left=Math.round(r.left+10+position.x*width)+'px';nav.style.top=Math.round(r.top+10+position.y*height)+'px';
+    const r=canvas.getBoundingClientRect();
+    if(!nav.hidden){
+      nav.setAttribute('aria-orientation','vertical');
+      nav.style.maxWidth='44px';nav.style.maxHeight=Math.max(44,r.height-74)+'px';
+      const n=nav.getBoundingClientRect(),position=preferences.toolbarPosition||{x:0,y:0};
+      const width=Math.max(0,r.width-n.width-20),height=Math.max(0,r.height-n.height-20);
+      nav.style.left=Math.round(r.left+10+position.x*width)+'px';nav.style.top=Math.round(r.top+10+position.y*height)+'px';
+    }
     document.querySelector('.app').style.setProperty('--aite-plan-tool-inset','16px');
     if(focusSnapshot){
       const drawer=find('focusMeasureDrawer'),panel=find('layoutPanel-measures');
       if(panel.parentElement!==find('focusMeasureBody'))find('focusMeasureBody').append(panel);
-      Object.assign(drawer.style,{left:Math.round(r.left+60)+'px',top:Math.round(r.top+8)+'px',width:Math.max(180,Math.min(310,r.width-76))+'px',height:Math.max(120,r.height-16)+'px'});
+      const inset=preferences.floatingVisible?60:10;
+      Object.assign(drawer.style,{left:Math.round(r.left+inset)+'px',top:Math.round(r.top+8)+'px',width:Math.max(180,Math.min(310,r.width-inset-16))+'px',height:Math.max(120,r.height-16)+'px'});
       document.querySelector('.app').style.setProperty('--aite-focus-top',Math.round(r.top+8)+'px');
       document.querySelector('.app').style.setProperty('--aite-focus-height',Math.max(120,r.height-16)+'px');
     }
@@ -15622,7 +15641,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
   }
   function install(){
     if(installed)return;installed=true;
-    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.view=saved.view==='folders'?'folders':'finishes';preferences.theme=saved.theme==='nuit'?'nuit':'graphite';for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
+    try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.floatingVisible=saved.floatingVisible!==false;preferences.view=saved.view==='folders'?'folders':'finishes';preferences.theme=saved.theme==='nuit'?'nuit':'graphite';for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
     setTheme(preferences.theme);
     const app=document.querySelector('.app'),ribbon=find('manualRibbon'),main=ribbon.querySelector('.manual-ribbon-main');app.classList.add('aite-workspace');main.id='aiteRibbonTools';
     for(const [id,label]of [['layoutPanel-plans','Projet et pages'],['layoutPanel-measures','Mesures du plan']]){const title=find(id)?.querySelector('.pane-title>span');if(title&&!title.classList.contains('layout-panel-actions'))title.innerHTML=(icons?.svg(id==='layoutPanel-plans'?'folder':'area')||folderIcon)+esc(label);}
@@ -15637,6 +15656,10 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     const viewControls=heading.lastElementChild;viewControls.className='atelier-view-controls';
     const appearance=document.createElement('label');appearance.className='aite-theme-control';appearance.htmlFor='aiteTheme';appearance.innerHTML='<span>Apparence</span><select id="aiteTheme" aria-label="Apparence" title="Apparence de l’atelier"><option value="graphite">Graphite</option><option value="nuit">Nuit</option></select>';viewControls.prepend(appearance);
     find('aiteTheme').value=preferences.theme;find('aiteTheme').onchange=event=>setTheme(event.target.value,true);
+    const floatingToggle=document.createElement('button');floatingToggle.type='button';floatingToggle.id='toggleFloatingPlanTools';
+    floatingToggle.setAttribute('aria-label','Ruban flottant');floatingToggle.setAttribute('aria-controls','floatingPlanNavigation');
+    floatingToggle.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 7h4m-4 5h4m-4 5h4"/></svg>';
+    floatingToggle.onclick=()=>{onFloatingChange?.();preferences.floatingVisible=!preferences.floatingVisible;setRibbon(preferences.collapsed);};appearance.after(floatingToggle);
     document.querySelector('.topbar').append(viewControls);heading.remove();
     find('toggleAiteRibbon').setAttribute('aria-label','Afficher ou replier le ruban');
     find('toggleAiteRibbon').title='Afficher ou replier le ruban';
@@ -15644,6 +15667,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     document.querySelector('.stage').prepend(ribbon);
     document.querySelector('.stagebar').append(document.querySelector('.project-command-bar'));
     const nav=document.createElement('div');nav.id='floatingPlanNavigation';nav.className='floating-plan-navigation';nav.setAttribute('role','toolbar');nav.setAttribute('aria-label','Outils du plan');ribbon.append(nav);
+    const toolMenu=document.createElement('div');toolMenu.id='planToolsInMore';toolMenu.hidden=true;toolMenu.setAttribute('role','group');toolMenu.setAttribute('aria-label','Outils du plan');find('ribbonOverflowGroups').before(toolMenu);
     parkNavigation(nav);
     installAtelierIcons();
     installToolbarGrip(nav);
@@ -15657,10 +15681,11 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     measures.onpointerenter=()=>setDrawer(true,drawerPinned);measures.onpointerleave=closeDrawerLater;measures.onclick=()=>setDrawer(!drawerPinned,!drawerPinned);
     drawer.onpointerenter=()=>window.clearTimeout(drawerTimer);drawer.onpointerleave=closeDrawerLater;drawer.addEventListener('focusout',closeDrawerLater);
     drawer.addEventListener('pointerdown',event=>{if(event.target.closest('.layout-panel-header')&&!event.target.closest('button'))event.stopPropagation();},true);
-    find('focusMeasuresPin').onclick=()=>setDrawer(true,!drawerPinned);find('focusMeasuresClose').onclick=()=>{setDrawer(false,false);measures.focus({preventScroll:true});};
+    const closeMeasures=()=>{setDrawer(false,false);(preferences.floatingVisible?measures:find('advancedToggle')).focus({preventScroll:true});};
+    find('focusMeasuresPin').onclick=()=>setDrawer(true,!drawerPinned);find('focusMeasuresClose').onclick=closeMeasures;
     properties.onclick=()=>find('workspaceRightToggle').click();
     nav.addEventListener('keydown',event=>{const vertical=nav.getAttribute('aria-orientation')==='vertical',previous=vertical?'ArrowUp':'ArrowLeft',following=vertical?'ArrowDown':'ArrowRight';if(![previous,following,'Home','End'].includes(event.key)||!event.target.closest('button'))return;event.preventDefault();event.stopPropagation();const buttons=[...nav.querySelectorAll('button')].filter(b=>!b.disabled&&b.getClientRects().length),at=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(at+(event.key===following?1:-1)+buttons.length)%buttons.length;buttons[next]?.focus();});
-    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!drawer.hidden&&!document.querySelector('#overlay [role=dialog]')&&(drawer.contains(event.target)||event.target===measures)){event.preventDefault();setDrawer(false,false);measures.focus({preventScroll:true});}});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!drawer.hidden&&!document.querySelector('#overlay [role=dialog]')&&(drawer.contains(event.target)||event.target===measures)){event.preventDefault();closeMeasures();}});
     find('toggleAiteRibbon').onclick=()=>setRibbon(!preferences.collapsed);find('workspaceFocus').onclick=toggleFocus;
     const right=document.createElement('button');right.type='button';right.id='workspaceRightToggle';right.className='v4-small-button';right.innerHTML=panelIcon;right.setAttribute('aria-controls','inspector');find('togglePages').insertAdjacentElement('afterend',right);
     right.onclick=()=>{
@@ -15741,7 +15766,9 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:36px;min-height:36px;width:auto;min-width:36px;max-width:none;flex:0 0 auto;padding:6px;gap:6px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px;color:var(--aite-muted)}
     .aite-workspace #aiteRibbonTools #manualUndo span,.aite-workspace #aiteRibbonTools #manualRedo span,.aite-workspace #aiteRibbonTools #tileOriginBtn span,.aite-workspace #aiteRibbonTools #toggleTileGrid span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace.layout-compact #manualRibbon .manual-button:hover:not(:disabled){background:var(--aite-hover);border-color:var(--aite-border)}.aite-workspace.layout-compact #manualRibbon .manual-button[aria-pressed=true]{background:var(--aite-selection);border-color:var(--aite-blue);color:var(--aite-blue)}.aite-workspace .manual-button:disabled{opacity:.45}
-    .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:var(--aite-paper);color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:12px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:var(--aite-field);border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded .advanced-tools{display:none}
+    .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:var(--aite-paper);color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:12px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:var(--aite-field);border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded:not(.aite-floating-tools-hidden) .advanced-tools{display:none}
+    .aite-workspace #planToolsInMore:not([hidden]){display:grid;gap:6px;margin:8px 10px;padding-bottom:8px;border-bottom:1px solid var(--aite-line)}
+    .aite-workspace #planToolsInMore>.floating-plan-tools-group{flex-wrap:wrap;gap:4px;margin:0;padding:0;border:0}
     .aite-workspace .floating-plan-navigation{position:fixed;z-index:4;display:flex;gap:2px;align-items:center;padding:3px;border:1px solid var(--aite-line);border-radius:9px;background:color-mix(in srgb,var(--aite-paper) 84%,transparent);transition:background-color .12s,border-color .12s;overflow:auto;pointer-events:none}
     .aite-workspace .floating-plan-navigation button{pointer-events:auto}.aite-workspace #planToolbarGrip{position:sticky;top:0;display:grid;place-items:center;width:32px;height:20px;flex:0 0 20px;cursor:grab;touch-action:none;pointer-events:auto;color:var(--aite-muted);z-index:1;border-radius:3px}.aite-workspace #planToolbarGrip:focus-visible{outline:2px solid var(--aite-focus);outline-offset:-2px}.aite-workspace .is-dragging #planToolbarGrip{cursor:grabbing}.aite-workspace .floating-plan-tools-group{display:flex;align-items:center;gap:2px;flex:none;min-width:0}.aite-workspace .floating-plan-tools-group+.floating-plan-tools-group{border-left:1px solid var(--aite-line);padding-left:6px;margin-left:3px}.aite-workspace .floating-plan-tools-group[hidden],.aite-workspace .floating-plan-tools-group:empty{display:none}
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button{display:flex;align-items:center;justify-content:center;min-width:var(--aite-icon-button);width:var(--aite-icon-button);min-height:var(--aite-icon-button);height:var(--aite-icon-button);padding:5px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--aite-muted);gap:0}
@@ -15913,12 +15940,13 @@ const atelierCommandRailFactory = (function createAtelierCommandRail(options={})
     roll:'<path d="M5 6h12a4 4 0 0 1 0 8H5a4 4 0 0 1 0-8zm0 0a4 4 0 0 1 0 8M3 13v8h17v-8"/>'
   };
   const svg=key=>'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[key]+'</svg>';
-  function close(restore=false){if(!activePanel)return;const panel=activePanel,button=opener;panel.hidden=true;activePanel=null;for(const id of ['planAnalysisBtn','projectToolsMoreBtn','focusAnalysisToggle'])$(id)?.setAttribute('aria-expanded','false');if(restore&&button?.getClientRects().length)button.focus({preventScroll:true});}
-  function position(){if(!activePanel||!opener)return;const r=opener.getBoundingClientRect(),w=doc.defaultView.innerWidth,h=doc.defaultView.innerHeight;activePanel.style.maxHeight=Math.max(120,h-24)+'px';activePanel.style.left=Math.max(8,Math.min(r.right+10,w-activePanel.offsetWidth-8))+'px';activePanel.style.top=Math.max(8,Math.min(r.top,h-activePanel.offsetHeight-8))+'px';}
+  const anchorFor=button=>button?.closest('#planToolsInMore')?$('advancedToggle'):button;
+  function close(restore=false){if(!activePanel)return;const panel=activePanel,button=anchorFor(opener);panel.hidden=true;activePanel=null;for(const id of ['planAnalysisBtn','projectToolsMoreBtn','focusAnalysisToggle'])$(id)?.setAttribute('aria-expanded','false');if(restore&&button?.getClientRects().length)button.focus({preventScroll:true});}
+  function position(){if(!activePanel||!opener)return;const r=anchorFor(opener).getBoundingClientRect(),w=doc.defaultView.innerWidth,h=doc.defaultView.innerHeight;activePanel.style.maxHeight=Math.max(120,h-24)+'px';activePanel.style.left=Math.max(8,Math.min(r.right+10,w-activePanel.offsetWidth-8))+'px';activePanel.style.top=Math.max(8,Math.min(r.top,h-activePanel.offsetHeight-8))+'px';}
   function open(panel,button){if(activePanel===panel&&opener===button)return close(true);close();options.closeOtherTools?.();activePanel=panel;opener=button;panel.hidden=false;button.setAttribute('aria-expanded','true');position();(panel.querySelector('button:not(:disabled)')||panel).focus({preventScroll:true});}
   function label(button,name,icon){button.title=name;button.setAttribute('aria-label',name);if(icon)button.innerHTML=svg(icon)+'<span>'+name+'</span>';}
   function entry(id,name,icon,panel){const b=doc.createElement('button');b.type='button';b.id=id;b.innerHTML=svg(icon)+'<span>'+name+'</span>';b.setAttribute('aria-label',name);b.title=name;b.setAttribute('aria-controls',panel.id);b.setAttribute('aria-expanded','false');b.onclick=()=>open(panel,b);return b;}
-  function panel(id,title,closeId){const p=doc.createElement('section');p.id=id;p.hidden=true;p.className='atelier-command-panel';p.setAttribute('aria-label',title);p.innerHTML='<header><h2>'+title+'</h2><button type="button" id="'+closeId+'" aria-label="Fermer '+title.toLowerCase()+'">×</button></header><div class="atelier-command-sections"></div>';doc.querySelector('.app').append(p);$(closeId).onclick=()=>close(true);p.addEventListener('click',event=>{const b=event.target.closest('button');if(!b||!b.dataset.railAction)return;const oldOpener=opener;options.onAction?.(p,oldOpener);close();if(!doc.querySelector('#overlay [role=dialog]')&&oldOpener?.getClientRects().length&&!doc.querySelector('#inspector')?.contains(doc.activeElement))oldOpener.focus({preventScroll:true});});return p;}
+  function panel(id,title,closeId){const p=doc.createElement('section');p.id=id;p.hidden=true;p.className='atelier-command-panel';p.setAttribute('aria-label',title);p.innerHTML='<header><h2>'+title+'</h2><button type="button" id="'+closeId+'" aria-label="Fermer '+title.toLowerCase()+'">×</button></header><div class="atelier-command-sections"></div>';doc.querySelector('.app').append(p);$(closeId).onclick=()=>close(true);p.addEventListener('click',event=>{const b=event.target.closest('button');if(!b||!b.dataset.railAction)return;const oldOpener=anchorFor(opener);options.onAction?.(p,oldOpener);close();if(!doc.querySelector('#overlay [role=dialog]')&&oldOpener?.getClientRects().length&&!doc.querySelector('#inspector')?.contains(doc.activeElement))oldOpener.focus({preventScroll:true});});return p;}
   function group(panel,title,entries){const section=doc.createElement('section');section.innerHTML='<h3>'+title+'</h3>';for(const [id,name,help]of entries){const b=$(id);if(!b)continue;b.classList.add('atelier-panel-action');b.dataset.railAction='true';const oldIcon=b.querySelector('svg');b.replaceChildren();if(oldIcon)b.append(oldIcon);const text=doc.createElement('span'),strong=doc.createElement('strong'),small=doc.createElement('small');strong.textContent=name;small.textContent=help;text.append(strong,small);b.append(text);b.title=name;b.setAttribute('aria-label',name);section.append(b);}panel.querySelector('.atelier-command-sections').append(section);}
   function install(){if(installed)return;installed=true;const rail=doc.querySelector('.atelier-command-rail'),tools=$('workspaceTools');if(!rail||!tools)return;
     const analysisIds=['stepDetect','devisToolBtn','pdfFinishSearchBtn','pdfSheetLinksBtn','legendToolBtn','wallTakeoffBtn'];options.detachRibbon?.(analysisIds);
@@ -15937,12 +15965,12 @@ const atelierCommandRailFactory = (function createAtelierCommandRail(options={})
     tools.replaceChildren($('workspaceProjectBtn'),analysisButton,review,$('projectArchiveBtn'),moreButton);
     rail.classList.add('atelier-organized-rail');rail.setAttribute('aria-label','Navigation et analyse du projet');
     rolls.classList.add('manual-button');label(rolls,'Rouleaux','roll');rolls.title='Calepinage des rouleaux — sélectionner une surface';options.placeRolls?.(rolls);
-    const focusGroup=doc.querySelector('#floatingPlanNavigation [data-focus-only][role=group]');if(focusGroup){const b=entry('focusAnalysisToggle','Analyse des plans','analysis',analysis);b.className='manual-button focus-rail-action';b.hidden=true;b.dataset.focusOnly='true';focusGroup.append(b);}
+    const focusGroup=doc.querySelector(':is(#floatingPlanNavigation,#planToolsInMore) [data-focus-only][role=group]');if(focusGroup){const b=entry('focusAnalysisToggle','Analyse des plans','analysis',analysis);b.className='manual-button focus-rail-action';b.hidden=true;b.dataset.focusOnly='true';focusGroup.append(b);}
     doc.addEventListener('pointerdown',e=>{if(activePanel&&!activePanel.contains(e.target)&&!opener?.contains(e.target))close();},true);
     doc.addEventListener('keydown',e=>{if(!activePanel||doc.querySelector('#overlay [role=dialog]'))return;if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close(true);}},true);
-    $('closeInspector')?.addEventListener('click',()=>{const entry=doc.querySelector('.app').classList.contains('aite-focus')?$('focusAnalysisToggle'):$('planAnalysisBtn');if(entry?.getClientRects().length)entry.focus({preventScroll:true});});
+    $('closeInspector')?.addEventListener('click',()=>{const entry=doc.querySelector('.app').classList.contains('aite-focus')?anchorFor($('focusAnalysisToggle')):$('planAnalysisBtn');if(entry?.getClientRects().length)entry.focus({preventScroll:true});});
     doc.defaultView.addEventListener('resize',position);
-    const app=doc.querySelector('.app');new doc.defaultView.MutationObserver(()=>{if(activePanel&&(!opener?.getClientRects().length||$('projectDashboard')&&!$('projectDashboard').hidden))close();position();}).observe(app,{attributes:true,attributeFilter:['class']});
+    const app=doc.querySelector('.app');new doc.defaultView.MutationObserver(()=>{if(activePanel&&(!anchorFor(opener)?.getClientRects().length||$('projectDashboard')&&!$('projectDashboard').hidden))close();position();}).observe(app,{attributes:true,attributeFilter:['class']});
     const style=doc.createElement('style');style.id='atelierCommandRailStyle';style.textContent=styles();doc.head.append(style);
   }
   function styles(){return `
@@ -22159,7 +22187,7 @@ function floatingPlanToolGroup(host,key,label){
   if(!group){group=document.createElement('div');group.className='floating-plan-tools-group';group.dataset.planToolGroup=key;group.setAttribute('role','group');group.setAttribute('aria-label',label);host.append(group);}
   return group;
 }
-workspaceAppearance=workspaceAppearanceFactory({document,window,onThemeChange:updatePlanAppearance,
+workspaceAppearance=workspaceAppearanceFactory({document,window,onThemeChange:updatePlanAppearance,onFloatingChange:()=>atelierCommandRail.close(),
   getGroups:()=>{const byId=new Map(S.items.map(item=>[item.id,item])),levels=specificationQuantities({scope:'document',byLevel:true}).rows;
     return specificationQuantities({scope:'document'}).rows.map(row=>({...row,items:row.ids.map(id=>byId.get(id)).filter(Boolean),levels:levels.filter(level=>level.finishKey===row.key).map(level=>({...level,items:level.ids.map(id=>byId.get(id)).filter(Boolean)}))})).sort((a,b)=>{
     const rank=row=>row.usageLabel==='Plancher'&&row.scopeLabel==='Unités'?0:row.usageLabel==='Plancher'?1:2;
@@ -22304,7 +22332,10 @@ const atelierCommandRail=atelierCommandRailFactory({
     const target=floatingToolParking||ribbonOverflowState,example=target.entries.find(e=>e.button.id==='tileSettings');
     const entry={...example,button,position:99,priority:99,alwaysAdvanced:false};
     target.entries.push(entry);target.order.push(entry);target.order.sort((a,b)=>a.priority-b.priority);
-    if(floatingToolParking)floatingPlanToolGroup($('#floatingPlanNavigation'),'layout','Calepinage').append(button);else example.home.append(button);
+    if(floatingToolParking){
+      const nav=$('#floatingPlanNavigation');
+      floatingPlanToolGroup(nav.hidden?$('#planToolsInMore'):nav,'layout','Calepinage').append(button);
+    }else example.home.append(button);
     layoutRibbonOverflow();
   }
 });atelierCommandRail.install();
