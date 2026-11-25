@@ -331,6 +331,278 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 <style>
 #takeoffSummary{min-width:0;max-width:100%;overflow-x:auto;flex-wrap:nowrap;gap:16px}.takeoff-summary-scope{flex:0 0 auto}.takeoff-summary-product{flex:0 0 auto;max-width:250px;min-width:130px;padding:0 4px;border:0;background:transparent;color:#18354d;text-align:left;cursor:pointer}.takeoff-summary-product>span{display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.takeoff-summary-product:focus-visible{outline:2px solid #145f96;outline-offset:1px}
 </style>
+<style>
+/* Fenêtres de travail et fiches : palette Ardoise douce, en dehors du plan. */
+#overlay {
+  --form-font: 'Segoe UI', system-ui, Arial, sans-serif;
+  --form-paper: #f8f7f4;
+  --form-white: #fff;
+  --form-chrome: #edf2f6;
+  --form-ink: #243343;
+  --form-muted: #495b6c;
+  --form-line: #ccd5dd;
+  --form-control: #6d7e90;
+  --form-accent: #2d5780;
+  --form-focus: #1d5f97;
+  --form-selected: #e1ebf5;
+  --form-radius: 7px;
+}
+#overlay :is(.v4-dialog, .scale-modal, .takeoff) {
+  color: var(--form-ink);
+  background: var(--form-paper);
+  font: 13px/1.5 var(--form-font);
+}
+#overlay :is(.v4-dialog, .scale-modal) {
+  border: 1px solid var(--form-line);
+  border-radius: 10px;
+  box-shadow: 0 18px 58px #172c4140, 0 2px 7px #172c411a;
+  scrollbar-width: thin;
+}
+#overlay :is(.v4-dialog > header, .scale-heading, .takeoff > header) {
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  min-height: 49px;
+  background: var(--form-chrome);
+  border: 1px solid var(--form-line);
+  border-radius: var(--form-radius);
+}
+#overlay [data-dialog-handle] > :is(h2, div) { min-width: 0; }
+#overlay [data-dialog-handle] h2 {
+  margin: 0;
+  color: var(--form-ink);
+  font: 650 20px/1.25 var(--form-font);
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+#overlay [data-dialog-handle] h2::before {
+  display: inline-block;
+  width: 9px;
+  height: 12px;
+  margin-right: 9px;
+  color: var(--form-control);
+  background: radial-gradient(circle, currentColor 1px, transparent 1.2px) 0 0 / 4.5px 4px;
+  content: "";
+}
+#overlay [data-dialog-handle] p { margin: 5px 0 0; }
+#overlay [data-dialog-handle] > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--form-control);
+  border-radius: var(--form-radius);
+  background: var(--form-white);
+  color: var(--form-ink);
+  font: 400 20px/1 var(--form-font);
+}
+#overlay :is(.v4-dialog, .scale-modal) p {
+  color: var(--form-muted);
+  font-family: var(--form-font);
+}
+#overlay :is(.v4-dialog, .scale-modal) :is(label, .field-label) {
+  color: var(--form-ink);
+  font: 550 12px/1.4 var(--form-font);
+}
+#overlay :is(.v4-dialog, .scale-modal, .takeoff) :is(
+  input:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file]), select, textarea
+) {
+  border-color: var(--form-control);
+  border-radius: var(--form-radius);
+  background: var(--form-white);
+  color: var(--form-ink);
+  font: 400 13px/1.4 var(--form-font);
+}
+#overlay :is(input, textarea)::placeholder { color: var(--form-muted); opacity: 1; }
+#overlay :is(button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--form-focus);
+  outline-offset: 2px;
+}
+#overlay :is(.v4-dialog, .scale-modal) :is(.modal-actions, .scale-tabs) { border-color: var(--form-line); }
+#overlay :is(.modal-actions, .surface-editor-section-heading) button,
+#overlay .takeoff footer button {
+  border-radius: var(--form-radius);
+  font-family: var(--form-font);
+  font-weight: 600;
+}
+#overlay .modal-actions button:not(.primary, .danger) {
+  background: var(--form-white);
+  border-color: var(--form-control);
+  color: var(--form-ink);
+}
+#overlay :is(.modal-actions, .takeoff footer) button.primary:not(:disabled) {
+  color: var(--form-white);
+  background: var(--form-accent);
+  border-color: var(--form-accent);
+}
+#overlay :is(.modal-actions, .takeoff footer) button.primary:hover:not(:disabled) {
+  background: #24476a;
+  border-color: #24476a;
+}
+#overlay :is(
+  [data-dialog-handle] > button,
+  .modal-actions button:not(.primary, .danger),
+  .surface-editor-section-heading button
+):hover:not(:disabled) {
+  background: var(--form-selected);
+  border-color: var(--form-accent);
+  color: var(--form-accent);
+}
+#overlay .scale-tabs button[aria-selected=true] {
+  border-bottom-color: var(--form-accent);
+  color: var(--form-accent);
+  background: var(--form-selected);
+  border-radius: var(--form-radius) var(--form-radius) 0 0;
+}
+#overlay .scale-heading { margin-bottom: 12px; }
+#overlay .scale-modal :is(.scale-current, .scale-reference) { background: var(--form-selected); }
+#overlay .scale-modal .scale-error, #overlay .v4-dialog .v4-error { color: #8d2d28; }
+#overlay .takeoff > header { margin: 0; padding: 12px 20px; height: auto; border-radius: 0; border-width: 0 0 1px; }
+#overlay .takeoff > header span { color: var(--form-muted); font-size: 11px; letter-spacing: .045em; }
+#overlay .takeoff .takeoff-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 0; background: var(--form-white); }
+#overlay .takeoff .takeoff-summary > div { min-width: 0; padding: 14px 12px; border-color: var(--form-line); }
+#overlay .takeoff .takeoff-summary span { color: var(--form-muted); font-size: 12px; }
+#overlay .takeoff .takeoff-summary strong {
+  color: var(--form-ink);
+  font: 650 19px/1.3 var(--form-font);
+  font-variant-numeric: tabular-nums;
+}
+#overlay .takeoff th {
+  color: var(--form-muted);
+  background: var(--form-chrome);
+  font: 650 11px/1.35 var(--form-font);
+  letter-spacing: .025em;
+}
+#overlay .takeoff td { font-variant-numeric: tabular-nums; }
+#overlay .takeoff footer p { color: var(--form-muted); font-size: 11px; }
+
+#overlay .v4-dialog.surface-editor { overflow: hidden; }
+#overlay .v4-dialog.surface-editor > header {
+  min-height: 55px;
+  margin: 0;
+  padding: 10px 20px;
+  border-radius: 0;
+  border-width: 0 0 1px;
+}
+#overlay .aite-surface-editor { --sd-accent: var(--form-accent); }
+#overlay .surface-product-summary { align-items: center; }
+#overlay .surface-product-summary strong {
+  color: var(--form-ink);
+  font-size: 18px;
+  letter-spacing: -.015em;
+}
+#overlay .surface-product-summary p { color: var(--form-muted); }
+#overlay .surface-product-summary > span {
+  padding-left: 9px;
+  border-left: 2px solid var(--form-line);
+  color: var(--form-muted);
+}
+#overlay .surface-editor-fields { gap: 11px 14px; }
+#overlay .surface-editor-primary {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+#overlay :is(.surface-location-fields, .surface-editor-name) {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+#overlay .surface-location-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+#overlay .surface-location-fields:has(#surfaceUnitField:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) clamp(92px, 28%, 132px);
+}
+#overlay .surface-location-fields label {
+  min-width: 0;
+}
+#overlay #surfaceUnitNumber { font-variant-numeric: tabular-nums; }
+#overlay .surface-name-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#overlay .surface-name-heading .surface-editor-link {
+  max-width: 60%;
+  min-width: 0;
+  min-height: 24px;
+  margin: 0;
+  padding-block: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#overlay .surface-qty-grid {
+  gap: 1px;
+  overflow: hidden;
+  grid-template-columns: 1fr .85fr 1fr;
+  border: 1px solid var(--form-line);
+  border-radius: var(--form-radius);
+  background: var(--form-line);
+}
+#overlay .surface-qty-grid > :is(div, label) {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--form-white);
+}
+#overlay .surface-qty-grid > div:last-child {
+  background: var(--form-selected);
+  box-shadow: inset 0 -2px var(--form-accent);
+}
+#overlay .surface-qty-grid :is(div > span, #surfaceLossLabel) { color: var(--form-muted); }
+#overlay .surface-qty-grid strong,
+#overlay .surface-qty-grid #surfaceWaste {
+  margin: 0;
+  color: var(--form-ink);
+  font: 650 21px/1.25 var(--form-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.025em;
+}
+#overlay .surface-qty-grid #surfaceWaste { min-height: 27px; height: 27px; }
+#overlay .surface-loss-input { gap: 5px; align-items: baseline; }
+#overlay .surface-loss-input input[readonly] {
+  width: 6.6ch;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+#overlay .surface-editor-tiles { background: var(--form-chrome); border-color: var(--form-line); }
+#overlay .surface-editor-section-heading button {
+  min-height: 32px;
+  padding: 5px 9px;
+  background: var(--form-white);
+  border: 1px solid var(--form-control);
+  color: var(--form-accent);
+}
+#overlay .surface-editor-details > summary { padding: 10px 2px; }
+#overlay .surface-editor-footer { border-top-color: var(--form-line); background: var(--form-paper); }
+
+@media (max-width: 680px) {
+  #overlay .takeoff .takeoff-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  #overlay [data-dialog-handle] h2 { font-size: 18px; }
+  #overlay .v4-dialog.surface-editor > header { min-height: 52px; padding: 10px 14px; }
+  #overlay .surface-qty-grid > :is(div, label) { padding: 7px; }
+  #overlay .surface-qty-grid strong,
+  #overlay .surface-qty-grid #surfaceWaste { font-size: 16px; }
+  #overlay .surface-editor-section-heading button { min-height: 38px; }
+}
+@media (max-width: 359px) {
+  #overlay .surface-editor-primary { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
 </head>
 <body><div id="root"></div>
 <script>/**
@@ -12552,6 +12824,8 @@ const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
     throw new Error('Moteur géométrique incomplet pour la pose des corridors.');
   }
   const ANGULAR_EPS = 1e-8;
+  const TRACE_ANGULAR_EPS = Math.sin(2 * Math.PI / 180);
+  const TRACE_WIDTH_RATIO = 1.65;
   const copy = p => ({ x: p.x, y: p.y });
   const vector = (a, b) => ({ x: b.x - a.x, y: b.y - a.y });
   const cross = (a, b) => a.x * b.y - a.y * b.x;
@@ -12560,8 +12834,8 @@ const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
   const equalPoint = (a, b) => a.x === b.x && a.y === b.y;
   const shifted = (points, origin) => points.map(p => vector(origin, p));
   const stableArea = points => geometry.area(shifted(points, points[0]));
-  const parallelOpposite = (a, b) => Math.abs(cross(a, b)) <= ANGULAR_EPS * length(a) * length(b) && dot(a, b) < 0;
-  const perpendicular = (a, b) => Math.abs(dot(a, b)) <= ANGULAR_EPS * length(a) * length(b);
+  const parallelOpposite = (a, b, epsilon = ANGULAR_EPS) => Math.abs(cross(a, b)) <= epsilon * length(a) * length(b) && dot(a, b) < 0;
+  const perpendicular = (a, b, epsilon = ANGULAR_EPS) => Math.abs(dot(a, b)) <= epsilon * length(a) * length(b);
 
   // Angle de l'axe longitudinal dans le repère natif du plan, modulo 180°.
   // Le format et la rotation du carreau appartiennent à l'appelant.
@@ -12672,7 +12946,7 @@ const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
     return valid[0] || null;
   }
 
-  function layout(points) {
+  function layout(points, { allowTraceVariation = false } = {}) {
     if (!Array.isArray(points) || points.length < 4 || points.length > 2048 ||
         !points.every(p => p && typeof p === 'object' && Number.isFinite(p.x) && Number.isFinite(p.y))) return null;
     const ring = points.map(copy).filter((p, i, list) => !i || !equalPoint(p, list[i - 1]));
@@ -12692,10 +12966,13 @@ const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
     if (!winding || !Number.isFinite(total) || total <= tolerance * tolerance) return null;
     const axes = outline.map((p, i) => vector(p, outline[(i + 1) % outline.length]));
     if (corners.length > 6) return multipleTurns(ring, corners, axes, winding, total, tolerance);
+    const angularEpsilon = allowTraceVariation ? TRACE_ANGULAR_EPS : ANGULAR_EPS;
+    const opposed = (a, b) => parallelOpposite(a, b, angularEpsilon);
+    const crosswise = (a, b) => perpendicular(a, b, angularEpsilon);
 
     if (corners.length === 4) {
-      if (!convex(outline, winding) || !axes.every((axis, i) => perpendicular(axis, axes[(i + 1) % 4])) ||
-          !parallelOpposite(axes[0], axes[2]) || !parallelOpposite(axes[1], axes[3])) return null;
+      if (!convex(outline, winding) || !axes.every((axis, i) => crosswise(axis, axes[(i + 1) % 4])) ||
+          !opposed(axes[0], axes[2]) || !opposed(axes[1], axes[3])) return null;
       const first = length(axes[0]), second = length(axes[1]);
       if (Math.abs(first - second) <= Math.max(first, second) * 1e-7) return null;
       const direction = angle(first > second ? axes[0] : axes[1]), radians = direction * Math.PI / 180,
@@ -12712,10 +12989,12 @@ const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
     if (reflex.length !== 1) return null;
     const r = reflex[0], ordered = Array.from({ length: 6 }, (_, i) => corners[(r + i) % 6]),
       vertices = ordered.map(c => c.point), sides = vertices.map((p, i) => vector(p, vertices[(i + 1) % 6]));
-    if (!parallelOpposite(sides[0], sides[2]) || !parallelOpposite(sides[3], sides[5]) ||
-        !perpendicular(sides[0], sides[1]) || !perpendicular(sides[3], sides[4])) return null;
+    if (!opposed(sides[0], sides[2]) || !opposed(sides[3], sides[5]) ||
+        !crosswise(sides[0], sides[1]) || !crosswise(sides[3], sides[4])) return null;
     const widthA = length(sides[1]), widthB = length(sides[4]);
-    if (Math.min(widthA, widthB) <= tolerance || Math.abs(widthA - widthB) > Math.max(widthA, widthB) * 1e-7 ||
+    const widthsMatch = allowTraceVariation ? Math.max(widthA, widthB) <= Math.min(widthA, widthB) * TRACE_WIDTH_RATIO :
+      Math.abs(widthA - widthB) <= Math.max(widthA, widthB) * 1e-7;
+    if (Math.min(widthA, widthB) <= tolerance || !widthsMatch ||
         !convex(vertices.slice(0, 4), winding) || !convex([vertices[3], vertices[4], vertices[5], vertices[0]], winding)) return null;
     const arc = (from, to) => {
       const result = [];
@@ -12791,17 +13070,25 @@ const tileTakeoff = (function createTileTakeoff(geometry,tiles,corridors) {
   function corridorPose(item,format,factor) {
     if(!corridors||item.kind!=='area'||!/^TAP/.test(item.material||'')||item.extraContours?.length||
       item.layout&&item.layout.autoRotation===undefined||item.tiling?.source?.startsWith('architectural-')||!(factor>0))return null;
-    const namedCorridor=/^(?:CORRIDOR|COULOIR|CIRCULATION)\b/i.test(item.name||'');
-    if(item.spaceType!=='circulation'&&!(namedCorridor&&(!item.spaceType||item.spaceType==='room')))return null;
+    const name=(item.name||'').trim(),genericArea=!item.spaceType||item.spaceType==='room';
+    const namedCorridor=/\b(?:CORRIDORS?|COULOIRS?|CIRCULATION|HALLWAY)\b/i.test(name);
+    const identified=item.spaceType==='circulation'||genericArea&&namedCorridor;
+    const unnamed=genericArea&&(!name||/^(?:ZONE|SURFACE|PI[ÈE]CE)(?:\s+\d+)?$/i.test(name));
+    if(!identified&&!unnamed)return null;
     const points=item.points;
     if(!Array.isArray(points))return null;
     let saved=corridorCache.get(points);
     if(!saved||saved.points.length!==points.length||points.some((p,i)=>p?.x!==saved.points[i].x||p?.y!==saved.points[i].y)){
-      saved={points:points.map(p=>({x:p?.x,y:p?.y})),pose:corridors.layout(points)};
+      saved={points:points.map(p=>({x:p?.x,y:p?.y})),pose:corridors.layout(points,{allowTraceVariation:true})};
       corridorCache.set(points,saved);
     }
     const pose=saved.pose;
     if(!pose)return null;
+    if(!identified&&pose.sections.length===1){
+      const section=pose.sections[0],angle=section.angle*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+      const box=geometry.boundsOf(section.points.map(p=>({x:p.x*c+p.y*s,y:-p.x*s+p.y*c})));
+      if(box.right-box.x<(box.bottom-box.y)*1.75)return null;
+    }
     const longOnY=format.height>=format.width,halfStart=[format.width,format.height].every(side=>Math.abs(side*2.54-50)<.021);
     const sections=pose.sections.map(section=>{
       const angle=((section.angle+(longOnY?-90:0)+(item.layout?.autoRotation||0))%360+360)%360;
@@ -12931,14 +13218,14 @@ const floorFinishRendering = (function createFloorFinishRendering() {
   }
   function carpetTexture(context,variant,longY) {
     const gray=variant==='b'||variant==='gray'||variant==='grey'||variant==='gris';
-    const tone=gray?[100,102,98]:[70,69,65],fleck=gray?33:26,stripe=gray?24:2,size=192;
+    const tone=gray?[100,102,98]:[70,69,65],fleck=gray?33:22,stripe=gray?25:18,size=192;
     const canvas=canvasFor(context,size,size),target=canvas?.getContext('2d');if(!target)return null;
     const image=target.createImageData(size,size),random=randomSource(gray?9721:1299);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
       const along=longY?y:x,across=longY?x:y,loops=(random()-.5)*fleck;
       const knit=5.5*Math.sin(along*1.64+(across%3)*1.4)*Math.sin(across*1.48);
-      const bands=stripe*(.44*Math.sin(across*tau/48+.46*Math.cos(along*tau/96))+.37*Math.sin(across*tau/24));
-      const drift=6*Math.sin(x*tau/192+y*tau/96)*Math.sin(y*tau/64-x*tau/192);
+      const bands=stripe*(.57*Math.sin(across*tau/48+.23*Math.cos(along*tau/96))+.24*Math.sin(across*tau/24));
+      const drift=4*Math.sin(across*tau/192+along*tau/96)*Math.sin(along*tau/64-across*tau/192);
       const light=loops+knit+bands+(loops>12?15:0)+drift,pixel=(y*size+x)*4;
       for(let c=0;c<3;c++)image.data[pixel+c]=tone[c]+light;
       image.data[pixel+3]=255;
@@ -15109,12 +15396,12 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     }
   }
   function styles(){return `
-    .app.aite-workspace{--aite-sky:#e4e6e5;--aite-paper:#f8f7f4;--aite-surface:#f8f7f4;--aite-chrome:#eeede8;--aite-ink:#25333d;--aite-muted:#515b65;--aite-blue:#2d5780;--aite-selection:#e0e9f1;--aite-hover:#edf1f3;--aite-rail:#263744;--aite-border:#7d8999;--aite-line:#c8cfd2;--aite-icon-button:34px;--ink:var(--aite-ink);--muted:var(--aite-muted);--line:var(--aite-line);--green:var(--aite-blue);--v7-line:var(--aite-line);--v7-blue:var(--aite-blue);font:13px/1.45 'Segoe UI',Arial,sans-serif;color:var(--aite-ink);background:var(--aite-sky)}
+    .app.aite-workspace{--aite-sky:#e4e6e5;--aite-paper:#f8f7f4;--aite-surface:#f8f7f4;--aite-chrome:#edf1f4;--aite-ink:#25333d;--aite-muted:#515b65;--aite-blue:#2d5780;--aite-selection:#e0e9f1;--aite-hover:#edf1f3;--aite-rail:#263744;--aite-border:#7d8999;--aite-line:#ccd5dd;--aite-icon-button:34px;--ink:var(--aite-ink);--muted:var(--aite-muted);--line:var(--aite-line);--green:var(--aite-blue);--v7-line:var(--aite-line);--v7-blue:var(--aite-blue);font:13px/1.45 'Segoe UI',Arial,sans-serif;color:var(--aite-ink);background:var(--aite-sky)}
     .aite-workspace *,.aite-workspace *::before,.aite-workspace *::after{box-sizing:border-box}.aite-workspace button,.aite-workspace input,.aite-workspace select{font-family:inherit}
     .aite-workspace button:focus-visible,.aite-workspace summary:focus-visible,.aite-workspace [role=button]:focus-visible,.aite-workspace input:focus-visible,.aite-workspace select:focus-visible{outline:2px solid var(--aite-blue);outline-offset:2px}
     .aite-workspace.layout-compact .topbar{height:46px;flex-basis:46px;background:var(--aite-paper);border-color:var(--aite-line);padding:0 12px;gap:12px;color:var(--aite-ink)}
-    .aite-workspace .brand{font:700 15px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:0}.aite-workspace .brandmark{width:28px;height:28px;border-radius:6px;background:var(--aite-blue);color:white}.aite-workspace .brand b{color:var(--aite-blue)}
-    .aite-workspace .project-title{border-color:var(--aite-line);padding-left:12px}.aite-workspace.layout-compact .project-title input{font-size:12px;color:var(--aite-ink)}.aite-workspace .project-title span{font-size:10px;color:var(--aite-muted)}
+    .aite-workspace .brand{font:700 15px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:0}.aite-workspace .brandmark{width:28px;height:28px;border-radius:8px;background:var(--aite-blue);color:white}.aite-workspace .brand b{color:var(--aite-blue)}
+    .aite-workspace .project-title{border-color:var(--aite-line);padding-left:12px}.aite-workspace.layout-compact .project-title input{font-size:12px;color:var(--aite-ink)}.aite-workspace .project-title span{font-size:11px;color:var(--aite-muted)}
     .aite-workspace .topbar button{position:relative}.aite-workspace .top-actions button{height:32px;min-height:32px;border-radius:5px;font-size:12px;font-weight:500;color:var(--aite-ink);border-color:transparent;padding-inline:9px;background:transparent}.aite-workspace #exportBtn{background:#eaf4ee;border-color:#bcdbcc;color:#18583f}.aite-workspace #exportBtn:hover:not(:disabled){background:#daece2;border-color:#18583f}.aite-workspace #count{background:var(--aite-selection);color:#17496d}
     .aite-workspace.layout-compact #manualRibbon{position:relative;min-height:0;padding:0;background:var(--aite-surface);border-block:1px solid var(--aite-line);box-shadow:none;z-index:5}
     .aite-ribbon-heading{min-height:28px;padding:2px 10px 2px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--aite-sky);border-bottom:1px solid var(--aite-line)}.aite-ribbon-heading>strong{font-size:12px;font-weight:600;color:var(--aite-blue)}.aite-ribbon-heading>div{display:flex;align-items:center;gap:6px}
@@ -15123,7 +15410,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:36px;min-height:36px;width:auto;min-width:36px;max-width:none;flex:0 0 auto;padding:6px;gap:6px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px;color:var(--aite-muted)}
     .aite-workspace #aiteRibbonTools #manualUndo span,.aite-workspace #aiteRibbonTools #manualRedo span,.aite-workspace #aiteRibbonTools #tileOriginBtn span,.aite-workspace #aiteRibbonTools #toggleTileGrid span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace.layout-compact #manualRibbon .manual-button:hover:not(:disabled){background:var(--aite-hover);border-color:var(--aite-border)}.aite-workspace.layout-compact #manualRibbon .manual-button[aria-pressed=true]{background:var(--aite-selection);border-color:var(--aite-blue);color:var(--aite-blue)}.aite-workspace .manual-button:disabled{opacity:.45}
-    .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:var(--aite-chrome);color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:11.5px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:white;border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded .advanced-tools{display:none}
+    .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:var(--aite-paper);color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:12px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:white;border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded .advanced-tools{display:none}
     .aite-workspace .floating-plan-navigation{position:fixed;z-index:4;display:flex;gap:2px;align-items:center;padding:3px;border:1px solid var(--aite-line);border-radius:9px;background:color-mix(in srgb,var(--aite-paper) 84%,transparent);transition:background-color .12s,border-color .12s;overflow:auto;pointer-events:none}
     .aite-workspace .floating-plan-navigation button{pointer-events:auto}.aite-workspace #planToolbarGrip{position:sticky;top:0;display:grid;place-items:center;width:32px;height:20px;flex:0 0 20px;cursor:grab;touch-action:none;pointer-events:auto;color:var(--aite-muted);z-index:1;border-radius:3px}.aite-workspace #planToolbarGrip:focus-visible{outline:2px solid var(--aite-blue);outline-offset:-2px}.aite-workspace .is-dragging #planToolbarGrip{cursor:grabbing}.aite-workspace .floating-plan-tools-group{display:flex;align-items:center;gap:2px;flex:none;min-width:0}.aite-workspace .floating-plan-tools-group+.floating-plan-tools-group{border-left:1px solid var(--aite-line);padding-left:6px;margin-left:3px}.aite-workspace .floating-plan-tools-group[hidden],.aite-workspace .floating-plan-tools-group:empty{display:none}
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button{display:flex;align-items:center;justify-content:center;min-width:var(--aite-icon-button);width:var(--aite-icon-button);min-height:var(--aite-icon-button);height:var(--aite-icon-button);padding:5px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--aite-muted);gap:0}
@@ -15131,9 +15418,9 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace #manualRibbon .floating-plan-navigation .manual-button[aria-pressed=true]{border-color:var(--aite-blue);background:var(--aite-selection);color:var(--aite-blue)}.aite-workspace #manualRibbon .floating-plan-navigation .manual-button:focus-visible{outline:2px solid var(--aite-blue);outline-offset:-2px}
     .aite-workspace .workspace{gap:0;background:var(--aite-sky);min-width:0}.aite-workspace .stage{background:var(--aite-sky);min-width:0}.aite-workspace.layout-compact .stagebar{height:36px;min-height:36px;flex-basis:36px;background:white;border-bottom:1px solid var(--aite-line);gap:4px;padding-inline:8px}.aite-workspace .stagebar .document{min-width:0;flex:1}.aite-workspace.layout-compact .stagebar .document strong{font-size:12px;max-width:370px}.aite-workspace .stagebar button{flex-shrink:0}.aite-workspace .stagebar .scale{font-size:10px}
     .aite-workspace .colorbar{background:var(--aite-surface);border-color:var(--aite-line);font-size:10px}.aite-workspace .canvas-wrap{background:var(--aite-sky)}.aite-workspace .zoom{left:var(--aite-plan-tool-inset,16px);box-shadow:0 2px 8px #24324410;border-color:var(--aite-line);border-radius:5px}
-    .aite-workspace .sidebar.layout-sidebar{background:var(--aite-surface);border-color:var(--aite-line)}.aite-workspace .layout-panel{background:var(--aite-surface);color:var(--aite-ink)}.aite-workspace .layout-panel .pane-title{min-height:40px;padding:8px 10px;font-size:13px;letter-spacing:0;background:var(--aite-paper);color:var(--aite-ink);border-bottom:1px solid var(--aite-line)}
+    .aite-workspace .sidebar.layout-sidebar{background:var(--aite-surface);border-color:var(--aite-line)}.aite-workspace .layout-panel{background:var(--aite-surface);color:var(--aite-ink)}.aite-workspace .layout-panel .pane-title{min-height:40px;padding:8px 10px;font-size:13px;letter-spacing:0;background:var(--aite-chrome);color:var(--aite-ink);border-bottom:1px solid var(--aite-line)}
     .aite-workspace .layout-panel-actions button{border-color:transparent;background:transparent;color:var(--aite-muted)}.aite-workspace .layout-panel-actions button:hover{background:var(--aite-selection);border-color:var(--aite-border)}.aite-workspace .layout-height-divider,.aite-workspace .layout-width-divider{background:var(--aite-line);flex-basis:4px}.aite-workspace .layout-height-divider{min-height:4px}.aite-workspace .layout-width-divider{width:4px}.aite-workspace .layout-floating{border-color:var(--aite-border);border-radius:7px}
-    .aite-workspace .side-search input{border-color:var(--aite-border);border-radius:5px;background:white;height:29px}.aite-workspace .sheet-row{border-radius:4px;margin:1px 4px}.aite-workspace .sheet-row[aria-current=page],.aite-workspace .source-document.active{background:var(--aite-selection);border-left-color:var(--aite-blue)}.aite-workspace .source-folder{border-color:var(--aite-line)}.aite-workspace .source-folder summary{font-size:12px;font-weight:500;min-height:32px;padding:6px 8px}.aite-workspace .source-document{font-size:12px;font-weight:400;min-height:30px;padding:6px 10px}
+    .aite-workspace .side-search input{border-color:var(--aite-border);border-radius:7px;background:white;height:29px}.aite-workspace .sheet-row{border-radius:4px;margin:1px 4px}.aite-workspace .sheet-row[aria-current=page],.aite-workspace .source-document.active{background:var(--aite-selection);border-left-color:var(--aite-blue);color:var(--aite-blue)}.aite-workspace .source-folder{border-color:var(--aite-line)}.aite-workspace .source-folder summary{font-size:12px;font-weight:500;min-height:32px;padding:6px 8px}.aite-workspace .source-document{font-size:12px;font-weight:400;min-height:30px;padding:6px 10px}
     .aite-workspace #measureTree{padding:0;margin:0;container-type:inline-size}.aite-workspace .measure-folder-heading{background:var(--aite-sky);border-color:var(--aite-line)}.aite-workspace .measure-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;min-height:40px;margin:0;padding:6px 10px;gap:7px;border-bottom:1px solid var(--aite-line)}.aite-workspace .measure-row b{display:block;font-size:12px;font-weight:400;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.aite-workspace .measure-row small{display:block;font-size:11px;font-weight:400;line-height:1.37;color:var(--aite-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.aite-workspace .measure-row strong{font-size:12px;font-weight:550;white-space:nowrap;font-variant-numeric:tabular-nums}.aite-workspace .measure-row.active{background:var(--aite-selection);box-shadow:inset 3px 0 var(--aite-blue)}
     .measure-view-switch{display:flex;flex-shrink:0;gap:3px;padding:5px 6px 0}.measure-view-switch button{flex:1;font-size:11px;padding:4px 6px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--aite-muted)}.measure-view-switch button[aria-pressed=true]{border-color:var(--aite-border);color:var(--aite-blue);background:white;font-weight:600}
     .finish-measure-tree{flex:1 1 auto;min-height:0;overflow:auto}.finish-tree-note{font-size:11px;color:var(--aite-muted);margin:4px 8px 6px}.finish-measure-group{border-bottom:1px solid var(--aite-line)}.finish-measure-group>summary{position:relative;list-style:none;display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:43px;padding:6px 8px;cursor:pointer;background:var(--aite-surface);border-left:3px solid transparent}.finish-measure-group>summary::-webkit-details-marker{display:none}.finish-measure-group[open]>summary{border-left-color:var(--aite-blue)}.finish-measure-group>summary>svg{color:var(--aite-blue)}
@@ -15141,8 +15428,8 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     #unitInventoryContents{max-height:min(34vh,19rem);overflow:auto}
     .unit-inventory-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:7px;padding:5px 10px 5px 27px;border-bottom:1px solid var(--aite-line);font-size:12px}
     .unit-inventory-row small{display:block;color:var(--aite-muted);overflow-wrap:anywhere}
-    .finish-group-name{min-width:0}.finish-group-name b,.finish-group-name small,.finish-group-total b,.finish-group-total small{display:block}.finish-group-name b{font-size:13px;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.finish-group-name small{font-size:10px;color:var(--aite-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.finish-group-total{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finish-group-total b{font-size:12px;font-weight:600}.finish-group-total small{font-size:10px;color:var(--aite-muted)}.aite-measures-empty{padding:12px;color:var(--aite-muted);font-size:11px}.aite-measures-empty b{color:var(--aite-ink)}
-    .aite-workspace #inspector.specification-inspector{width:288px;flex:0 0 288px;background:var(--aite-surface);border-left:1px solid var(--aite-line);font:12px/1.4 'Segoe UI',Arial,sans-serif}.aite-workspace .specification-tabs-header{background:var(--aite-paper);padding:0 6px;gap:0;border-bottom:1px solid var(--aite-line)}.aite-workspace .specification-tabs{gap:0;min-width:0}.aite-workspace .specification-tabs button{font-size:12px;padding:12px 7px 10px;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--aite-muted);white-space:nowrap}.aite-workspace .specification-tabs button[aria-selected=true]{background:transparent;color:var(--aite-blue);border-bottom-color:var(--aite-blue);box-shadow:none;font-weight:600}.aite-workspace #closeInspector{background:transparent;border:0;color:var(--aite-muted);min-width:22px;width:22px;font-size:19px}
+    .finish-group-name{min-width:0}.finish-group-name b,.finish-group-name small,.finish-group-total b,.finish-group-total small{display:block}.finish-group-name b{font-size:13px;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.finish-group-name small{font-size:11px;color:var(--aite-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.finish-group-total{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finish-group-total b{font-size:12px;font-weight:600}.finish-group-total small{font-size:11px;color:var(--aite-muted)}.aite-measures-empty{padding:12px;color:var(--aite-muted);font-size:11px}.aite-measures-empty b{color:var(--aite-ink)}
+    .aite-workspace #inspector.specification-inspector{width:288px;flex:0 0 288px;background:var(--aite-surface);border-left:1px solid var(--aite-line);font:12px/1.4 'Segoe UI',Arial,sans-serif}.aite-workspace .specification-tabs-header{background:var(--aite-chrome);padding:0 6px;gap:0;border-bottom:1px solid var(--aite-line)}.aite-workspace .specification-tabs{gap:0;min-width:0}.aite-workspace .specification-tabs button{font-size:12px;padding:12px 7px 10px;background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;color:var(--aite-muted);white-space:nowrap}.aite-workspace .specification-tabs button[aria-selected=true]{background:var(--aite-selection);color:var(--aite-blue);border-bottom-color:var(--aite-blue);box-shadow:none;font-weight:600}.aite-workspace #closeInspector{background:transparent;border:0;color:var(--aite-muted);min-width:22px;width:22px;font-size:19px}
     .aite-workspace .specification-pane{padding:12px}.aite-workspace .panel-head{padding:4px 0 12px;margin-bottom:12px;background:transparent;border:0;border-bottom:1px solid var(--aite-line);border-radius:0}.aite-workspace .panel-head h2{font:600 15px/1.3 'Segoe UI',Arial,sans-serif}.aite-workspace .panel-head span,.aite-workspace .panel-section>span{color:var(--aite-muted);font-size:9px;letter-spacing:.04em}.aite-workspace .panel-section{margin-bottom:12px;padding-bottom:12px}.aite-workspace .inspector input,.aite-workspace .inspector select{height:31px;font-size:12px;border-color:var(--aite-border);color:var(--aite-ink);background:white}.aite-workspace .inspector label{font-size:12px;color:var(--aite-muted);margin-block:10px}.aite-workspace .quantity{padding:12px 0;margin:12px 0;background:transparent;border:0;border-block:1px solid var(--aite-line);border-radius:0}.aite-workspace .quantity strong{font:600 25px/1.2 'Segoe UI',Arial,sans-serif}.aite-workspace .specification-card,.aite-workspace .specification-quantity-row{background:white;border-color:var(--aite-line);border-radius:5px}.aite-workspace .specification-code{color:var(--aite-blue)}.aite-workspace .specification-intro h2{font-size:15px}.aite-workspace .specification-help,.aite-workspace .empty-copy{color:var(--aite-muted);font-size:11px}
     .aite-workspace #takeoffSummary{background:var(--aite-surface);border-top:1px solid var(--aite-line);font-size:11px}.aite-workspace .takeoff-summary-value b{color:var(--aite-ink);font-variant-numeric:tabular-nums}.aite-workspace .takeoff-summary-scope,.aite-workspace .takeoff-summary-state{color:var(--aite-muted)}
     .aite-workspace th,.aite-workspace .swatch-line small,.aite-workspace .mini-total small,.aite-workspace .quantity span,.aite-workspace .quantity small,.aite-workspace #takeoffSummary small,.aite-workspace #takeoffSummary .takeoff-summary-value>span{color:var(--aite-muted)}
@@ -15205,7 +15492,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace .atelier-command-rail svg,.aite-workspace .manual-button svg{stroke-width:1.5}
     .aite-workspace .finish-measure-group>summary{grid-template-columns:22px minmax(0,1fr) auto;gap:7px;padding:8px 10px;border-left-width:2px;min-height:48px}.aite-workspace .finish-measure-group>summary>svg{width:22px;height:22px;padding:1px;border:1px solid var(--aite-line);border-radius:3px;stroke-width:1}
     .aite-workspace .finish-measure-group [data-takeoff-icon="vinyl"]{color:#77613a;background:#eee7d8}.aite-workspace .finish-measure-group [data-takeoff-icon="ceramic"]{color:#527f72;background:#e3efeb}.aite-workspace .finish-measure-group [data-takeoff-icon="carpet"]{color:#727987;background:#edf0f3}.aite-workspace .finish-measure-group [data-takeoff-icon="baseboard"]{color:#526174;background:#f1f4f7}
-    .aite-workspace .finish-group-total{display:flex;align-items:baseline;gap:3px}.aite-workspace .finish-group-total b{font-size:12px}.aite-workspace .finish-group-total small{font-size:10px}.aite-workspace .finish-group-name small{font-size:10px;line-height:1.4}
+    .aite-workspace .finish-group-total{display:flex;align-items:baseline;gap:3px}.aite-workspace .finish-group-total b{font-size:12px}.aite-workspace .finish-group-total small{font-size:11px}.aite-workspace .finish-group-name small{font-size:11px;line-height:1.4}
     .aite-workspace #inspectorProperties .panel-head{display:none}.aite-workspace #inspectorProperties>label:has(#itemName){font-size:0;margin:2px 0 12px}.aite-workspace #itemName{font-size:15px;font-weight:600;border:1px solid transparent;background:transparent;padding:5px 2px;height:34px}.aite-workspace #itemName:hover,.aite-workspace #itemName:focus{border-color:var(--aite-border);background:white}
     .aite-workspace #inspectorProperties .quantity{padding:9px 0;margin:0 0 10px;border-top:0;min-height:40px}.aite-workspace #inspectorProperties .quantity strong{font-size:17px}.aite-workspace #inspectorProperties .quantity>span{font-size:12px}
     .aite-workspace .inspector-section-body>label{margin:5px 0}.aite-workspace .inspector-section>summary{min-height:32px;padding-block:7px}.aite-workspace .inspector-location{margin:4px 0}.aite-workspace .inspector-section-body{padding-bottom:8px}
@@ -18396,12 +18683,12 @@ function renderInspectorBase() {
   const host=inspectorPropertiesHost();if(S.selection.size>1)return renderMultipleInspector(host);
   const item=S.items.find(item=>item.id===S.selected);
   if(item) {
-    const calculated=usesTileCalculation(item);
+    const calculated=usesTileCalculation(item),loss=displayWasteForItem(item);
     host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div></div>
       <label>Nom du relevé<input id="itemName" maxlength="300" value="${esc(item.name)}"></label>
       ${item.kind==='area'?`<label>Type d’espace<select id="itemSpaceType">${Object.entries(SPACE_STYLES).map(([type,style])=>`<option value="${type}" ${surfaceSpaceType(item)===type?'selected':''}>${style.label}</option>`).join('')}</select></label><label>Fini<select id="itemMaterial">${MATERIALS.map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
       <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':isWallTakeoff(item)?'SURFACE MURALE NETTE':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':displayQuantityForItem(item)===null?'À compléter':item.kind==='linear'&&!isWallTakeoff(item)?formatFeet(displayQuantityForItem(item)):fmt(displayQuantityForItem(item),item.kind==='count'?0:1)} <small>${item.kind==='linear'&&!isWallTakeoff(item)?'':unitForItem(item)}</small></strong></div>
-      ${item.kind!=='count'&&!item.measureOnly&&!isWallTakeoff(item)?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${displayWasteForItem(item)??''}" ${calculated?'readonly title="Part de la surface des dalles consommées perdue à la coupe"':''}><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
+      ${item.kind!=='count'&&!item.measureOnly&&!isWallTakeoff(item)?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${loss===null?'':calculated?Number(loss.toFixed(4)):loss}" ${calculated?'readonly title="Part de la surface des dalles consommées perdue à la coupe"':''}><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
       ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${esc(formatFeet(outerPerimeter(item)*S.scales[item.page]))}</b></div>`:''}
       ${item.measureOnly?'<p class="selection-help">Cote de référence : exclue des commandes et des plinthes.</p>':''}
       <label>Statut<select id="itemStatus">${['confirmée','estimée','à valider'].map(status=>`<option ${status===item.status?'selected':''}>${status}</option>`).join('')}</select></label>
@@ -20562,10 +20849,12 @@ function surfaceEditor(id,showDetails=false) {
     nameValue=suggestion&&/^(?:SALLE DE BAINS? PROPOSEE|PIECE DETECTEE|ZONE \d+\b)/.test(normalizeName(item.name))?suggestion.name:item.name;
   openDialog('Modifier la surface',`<form id="surfaceEditForm" class="aite-surface-editor"><div class="surface-editor-body">
     <section class="surface-product-summary" aria-label="Produit et feuille"><div><strong>${esc(product?.name||entry?.label||mat(item.material).name)}</strong><p>${esc(productLine)}</p></div><span>${esc(pageName(item.page))}</span></section>
-    <div class="surface-editor-fields">
-      <label>Localisation<select id="surfaceLocation">${[['auto',recognized?'Automatique · Unité '+recognized:'Selon le plan'],['unit','Logement'],['common','Espace commun']].map(([value,label])=>`<option value="${value}" ${scope===value?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
-      <label id="surfaceUnitField" ${scope==='unit'?'':'hidden'}>Numéro de logement<input id="surfaceUnitNumber" maxlength="80" list="surfaceKnownUnits" value="${esc(known)}"><datalist id="surfaceKnownUnits">${unitRows.map(row=>`<option value="${esc(row.code)}" label="${esc(row.type||'')}"></option>`).join('')}</datalist></label>
-      <div class="surface-editor-name"><label for="surfaceName">Nom de la pièce</label><input id="surfaceName" maxlength="300" required value="${esc(nameValue)}">${suggestion?`<button type="button" id="surfaceUseName" class="surface-editor-link" title="${esc(suggestion.source)}">Reprendre ${esc(suggestion.name)}</button>`:''}</div>
+    <div class="surface-editor-fields surface-editor-primary">
+      <div class="surface-location-fields">
+        <label>Localisation<select id="surfaceLocation">${[['auto',recognized?'Automatique · Unité '+recognized:'Selon le plan'],['unit','Logement'],['common','Espace commun']].map(([value,label])=>`<option value="${value}" ${scope===value?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+      <label id="surfaceUnitField" ${scope==='unit'?'':'hidden'}>N° de logement<input id="surfaceUnitNumber" maxlength="80" list="surfaceKnownUnits" value="${esc(known)}"><datalist id="surfaceKnownUnits">${unitRows.map(row=>`<option value="${esc(row.code)}" label="${esc(row.type||'')}"></option>`).join('')}</datalist></label>
+      </div>
+      <div class="surface-editor-name"><div class="surface-name-heading"><label for="surfaceName">Nom de la pièce</label>${suggestion?`<button type="button" id="surfaceUseName" class="surface-editor-link" title="${esc(suggestion.source+' · '+suggestion.name)}">Reprendre ${esc(suggestion.name)}</button>`:''}</div><input id="surfaceName" maxlength="300" required value="${esc(nameValue)}"></div>
       <label>Fini de plancher<select id="surfaceMaterial">${keepFinish?`<option value="__keep_surface_finish__" selected>${esc(specificationEntry(item)?.code||item.material)} · Référence actuelle</option>`:''}${finishMaterialOptions(keepFinish?null:item.material,work.specificationId,documentFinishes)}</select></label>
       <label>Plinthe<select id="surfaceBaseboard"><option value="">Sans plinthe</option>${baseboardOptions(baseCode)}</select></label>
     </div>
@@ -20596,7 +20885,7 @@ function surfaceEditor(id,showDetails=false) {
 
     <section class="v6-edit-section surface-editor-geometry"><h3>Corriger la géométrie</h3><p>Ces actions ouvrent le plan. Enregistrez d’abord les propriétés modifiées.</p><div class="v6-action-row"><button type="button" id="surfaceEditOutline">Modifier les coins du contour</button><button type="button" id="surfaceExcludeOther">Soustraire une zone</button><button type="button" id="surfacePoseSheet">Ouvrir la fiche de pose · F5</button></div></section>
     ${(item.holes||[]).length?`<section class="v6-edit-section"><h3>Autres exclusions</h3>${item.holes.map((ring,n)=>`<div class="v6-fixture-row"><span>Exclusion ${n+1} · ${fmt(area(ring)*S.scales[item.page]**2,2)} pi²</span><button type="button" id="removeOtherHole${n}">Supprimer cette exclusion</button></div>`).join('')}</section>`:''}
-    </details></div><footer class="surface-editor-footer modal-actions"><button type="button" id="surfaceCancel">Fermer</button><button type="submit" class="primary">Enregistrer les propriétés</button></footer></form>`,'wide surface-editor');
+    </details></div><footer class="surface-editor-footer modal-actions"><button type="button" id="surfaceCancel">Fermer</button><button type="submit" class="primary">Enregistrer</button></footer></form>`,'wide surface-editor');
   $('#surfaceMaterial').focus({preventScroll:true});
   if(tileSurface){
     const fields=$$('#surfaceEditForm input,#surfaceEditForm select'),
