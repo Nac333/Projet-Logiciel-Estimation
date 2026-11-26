@@ -3262,7 +3262,7 @@ function initManualUI() {
   $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
   $('#manualZoomOut').onclick=()=>zoomAt(S.zoom/1.2);
   $('#manualUndo').onclick=undoChange;$('#manualRedo').onclick=redoChange;
-  $('#manualActions').insertAdjacentHTML('afterbegin','<div id="traceDirectionMode" role="group" aria-label="Direction du tracé" hidden><button type="button" id="traceFreeMode" data-trace-direction="free" aria-pressed="true" title="Tracer à tout angle · Maj pour aligner temporairement">Main levée</button><button type="button" id="traceOrthoMode" data-trace-direction="ortho" aria-pressed="false" title="Aligner les segments à l’horizontale ou à la verticale">Ortho</button></div>');
+  $('#manualActions').insertAdjacentHTML('afterbegin','<div id="traceDirectionMode" role="group" aria-label="Direction du tracé" hidden><button type="button" id="traceFreeMode" data-trace-direction="free" aria-pressed="true" title="Tracer à tout angle · Maj pour aligner à l’horizontale ou à la verticale">Main levée</button><button type="button" id="traceOrthoMode" data-trace-direction="ortho" aria-pressed="false" title="Accrocher près des axes et des diagonales à 45° · Maj pour suivre l’angle du pointeur">Ortho</button></div>');
   $('#traceDirectionMode').onclick=event=>{
     const button=event.target.closest('[data-trace-direction]');if(!button)return;
     orthogonalTrace=button.dataset.traceDirection==='ortho';refreshManualUI();canvas.focus({preventScroll:true});
@@ -3553,6 +3553,11 @@ function drawManualGuides(context,pointer=S.mouseWorld) {
 }
 
 function usesTraceDirection() {return ['area','linear','segment','dimension'].includes(S.tool);}
+function updateTraceShift(event) {
+  if(event.key!=='Shift'||!tracePointer||!S.draft.length||!usesTraceDirection()||tracePointer.shiftKey===event.shiftKey)return;
+  tracePointer={clientX:tracePointer.clientX,clientY:tracePointer.clientY,shiftKey:event.shiftKey};
+  draw();
+}
 function traceCursor() {
   if(!usesTraceDirection()&&S.tool!=='rectangle')return null;
   if(!tracePointer||!S.plan||!S.scale||!S.draft.length||S.loading||S.detectJob||S.panning||S.dragging||S.spaceHeld||planOverlayUI?.aligning())return null;
@@ -21293,7 +21298,7 @@ function helpDialog() {
     ['Double-clic sur le dernier point','En mode Ligne, enregistrer la section et garder la ligne active. Pour une surface, terminer le contour.'],
     ['Clic droit en mode Ligne','Enregistrer une nouvelle section ou arrêter le tracé'],
     ['Clic sur une ligne enregistrée','Reprendre le tracé avec une autre section'],
-    ['Maj pendant un tracé','Aligner horizontalement ou verticalement'],['Échap','Annuler l’outil ou fermer la fenêtre'],
+    ['Maj pendant un tracé','En Main levée, aligner à l’horizontale ou à la verticale. En Ortho, suivre temporairement l’angle du pointeur.'],['Échap','Annuler l’outil ou fermer la fenêtre'],
     ['Double-clic / F6 / Entrée','Modifier une surface ou une ligne sélectionnée'],['F4 / F5','Estimation et commandes / fiche de pose sélectionnée'],['Ctrl/Cmd + Z / Y','Annuler / rétablir'],['Ctrl/Cmd + O','Ouvrir un plan'],['Ctrl/Cmd + S','Sauvegarder le relevé dans un fichier'],
     ['Ctrl/Cmd + I','Restaurer un relevé sauvegardé'],['Ctrl/Cmd + E','Exporter les quantités en Excel'],['? / F1','Afficher cette aide']
   ];
@@ -21379,10 +21384,19 @@ function keyboard(event) {
   if(tool){event.preventDefault();if(['count','rectangle','segment','dimension'].includes(tool))startManualTool(tool);else activateTool(tool);}
 }
 function snapPoint(point,event) {
-  if(S.draft.length&&(event.shiftKey||orthogonalTrace&&usesTraceDirection())) {
-    const prior=S.draft.at(-1);return Math.abs(point.x-prior.x)>Math.abs(point.y-prior.y)?{x:point.x,y:prior.y}:{x:prior.x,y:point.y};
+  const prior=S.draft.at(-1);
+  if(!prior)return point;
+  const dx=point.x-prior.x,dy=point.y-prior.y;
+  if(orthogonalTrace&&usesTraceDirection()){
+    if(event.shiftKey)return point;
+    const angle=Math.atan2(dy,dx),step=Math.PI/4,closest=Math.round(angle/step);
+    if(Math.abs(angle-closest*step)>8*Math.PI/180)return point;
+    if(closest%2===0)return closest%4===0?{x:point.x,y:prior.y}:{x:prior.x,y:point.y};
+    const projection=(Math.abs(dx)+Math.abs(dy))/2;
+    return {x:prior.x+Math.sign(dx)*projection,y:prior.y+Math.sign(dy)*projection};
   }
-  return point;
+  if(!event.shiftKey)return point;
+  return Math.abs(dx)>Math.abs(dy)?{x:point.x,y:prior.y}:{x:prior.x,y:point.y};
 }
 function drawGuides(context,pointer=S.mouseWorld) {
   context.save();context.lineWidth=2/S.zoom;context.strokeStyle='#b73f24';context.setLineDash([6/S.zoom,4/S.zoom]);
@@ -22903,7 +22917,8 @@ $('#togglePages').onclick=()=>$('.app').classList.toggle('pages-folded');
 $('.sidebar .pane-title button').onclick=()=>$('.app').classList.add('pages-folded');
 $('#collapseGrid').onclick=()=>{const grid=$('.quantity-grid');grid.classList.toggle('collapsed');const h=grid.classList.contains('collapsed')?'32px':'176px';grid.style.height=h;grid.style.flexBasis=h;};
 $('#sheetSearch').oninput=renderPages;$('#stageFile').ondblclick=renameSheet;
-window.onkeydown=keyboard;window.onkeyup=event=>{if(event.key===' '){S.spaceHeld=false;canvas.style.cursor=S.tool==='hand'?'grab':'crosshair';}};
+window.onkeydown=event=>{updateTraceShift(event);keyboard(event);};
+window.onkeyup=event=>{updateTraceShift(event);if(event.key===' '){S.spaceHeld=false;canvas.style.cursor=S.tool==='hand'?'grab':'crosshair';}};
 window.onblur=()=>{S.spaceHeld=false;if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;draw();};
 $('#toggleTileGrid').onclick=()=>{S.tileGrid=!S.tileGrid;refresh();};$('#tileSettings').onclick=tileModal;$('#tileOriginBtn').onclick=activateOrigin;
 $('#helpBtn').onclick=helpDialog;$('#saveProjectBtn').onclick=exportProject;
