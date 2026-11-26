@@ -3526,14 +3526,29 @@ function drawCountItem(context,item,active) {
   if(item.points.length){const first=item.points[0];context.font=`600 ${12/S.zoom}px Arial`;context.textAlign='left';context.textBaseline='alphabetic';context.lineWidth=3/S.zoom;context.strokeStyle='#ffffff';const label=item.name+(item.sanitarySource?.typeNeedsReview?' · à confirmer':'')+' · '+fmt(item.qty,0)+' u';context.strokeText(label,first.x+12/S.zoom,first.y-12/S.zoom);context.fillStyle=colorForItem(item);context.fillText(label,first.x+12/S.zoom,first.y-12/S.zoom);}
   context.restore();
 }
+function drawCoteLabel(context,a,b,feet,color,side) {
+  const rotation=viewRotation()*Math.PI/180;
+  const screenAngle=Math.atan2(b.y-a.y,b.x-a.x)+rotation;
+  // Normalize in screen space so reversing the points or the page cannot turn the text upside down.
+  const upright=((screenAngle+Math.PI/2)%Math.PI+Math.PI)%Math.PI-Math.PI/2;
+  const offset=side*14/S.zoom,label=formatFeet(feet);
+  context.save();
+  context.translate((a.x+b.x)/2,(a.y+b.y)/2);
+  context.rotate(upright-rotation);
+  context.font=`700 ${13/S.zoom}px Arial`;
+  context.textAlign='center';context.textBaseline='middle';
+  context.lineWidth=3/S.zoom;context.strokeStyle='#ffffff';context.strokeText(label,0,offset);
+  context.fillStyle=color;context.fillText(label,0,offset);
+  context.restore();
+}
 function drawManualLineDecorations(context,item) {
   if(!item.measureOnly||item.points.length<2)return;
   const a=item.points[0],b=item.points.at(-1),length=dist(a,b);if(!length)return;
   const nx=-(b.y-a.y)/length,ny=(b.x-a.x)/length,tick=6/S.zoom;
   context.save();context.strokeStyle=colorForItem(item);context.lineWidth=1.5/S.zoom;
   for(const point of [a,b]){context.beginPath();context.moveTo(point.x-nx*tick,point.y-ny*tick);context.lineTo(point.x+nx*tick,point.y+ny*tick);context.stroke();}
-  const x=(a.x+b.x)/2+nx*12/S.zoom,y=(a.y+b.y)/2+ny*12/S.zoom,label=formatFeet(item.qty);
-  context.font=`700 ${12/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';context.lineWidth=4/S.zoom;context.strokeStyle='#ffffff';context.strokeText(label,x,y);context.fillStyle=colorForItem(item);context.fillText(label,x,y);context.restore();
+  context.restore();
+  drawCoteLabel(context,a,b,item.qty,colorForItem(item),1);
 }
 function drawManualGuides(context,pointer=S.mouseWorld) {
   if(!S.draft.length)return;
@@ -20365,8 +20380,8 @@ function drawReference(context) {
   context.save(); context.strokeStyle = '#185eae'; context.fillStyle = '#123e70'; context.lineWidth = 2/S.zoom;
   context.beginPath(); context.moveTo(a.x,a.y); context.lineTo(b.x,b.y); context.stroke();
   for (const point of [a,b]) { context.beginPath(); context.arc(point.x,point.y,4/S.zoom,0,Math.PI*2); context.fill(); }
-  context.font = `600 ${13/S.zoom}px Arial`; context.textAlign = 'center';
-  context.fillText(formatFeet(reference.feet),(a.x+b.x)/2,(a.y+b.y)/2-9/S.zoom); context.restore();
+  context.restore();
+  drawCoteLabel(context,a,b,reference.feet,'#123e70',-1);
 }
 function hitItem(point) {
   return [...S.items].reverse().find(item=>visibleOnPlan(item)&&((item.kind==='area'||isKitchenElevation(item))?insideItem(point,item):item.kind==='count'?
