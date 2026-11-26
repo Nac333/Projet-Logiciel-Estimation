@@ -79,6 +79,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .grid-settings-dialog label{min-width:0}
 .grid-settings-dialog select,.grid-settings-dialog input:not([type=checkbox]){height:36px;margin-top:4px}
 .grid-settings-dialog .modal-actions{padding-top:12px;margin-top:14px}
+.v4-dialog.finish-direction-dialog{width:min(360px,calc(100vw - 24px));padding:16px 18px}
+.finish-direction-dialog>header{margin-bottom:12px}
+.finish-direction-dialog input{width:100%;margin-top:4px}
+.finish-direction-dialog p{margin:8px 0;font-size:12px}
+.finish-direction-dialog .modal-actions{padding-top:12px;margin-top:12px}
 @media(max-width:390px){.v4-dialog.grid-settings-dialog{padding:14px}.grid-settings-options{grid-template-columns:minmax(0,1fr)}.grid-settings-dimensions{gap:8px}.grid-settings-dialog .modal-actions button{margin-top:0}}
 
 [data-dialog-handle]{cursor:grab;touch-action:none;user-select:none}
@@ -3155,7 +3160,8 @@ function surfaceToolIcon(tool) {
     extend:'<path d="M4.2 5.1h9v13.8h-9Z"/><path d="M13.2 9.4h7v9.5h-7" stroke-dasharray="2 2"/><path d="M8.9 13.8h7.8m-2.4-2.4 2.4 2.4-2.4 2.4"/>',
     subtract:'<path d="M4 4.5h15.5V9h-6v10.5H4Z"/><path d="M19.5 9v10.5h-6" stroke-dasharray="1.8 2"/><path d="m15.6 11.1 1.9 1.9m-1.9 2 1.9 1.9M6.6 12.4h4.2"/>',
     split:'<path d="M4 8V5h16v2.5m0 8.5v3H4v-2.5"/><path d="M2.5 13.5h5l3-4 3 5 3-4h5" stroke-dasharray="2.35 1.38"/>',
-    merge:'<path d="M3.5 7H11V4h9.5v13H13v3.2H3.5Z"/><path d="M12 6v4m0 4v4" stroke-dasharray="1.4 1.7"/><path d="m7.2 9.8 2.3 2.2-2.3 2.2m9.6-4.4-2.3 2.2 2.3 2.2"/>'
+    merge:'<path d="M3.5 7H11V4h9.5v13H13v3.2H3.5Z"/><path d="M12 6v4m0 4v4" stroke-dasharray="1.4 1.7"/><path d="m7.2 9.8 2.3 2.2-2.3 2.2m9.6-4.4-2.3 2.2 2.3 2.2"/>',
+    direction:'<path d="M3.7 4.5h11.4v11.4H3.7zM9.4 4.5v11.4M3.7 10.2h11.4"/><path d="m12.8 20 7.5-7.5m-3.4 0h3.4v3.4"/>'
   };
   return `<svg data-surface-icon="${tool}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[tool]}</svg>`;
 }
@@ -3372,6 +3378,7 @@ function manualStatusText() {
   if(S.tool==='extendSurface')return S.draft.length?'Extension · Continuez le contour, puis cliquez le premier point ou faites un double-clic.':'Extension · Cliquez le premier point dans la surface sélectionnée.';
   if(S.tool==='mergeSurface')return 'Fusionner · Cliquez une deuxième surface contiguë du même fini. Échap pour annuler.';
   if(S.tool==='tileOrigin')return 'Point de départ · Cliquez sur le plan pour placer l’origine de la grille.';
+  if(S.tool==='finishAlign')return S.draft.length?'Cliquez le deuxième point dans le sens de pose. Échap pour annuler.':'Cliquez deux points sur le plan pour indiquer le sens de pose. Échap pour annuler.';
   if(S.tool==='fixtureBox')return 'Bain ou douche : cliquez les deux coins opposés de l’emprise à retrancher · Échap pour annuler.';
   if(S.tool==='fixturePolygon')return 'Bain ou douche : cliquez les coins de l’emprise, puis Entrée pour la retrancher.';
   if(S.tool==='fixtureEdit')return 'Emprise du bain ou de la douche : glissez les coins orange pour la corriger.';
@@ -3429,6 +3436,8 @@ function refreshManualUI() {
   if($('#manualFinish').textContent!==finishLabel)$('#manualFinish').textContent=finishLabel;
   $('#manualCancel').disabled=busy;
   const text=manualStatusText();if($('#manualStatus').textContent!==text)$('#manualStatus').textContent=text;
+  const alignmentHint=$('#finishAlignHint');
+  if(alignmentHint){alignmentHint.hidden=busy||S.tool!=='finishAlign';if(!alignmentHint.hidden&&alignmentHint.textContent!==text)alignmentHint.textContent=text;}
   refreshRibbonOverflowState();
 }
 function handleManualClick(point,event) {
@@ -15660,7 +15669,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     for(const node of [take('itemStatus'),host.querySelector('.status-note'),take('itemWaste'),...nodes.filter(n=>n.classList.contains('total-line'))])if(node)sections.control.body.append(node);
     for(const node of nodes){if(essentials.includes(node)||node.parentElement!==host)continue;
       if(node.classList.contains('v4-properties')&&(/editVertices|sanitarySelectedFormat/.test(node.innerHTML)))sections.correction.body.append(node);
-      else if(node.classList.contains('v4-properties')&&(node.querySelector('#tileLossFormula, #rotateFloorFinish')||node.textContent.includes('taux de perte')))sections.control.body.append(node);
+      else if(node.classList.contains('v4-properties')&&(node.querySelector('#tileLossFormula, #rotateFloorFinish, #editFinishDirection')||node.textContent.includes('taux de perte')))sections.control.body.append(node);
       else if(node.classList.contains('wall-inspector'))sections.control.body.append(node);
       else sections.details.body.append(node);
     }
@@ -19189,6 +19198,7 @@ function renderSurfaceQuickActions() {
     ['select','edit'].includes(S.tool)&&actionableSurface();
   if(!target){actions.hidden=true;return;}
   $('#surfaceOriginBtn').hidden=target.preview||!canSetTileOrigin(target.item);
+  $('#surfaceRotateBtn').hidden=target.preview||!canOrientFinish(target.item);
   const transform={width:S.plan.width,height:S.plan.height,rotation:viewRotation(),zoom:S.zoom,pan:S.pan};
   const bounds=boundsOf(allAreaPoints(target.item).map(point=>view.planToScreen(point,transform)));
   const width=canvas.clientWidth,height=canvas.clientHeight;
@@ -19321,6 +19331,7 @@ function remember() {
 }
 function restoreSnapshot(state) {
   S.roomRepairJob?.abort();S.roomRepair=null;S.unitBaseboardTrace=null;
+  if(S.tool==='finishAlign')S.tool='select';
   S.items = state.items; S.scales = state.scales; S.scaleMeta = state.scaleMeta;
   S.scale=S.scales[S.page]||null;
   S.selection = new Set(state.selection.filter(id => S.items.some(i => i.id === id && i.page === S.page)));
@@ -19341,6 +19352,7 @@ function redoChange() {
 }
 function pushItems(items) { remember();const oldIds=new Set(S.items.map(item=>item.id));applyActiveSpecification(items.filter(item=>!oldIds.has(item.id))); S.items = items; save(); refresh(); }
 function setSelection(ids) {
+  if(S.tool==='finishAlign'){S.tool='select';S.draft=[];}
   S.selection = new Set(ids); S.selected = [...S.selection].at(-1) || null;
 }
 function selectItem(id, event = {}, resumeDrawing = false) {
@@ -20006,6 +20018,8 @@ function drawFloorFill(context,item) {
   }
   context.restore();
 }
+function normalizeFinishAngle(angle) {return (angle%360+360)%360;}
+function finishDirectionAngle(frame) {return normalizeFinishAngle(frame.angle+(frame.height>=frame.width?90:0));}
 function finishMarkers(item,layout) {
   const markers=[];
   for(const {frame,contours} of layout.sections)for(const points of contours){
@@ -20013,7 +20027,7 @@ function finishMarkers(item,layout) {
     if(Math.min(b.right-b.x,b.bottom-b.y)*S.zoom<27)continue;
     const candidates=[.39,.53,.67].flatMap(y=>[.54,.43,.65].map(x=>({x:b.x+(b.right-b.x)*x,y:b.y+(b.bottom-b.y)*y})));
     const point=candidates.find(p=>inside(p,points)&&insideItem(p,item));
-    if(point)markers.push({point,angle:(frame.angle+(frame.height>=frame.width?90:0))%360,zoom:S.zoom});
+    if(point)markers.push({point,angle:finishDirectionAngle(frame),zoom:S.zoom});
   }
   return markers;
 }
@@ -20037,21 +20051,63 @@ function activateOrigin() {
   if(!item)return toast('Sélectionnez une zone de céramique ou de tapis en dalles.');
   S.tool='tileOrigin';S.tileGrid=true;refresh();canvas.focus();
 }
-function rotateTile(step=90) {
-  const item=S.items.find(i=>i.id===S.selected),kind=floorFinishKind(item);
+function rotateTile(step=90,id=S.selected) {
+  const item=S.items.find(i=>i.id===id),kind=floorFinishKind(item);
   if(!item||!kind&&!item.tiling)return toast('Sélectionnez un fini de plancher.');
-  const frame=finishFrames(item,kind).sections[0]?.frame||tileLayout(item),normal=angle=>((angle%360)+360)%360;
-  const layout={origin:frame.origin,joint:tileLayout(item).joint,angle:normal(frame.angle+step),...(item.layout?.manualOrigin?{manualOrigin:true}:{})};
-  if(kind==='carpet'&&tileTakeoff.corridorPose(item,tileFormatOf(item)||{width:10,height:40},S.scales[item.page]*12))layout.autoRotation=normal((item.layout?.autoRotation||0)+step);
-  updateItem(item.id,{layout});
+  const frames=finishFrames(item,kind),frame=frames.sections[0]?.frame||tileLayout(item);
+  const layout={origin:frame.origin,joint:tileLayout(item).joint,angle:normalizeFinishAngle(frame.angle+step),...(item.layout?.manualOrigin?{manualOrigin:true}:{})};
+  if(frames.followsCorridor)layout.autoRotation=normalizeFinishAngle((item.layout?.autoRotation||0)+step);
+  return updateItem(item.id,{layout});
+}
+function canOrientFinish(item) {return !!floorFinishKind(item)||canSetTileOrigin(item);}
+function openFinishDirection() {
+  const target=actionableSurface();
+  if(!target||target.preview||!canOrientFinish(target.item))return;
+  const item=target.item,{sections}=finishFrames(item,floorFinishKind(item)),frame=sections[0]?.frame;
+  if(!frame)return toast('Calibrez la feuille avant de régler le sens de pose.');
+  const current=finishDirectionAngle(frame),value=new Intl.NumberFormat('fr-CA',{useGrouping:false,maximumFractionDigits:15}).format(current);
+  openDialog('Sens de pose',`<form id="finishDirectionForm"><label>Angle de pose (°)<input id="finishDirectionAngle" type="text" inputmode="decimal" maxlength="32" value="${esc(value)}" aria-describedby="finishDirectionHelp" required></label><p id="finishDirectionHelp">0° à l’horizontale, 90° à la verticale. L’angle augmente dans le sens horaire.${sections.length>1?' La première branche sert de référence. Les autres pivotent du même angle.':''}</p><div class="modal-actions"><button type="submit" class="primary">Appliquer</button></div></form>`,'finish-direction-dialog');
+  const field=$('#finishDirectionAngle');field.focus();field.select();
+  field.oninput=()=>field.setCustomValidity('');
+  $('#finishDirectionForm').onsubmit=event=>{
+    event.preventDefault();
+    const entered=field.value.trim().replace('−','-').replace(',','.'),angle=Number(entered);
+    if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(entered)||!Number.isFinite(angle)){
+      field.setCustomValidity('Saisissez un angle en degrés, par exemple 32,5 ou 270.');field.reportValidity();return;
+    }
+    const step=normalizeFinishAngle(angle)-current;
+    if(field.value===value||step===0||rotateTile(step,item.id))closeDialog();
+  };
+}
+function startFinishAlignment() {
+  const target=actionableSurface();
+  if(!target||target.preview||!canOrientFinish(target.item))return;
+  if(!S.scale)return toast('Calibrez la feuille avant de régler le sens de pose.');
+  if(S.draft.length)return toast('Terminez le tracé en cours avant de régler le sens de pose.');
+  activateTool('finishAlign',target.item.id);
+}
+function acceptFinishAlignment(point) {
+  const item=S.selection.size===1&&S.items.find(candidate=>candidate.id===S.selected&&visibleOnPlan(candidate));
+  if(!canOrientFinish(item))return activateTool('select');
+  const start=S.draft[0];
+  if(!start){S.draft=[point];refreshManualUI();return;}
+  if(dist(start,point)*S.zoom<6)return;
+  const frame=finishFrames(item,floorFinishKind(item)).sections[0]?.frame;
+  const angle=normalizeFinishAngle(Math.atan2(point.y-start.y,point.x-start.x)*180/Math.PI);
+  S.draft=[];S.tool='select';
+  const step=frame?angle-finishDirectionAngle(frame):0;
+  if(step)rotateTile(step,item.id);else refresh();
 }
 function finishArrowHit(item,point) {
-  if(!unitFloorMarker(item)||!visibleOnPlan(item)||S.settings.surfaceDisplay!=='materials'||!insideItem(point,item))return false;
-  return finishMarkers(item,finishFrames(item,'wood')).some(marker=>floorFinishRendering.hitAxis(marker,point));
+  const kind=floorFinishKind(item);
+  if(!showsFinishDirection(item,kind)||!visibleOnPlan(item)||!insideItem(point,item))return false;
+  return finishMarkers(item,finishFrames(item,kind)).some(marker=>floorFinishRendering.hitAxis(marker,point));
 }
-function unitFloorMarker(item,kind=floorFinishKind(item)) {
+function showsFinishDirection(item,kind) {
+  const textured=S.settings.surfaceDisplay==='materials';
+  if(kind==='ceramic'||kind==='carpet')return textured||S.tileGrid;
   const work=item?.work;
-  return kind==='wood'&&work?.locationScope!=='common'&&(!work?.layer||work.layer==='finish')&&
+  return kind==='wood'&&textured&&work?.locationScope!=='common'&&(!work?.layer||work.layer==='finish')&&
     (surfaceSpaceType(item)==='dwelling'||work?.locationScope==='unit'||!!(work?.unitId||work?.unit?.trim()));
 }
 function drawBrickGrid(context,frame,box) {
@@ -20101,13 +20157,14 @@ function drawTileGrids(context) {
       }
       context.restore();
     }
-    if(textured&&item.id&&kind&&S.tool!=='tileOrigin') {
+    const showDirection=showsFinishDirection(item,kind),showSeams=textured&&layout.seams.length;
+    if(item.id&&S.tool!=='tileOrigin'&&(showDirection||showSeams)) {
       context.save();clipItem(context,item);
-      if(layout.seams.length){
+      if(showSeams){
         context.beginPath();for(const [a,b] of layout.seams){context.moveTo(a.x,a.y);context.lineTo(b.x,b.y);}
         context.strokeStyle='#215c5c';context.lineWidth=2/S.zoom;context.setLineDash([5/S.zoom,3/S.zoom]);context.stroke();context.setLineDash([]);
       }
-      if(unitFloorMarker(item,kind))for(const marker of finishMarkers(item,layout))floorFinishRendering.arrows(context,marker);
+      if(showDirection)for(const marker of finishMarkers(item,layout))floorFinishRendering.arrows(context,marker);
       context.restore();
     }
     if(S.selection.size===1&&S.selection.has(item.id)&&canSetTileOrigin(item)&&['select','tileOrigin'].includes(S.tool)) {
@@ -20653,6 +20710,12 @@ function keyboard(event) {
     }
     return;
   }
+  if(S.tool==='finishAlign'&&['escape','delete','backspace'].includes(key)){
+    event.preventDefault();
+    if(key==='escape')activateTool('select');
+    else {S.draft=[];refreshManualUI();}
+    return;
+  }
   if(key==='delete'||key==='backspace') {
     event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else if(S.tool!=='linear'&&!activeAreaTrace())deleteSelection();return;
   }
@@ -20999,9 +21062,11 @@ function renderInspector() {
   }else if(!S.selection.size) {
     host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Détection et navigation</h3><p>Murs affiche les limites retenues. Détecter propose les contours. Fermer un passage sépare les pièces communicantes. Choisissez les finis selon le plan ou le devis.</p><p>Molette : zoom au pointeur<br>Espace + glisser : déplacer le plan<br>Sélection : glisser pour encadrer plusieurs surfaces, puis Suppr<br>Clic sur une surface : sommets modifiables</p></section>`);
   }
-  if(S.selection.size===1&&['wood','carpet'].includes(floorFinishKind(item))) {
-    host.insertAdjacentHTML('beforeend','<section class="v4-properties"><button type="button" id="rotateFloorFinish" class="selection-action">Tourner le sens de pose de 90°</button></section>');
-    $('#rotateFloorFinish').onclick=()=>rotateTile();
+  if(S.selection.size===1&&canOrientFinish(item)) {
+    const quickTurn=['wood','carpet'].includes(floorFinishKind(item));
+    host.insertAdjacentHTML('beforeend',`<section class="v4-properties">${quickTurn?'<button type="button" id="rotateFloorFinish" class="selection-action">Tourner le sens de pose de 90°</button>':''}<button type="button" id="editFinishDirection" class="selection-action">Choisir l’angle de pose…</button></section>`);
+    if(quickTurn)$('#rotateFloorFinish').onclick=()=>rotateTile();
+    $('#editFinishDirection').onclick=openFinishDirection;
   }
   appendTileInspector(host,item);
   if(item?.wasteConfirmed===false&&!usesTileCalculation(item)&&vinylDefaultWaste(item)===null){host.insertAdjacentHTML('beforeend','<section class="v4-properties"><p>Le taux de perte est provisoire. Saisissez votre taux ou confirmez explicitement 0 %.</p><button id="confirmZeroWaste" type="button">Confirmer 0 % de perte</button></section>');$('#confirmZeroWaste').onclick=()=>updateItem(item.id,{waste:0});}
@@ -21967,6 +22032,7 @@ canvas.onwheel=event=>{
 canvas.onclick=event=>{
   if(!S.plan||S.loading||S.detectJob||S.dragged){S.dragged=false;return;}
   if(event.detail>1||S.spaceHeld)return;
+  if(S.tool==='finishAlign')return acceptFinishAlignment(snapPoint(canvasPoint(event),event));
   if(exclusionVertex(focusedSurfaceEdit()?.item,canvasPoint(event)))return;
   if(planOverlayUI?.pick(canvasPoint(event)))return;
   if(S.tool==='mergeSurface')return finishSurfaceMerge(canvasPoint(event));
@@ -22031,6 +22097,7 @@ const measurementContextMenu=measurementContextMenuFactory({
   additionalEntries:(item,point)=>canResumeLine(item)?[{id:'custom-resume-line',label:'Reprendre le tracé',run:()=>resumeLine(item.id)}]:sanitaryMenuEntries(item,point),
   pageEntries:()=>sanitaryMenuEntries(null),
   drawingEntries:state=>{
+    if(state.tool==='finishAlign')return {title:'Aligner le sens de pose',entries:[{id:'custom-stop-finish-alignment',label:'Annuler',run:()=>activateTool('select')}]};
     if(state.tool==='linear')return {title:activeLinearTrace()?.name||'Tracé linéaire',entries:[
       {id:'custom-new-line-section',label:'Nouvelle section',run:()=>finishLine(S.draft,true)},
       {id:'custom-stop-line',label:'Arrêter',run:()=>finishLine(S.draft)},
@@ -22049,14 +22116,17 @@ canvas.insertAdjacentHTML('afterend',`<div id="surfaceQuickActions" role="group"
     <button type="button" id="surfaceMergeBtn" aria-label="Fusionner les surfaces" title="Fusionner avec une deuxième surface">${surfaceToolIcon('merge')}</button>
   </div>
   <button type="button" id="surfaceOriginBtn" data-surface-action="origin" aria-label="Point de départ du calepinage" title="Point de départ du calepinage · T" hidden><i data-lucide="locate-fixed"></i></button>
-</div>`);
+  <button type="button" id="surfaceRotateBtn" data-surface-action="rotate" aria-label="Tourner le sens de pose de 90°" aria-description="Double-cliquez ou appuyez sur Maj et Entrée pour aligner sur deux points." aria-keyshortcuts="Shift+Enter" title="Clic pour tourner de 90° · Double-clic pour aligner sur deux points" hidden>${surfaceToolIcon('direction')}</button>
+</div><div id="finishAlignHint" role="status" hidden></div>`);
 document.head.insertAdjacentHTML('beforeend',`<style>
 #surfaceQuickActions:not([hidden]){position:absolute;z-index:3;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:9px;box-shadow:0 3px 12px #1f344326}
 #surfaceQuickActions .surface-shape-actions{display:flex;gap:3px;padding-left:3px;border-left:1px solid var(--aite-border,#7d8999)}
 #surfaceQuickActions button{display:grid;place-items:center;width:var(--aite-icon-button,34px);height:var(--aite-icon-button,34px);padding:0;border:0;background:transparent;color:var(--aite-blue,#2d5780);border-radius:7px;cursor:pointer}
 #surfaceQuickActions button:hover,#surfaceQuickActions button:focus-visible{background:var(--aite-selection,#e0e9f1)}
 #surfaceQuickActions svg{width:21px;height:21px}
+#surfaceRotateBtn{touch-action:manipulation}
 #surfaceQuickActions:not([hidden]){background-image:var(--aite-theme-grain,none)}
+#finishAlignHint{position:absolute;z-index:4;inset:12px auto auto 50%;transform:translateX(-50%);max-width:calc(100% - 24px);width:max-content;pointer-events:none;padding:8px 12px;border:1px solid var(--aite-border,#7d8999);border-radius:9px;background:color-mix(in srgb,var(--aite-paper,#fff) 86%,transparent);color:var(--aite-ink,#24282f);font-size:12px;text-align:center}
 :is(#editVertices,#surfaceEditOutline) svg{width:16px;height:16px;vertical-align:middle;margin-inline-end:6px}
 </style>`);
 $('#surfaceMoveBtn').onclick=()=>activateTool('moveSurface');
@@ -22065,6 +22135,27 @@ $('#surfaceSubtractBtn').onclick=()=>activateTool('exclude');
 $('#surfaceSplitBtn').onclick=()=>activateTool('split');
 $('#surfaceMergeBtn').onclick=()=>activateTool('mergeSurface');
 $('#surfaceOriginBtn').onclick=activateOrigin;
+const surfaceRotateButton=$('#surfaceRotateBtn');
+let pendingFinishTurn;
+surfaceRotateButton.onclick=event=>{
+  clearTimeout(pendingFinishTurn);
+  if(event.detail>1)return;
+  const target=actionableSurface();
+  if(!target||target.preview||!canOrientFinish(target.item))return;
+  if(!event.detail)return rotateTile(90,target.item.id);
+  pendingFinishTurn=setTimeout(()=>{
+    const current=actionableSurface();
+    if(current?.item===target.item&&!current.preview&&['select','edit'].includes(S.tool)&&!S.loading&&!S.detectJob&&!$('#overlay').innerHTML.trim())rotateTile(90,target.item.id);
+  },500);
+};
+surfaceRotateButton.ondblclick=()=>{
+  clearTimeout(pendingFinishTurn);startFinishAlignment();
+};
+surfaceRotateButton.onkeydown=event=>{
+  if(event.shiftKey&&event.key==='Enter'){
+    event.preventDefault();clearTimeout(pendingFinishTurn);startFinishAlignment();
+  }
+};
 lucide.createIcons();
 canvas.onpointerdown=event=>{
   draw();
