@@ -204,6 +204,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .surface-legend .tile-loss-shortcut{padding:3px 7px;border:1px solid var(--v7-line);border-radius:4px;background:var(--v7-paper);color:var(--v7-blue);font:inherit;cursor:pointer}
 .tile-loss-rule{font-size:12px;color:var(--v7-muted);margin:8px 0}
 #tilePreview{margin:6px 0 12px;padding:7px 9px;background:#e7f0f6;border-radius:4px;font-variant-numeric:tabular-nums}
+.tile-count-legend{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:11px;font-variant-numeric:tabular-nums}
+.tile-count-legend span{display:inline-flex;align-items:center;gap:4px}
+.tile-count-legend i{width:9px;height:9px;border:1px solid #174f63;border-radius:50%;background:#fff}
+.tile-count-legend .tile-count-full{background:#174f63}
+.tile-count-legend .tile-count-half{border-color:#8b4d11;background:linear-gradient(to right,#8b4d11 50%,#fff 50%)}
+.tile-count-summary{font-variant-numeric:tabular-nums}
 .space-legend-keys{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0}
 .space-legend-keys span{display:flex;align-items:center;gap:4px;white-space:nowrap}
 .space-legend-keys i{display:block;width:10px;height:10px;flex-shrink:0;border:1px solid var(--space-color);background:var(--space-fill)}
@@ -2047,7 +2053,7 @@ function surfaceLabelAnchor(item,halfWidth,halfHeight) {
   }
   surfaceLabelAnchors.set(item,{key,point:best});return best;
 }
-function drawSurfaceLabel(context,item,force=false,occupied=[]) {
+function drawSurfaceLabel(context,item,force=false,occupied=[],marks=[]) {
   const label=hasPendingFixtures(item)?'À délimiter':fmt(item.qty)+' pi²';
   context.save();context.font=`600 ${11/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';
   const halfWidth=(context.measureText(label).width/2)+5/S.zoom,halfHeight=9/S.zoom,
@@ -2055,16 +2061,17 @@ function drawSurfaceLabel(context,item,force=false,occupied=[]) {
   if(!point){context.restore();return;}
   const rect={x:point.x-halfWidth,y:point.y-halfHeight,right:point.x+halfWidth,bottom:point.y+halfHeight};
   const corners=[{x:rect.x,y:rect.y},{x:rect.right,y:rect.y},{x:rect.right,y:rect.bottom},{x:rect.x,y:rect.bottom}];
-  if(!force&&(!corners.every(p=>insideItem(p,item))||occupied.some(other=>rect.x<other.right&&rect.right>other.x&&rect.y<other.bottom&&rect.bottom>other.y))){context.restore();return;}
+  const overlaps=other=>rect.x<other.right&&rect.right>other.x&&rect.y<other.bottom&&rect.bottom>other.y;
+  if(marks.some(overlaps)||!force&&(!corners.every(p=>insideItem(p,item))||occupied.some(overlaps))){context.restore();return;}
   context.setLineDash([]);context.fillStyle='#ffffffeb';context.fillRect(rect.x,rect.y,halfWidth*2,halfHeight*2);
   context.strokeStyle=surfaceColorForItem(item);context.lineWidth=1/S.zoom;context.strokeRect(rect.x,rect.y,halfWidth*2,halfHeight*2);
   context.fillStyle='#192b22';context.fillText(label,point.x,point.y);context.restore();occupied.push(rect);
 }
-function drawSurfaceLabels(context) {
+function drawSurfaceLabels(context,marks=[]) {
   if(!S.settings.surfaceLabels)return;
   const occupied=[],preview=S.preview?.page===S.page?S.preview.items.filter(item=>!item.duplicate&&!item.autoSavedId):[],
     items=[...S.items.filter(item=>visibleOnPlan(item)&&item.kind==='area'),...preview];
-  for(const item of items)drawSurfaceLabel(context,item,false,occupied);
+  for(const item of items)drawSurfaceLabel(context,item,false,occupied,item.id===S.selected?marks:[]);
 }
 function confirmationIssues(item,state=S) {
   const reasons=[];
@@ -13026,7 +13033,7 @@ const takeoffSummary = (function createTakeoffSummary() {
 
   return { summarize, summarizeUnits, limits };
 })();
-const tileLayoutEngine = (function createTileLayout(geometry) {
+const tileLayoutEngine = (function createTileLayout(geometry,clipping=require('polygon-clipping')) {
   const version=1,EPS=1e-7,MAX_CELLS=50000;
   const fail=message=>{throw new Error('Calepinage : '+message);};
   const finite=(v,min,max)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
@@ -13076,6 +13083,84 @@ const tileLayoutEngine = (function createTileLayout(geometry) {
     }
     if(!Number.isFinite(left))fail('morceau sans emprise malgré une surface positive.');
     return {x:left,y:top,right,bottom,rectangular:Math.abs((right-left)*(bottom-top)-net)<=Math.max(EPS,net*1e-8)};
+  }
+  function equivalentBox(outer,holes,box) {
+    if(!holes.length||box.rectangular)return box;
+    // Cette enveloppe sert seulement aux équivalents, jamais au stock de débit.
+    try {
+      const toRing=r=>r.map(p=>[p.x,p.y]),difference=clipping.difference([toRing(outer)],...holes.map(h=>[toRing(h)]));
+      let x=Infinity,y=Infinity,right=-Infinity,bottom=-Infinity;
+      for(const polygon of difference) {
+        if(!Array.isArray(polygon[0])||polygon[0].length<4)return box;
+        for(const p of polygon[0]) {
+          if(!Array.isArray(p)||p.length!==2||!p.every(Number.isFinite))return box;
+          x=Math.min(x,p[0]);y=Math.min(y,p[1]);right=Math.max(right,p[0]);bottom=Math.max(bottom,p[1]);
+        }
+      }
+      if(!(right>x&&bottom>y)||x<box.x-EPS||y<box.y-EPS||right>box.right+EPS||bottom>box.bottom+EPS)return box;
+      return {x,y,right,bottom};
+    }catch{return box;}
+  }
+  function markPoint(outer,holes,box) {
+    const rings=[outer,...holes],center={x:(box.x+box.right)/2,y:(box.y+box.bottom)/2};
+    // Écarter l'arrondi sur les arêtes, sans la marge EPS qui effacerait les
+    // fragments minces déjà admis par leur aire.
+    const roundoff=Number.EPSILON*64*Math.max(1,Math.abs(box.x),Math.abs(box.y),Math.abs(box.right),Math.abs(box.bottom));
+    const visible=p=>geometry.inside(p,outer)&&!holes.some(h=>geometry.inside(p,h))&&
+      !rings.some(r=>r.some((a,i)=>geometry.distanceToSegment(p,a,r[(i+1)%r.length])<=roundoff));
+    if(visible(center))return center;
+    // Chercher le milieu d'un intervalle réellement posé, jamais celui d'un
+    // trou ou d'une encoche. Le centre courant suffit à la plupart des coupes.
+    const intervals=(ring,y)=>{
+      const xs=[];
+      for(let i=0;i<ring.length;i++) {
+        const a=ring[i],b=ring[(i+1)%ring.length];
+        if((a.y<=y&&y<b.y)||(b.y<=y&&y<a.y))xs.push(a.x+(y-a.y)*(b.x-a.x)/(b.y-a.y));
+      }
+      xs.sort((a,b)=>a-b);const spans=[];
+      for(let i=0;i+1<xs.length;i+=2)spans.push([xs[i],xs[i+1]]);
+      return spans;
+    };
+    const scan=y=>{
+      const spans=holes.flatMap(h=>intervals(h,y)).sort((a,b)=>a[0]-b[0]),gaps=[];
+      for(const [start,end] of intervals(outer,y)) {
+        let left=start;
+        for(const [a,b] of spans) {
+          if(b<=left||a>=end)continue;
+          if(a>left)gaps.push([left,Math.min(a,end)]);
+          left=Math.max(left,b);if(left>=end)break;
+        }
+        if(left<end)gaps.push([left,end]);
+      }
+      gaps.sort((a,b)=>(b[1]-b[0])-(a[1]-a[0]));
+      for(const [a,b] of gaps){const p={x:(a+b)/2,y};if(visible(p))return p;}
+      return null;
+    };
+    const middle=scan(center.y);if(middle)return middle;
+    const levels=[...new Set(rings.flatMap(r=>r.map(p=>p.y)))].sort((a,b)=>a-b);
+    const scanBands=ys=>{
+      const bands=[];
+      for(let i=1;i<ys.length;i++)if(ys[i]>ys[i-1])bands.push([ys[i-1],ys[i]]);
+      bands.sort((a,b)=>(b[1]-b[0])-(a[1]-a[0]));
+      for(const [a,b] of bands){const p=scan((a+b)/2);if(p)return p;}
+      return null;
+    };
+    const ordinary=scanBands(levels);if(ordinary)return ordinary;
+    // Des exclusions obliques peuvent se croiser entre leurs sommets : ces
+    // niveaux supplémentaires garantissent aussi la recherche dans leurs îlots.
+    const edges=rings.flatMap(r=>r.map((a,i)=>({a,b:r[(i+1)%r.length]}))).filter(e=>e.a.y!==e.b.y);
+    for(let i=0;i<edges.length;i++)for(let j=i+1;j<edges.length;j++) {
+      const {a,b}=edges[i],{a:c,b:d}=edges[j],ax=b.x-a.x,ay=b.y-a.y,bx=d.x-c.x,by=d.y-c.y,den=ax*by-ay*bx;
+      if(Math.abs(den)<1e-12)continue;
+      const dx=c.x-a.x,dy=c.y-a.y,t=(dx*by-dy*bx)/den,u=(dx*ay-dy*ax)/den;
+      if(t>0&&t<1&&u>0&&u<1)levels.push(a.y+t*ay);
+    }
+    const crossing=scanBands([...new Set(levels)].sort((a,b)=>a-b));if(crossing)return crossing;
+    return null;
+  }
+  function marker(outer,holes,box,axis) {
+    // Le repère visuel facultatif ne doit jamais bloquer un débit valide.
+    try {const p=markPoint(outer,holes,box);return p?{...p,axis}:null;}catch{return null;}
   }
   function pack(cuts,width,height,reuse,rotateCuts,firstId) {
     const stocks=[],placements=[];
@@ -13173,7 +13258,7 @@ const tileLayoutEngine = (function createTileLayout(geometry) {
     const ranges=frames.map(({box})=>gridRange(box,width,height,staggerAxis));
     if(ranges.reduce((n,r)=>n+r.count,0)>MAX_CELLS)fail('plus de50000cellules; fractionnez la zone ou augmentez le format.');
     const cuts=[],full=[],tolerance=Math.max(EPS,area*1e-8);
-    let accumulated=0,halfPieces=0,conservativePieces=0;
+    let accumulated=0,halfPieces=0,conservativePieces=0,equivalentHalfPieces=0;
     for(let contourIndex=0;contourIndex<frames.length;contourIndex++) {
       const {points:outer,holes,holeBoxes}=frames[contourIndex],source=multipart?{contourIndex}:{};
       for(const {row,column,cell} of gridCells(ranges[contourIndex],width,height,staggerAxis)) {
@@ -13182,11 +13267,13 @@ const tileLayoutEngine = (function createTileLayout(geometry) {
         const net=geometry.netArea({points:polygon,holes:localHoles});if(net<=EPS)continue;
         if(net>area+tolerance)fail('surface de cellule supérieure à sa tuile.');
         accumulated+=net;
-        if(Math.abs(net-area)<=tolerance){full.push({row,column,netArea:net,full:true,...source});continue;}
+        if(Math.abs(net-area)<=tolerance){full.push({row,column,netArea:net,full:true,mark:marker(polygon,localHoles,cell,null),...source});continue;}
         const b=occupiedBox(polygon,localHoles,net),w=b.right-b.x,h=b.bottom-b.y;
         if(!b.rectangular)conservativePieces++;
         if(b.rectangular&&Math.abs(net-area/2)<=tolerance&&((Math.abs(w-width)<=EPS&&Math.abs(h-height/2)<=EPS)||(Math.abs(w-width/2)<=EPS&&Math.abs(h-height)<=EPS)))halfPieces++;
-        cuts.push({row,column,netArea:net,width:w,height:h,rectangular:b.rectangular,bounds:b,full:false,...source});
+        const actual=equivalentBox(polygon,localHoles,b),axis=actual.right-actual.x<=width/2+EPS?'x':actual.bottom-actual.y<=height/2+EPS?'y':null;
+        if(axis!==null)equivalentHalfPieces++;
+        cuts.push({row,column,netArea:net,width:w,height:h,rectangular:b.rectangular,bounds:b,full:false,mark:marker(polygon,localHoles,actual,axis),...source});
       }
     }
     if(Math.abs(accumulated-totalNet)>Math.max(.0001,totalNet*1e-7))fail('les cellules ne concordent pas avec le contour net.');
@@ -13195,13 +13282,15 @@ const tileLayoutEngine = (function createTileLayout(geometry) {
     // section avec reuse=zone, et aucun stock n'est réservé deux fois.
     const packed=pack(cuts,width,height,reuse,rotateCuts,full.length+1),consumed=full.length+packed.stocks.length,required=consumed*area;
     if(required+Math.max(.0001,totalNet*1e-7)<totalNet)fail('stock consommé inférieur au net.');
-    const waste=Math.max(0,required-totalNet);
+    const waste=Math.max(0,required-totalNet),equivalentWholePieces=full.length+cuts.length-equivalentHalfPieces,
+      equivalentTiles=equivalentWholePieces+equivalentHalfPieces/2;
     return {version,tileWidth:width,tileHeight:height,tileAreaSqft:area/144,netSqft:totalNet/144,requiredSqft:required/144,wasteSqft:waste/144,wastePercent:required>0?waste/required*100:null,
       fullTiles:full.length,cutPieces:cuts.length,halfPieces,consumedTiles:consumed,cutTiles:packed.stocks.length,reusedPieces:packed.reusedPieces,conservativePieces,reuse,rotateCuts,jointsIncluded:false,
+      equivalentWholePieces,equivalentHalfPieces,equivalentTiles,roundedEquivalentTiles:Math.ceil(equivalentTiles),
       placements:[...full.map((p,i)=>({...p,stockId:i+1,cutX:0,cutY:0,rotated:false})),...packed.placements],offcuts:packed.stocks.flatMap(stock=>stock.free.map(piece=>({...piece,stockId:stock.id})))};
   }
   return {version,analyze};
-})(geometry);
+})(geometry, surfaceClipper);
 const corridorFinishLayout = (function createCorridorFinishLayout(geometry) {
   if (typeof geometry?.area !== 'function' || typeof geometry?.intersectNet !== 'function') {
     throw new Error('Moteur géométrique incomplet pour la pose des corridors.');
@@ -19199,6 +19288,7 @@ function visibleOnPlan(item) {return item.page===S.page&&(workspaceAppearance?.i
 function renderPlanScene() {
   const d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;
   const cursor=traceCursor(),pointer=cursor?.point||S.mouseWorld;
+  let forcedSurfaceLabel=null;
   const pixelWidth=Math.round(w*d),pixelHeight=Math.round(h*d);
   if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
   ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle=planAppearance.background;ctx.fillRect(0,0,w,h);
@@ -19223,7 +19313,7 @@ function renderPlanScene() {
       drawFloorFill(ctx,item);traceItem(ctx,item);
     }else drawLinePath(ctx,item.points,item.sectionStarts);
     ctx.strokeStyle=active?'#101713':color;ctx.lineWidth=(active?4:2)/S.zoom;ctx.stroke();
-    if(item.kind==='area'&&active&&S.selection.size===1&&!S.settings.surfaceLabels)drawSurfaceLabel(ctx,item,true);
+    if(item.kind==='area'&&active&&S.selection.size===1&&!S.settings.surfaceLabels)forcedSurfaceLabel=item;
     else drawManualLineDecorations(ctx,item);
     ctx.restore();
   }
@@ -19231,7 +19321,9 @@ function renderPlanScene() {
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
   }
-  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx,pointer);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx,pointer);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>visibleOnPlan(item)&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));
+  const tileMarks=drawTileGrids(ctx);
+  if(forcedSurfaceLabel)drawSurfaceLabel(ctx,forcedSurfaceLabel,true,[],tileMarks);
+  drawWallInspection(ctx);drawGuides(ctx,pointer);drawSurfaceLabels(ctx,tileMarks);drawFixtureGuides(ctx);drawManualGuides(ctx,pointer);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>visibleOnPlan(item)&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));
   }
   ctx.restore();
   drawSelectionBox(ctx);
@@ -20009,17 +20101,31 @@ function tileCalculation(item,state=S) {
 function tileLossEquation(r) {
   return r?.complete&&r.wastePercent!==null?`100 × (1 − ${fmt(r.netSqft,3)} ÷ ${fmt(r.requiredSqft,3)}) = ${fmt(r.wastePercent,4)} %`:'';
 }
+const tileCountLegend='<p class="tile-count-legend"><span><i class="tile-count-full" aria-hidden="true"></i>Entière · 1</span><span><i aria-hidden="true"></i>Coupe · 1</span><span><i class="tile-count-half" aria-hidden="true"></i>Demi · ½</span></p>';
+function tileEquivalentText(r) {
+  return `Décompte des repères · ${fmt(r.equivalentWholePieces,0)} × 1 + ${fmt(r.equivalentHalfPieces,0)} × ½ = ${fmt(r.equivalentTiles,Number.isInteger(r.equivalentTiles)?0:1)} équiv. · ${fmt(r.roundedEquivalentTiles,0)} après arrondi`;
+}
 function appendTileInspector(host,item) {
   if(!item||S.selection.size!==1||!tileTakeoff.eligible(item,S))return;
   const r=tileCalculation(item),equation=tileLossEquation(r),summary=!r?'Indiquez le format des dalles.':!r.complete?r.issues.join(' · '):
-    (r.proposal?'Calcul automatique · ':'')+r.fullTiles+' complètes · '+r.cutPieces+' coupes · '+r.consumedTiles+' tuiles consommées · '+fmt(r.requiredSqft,3)+' pi² avec pertes · '+(r.wastePercent===null?'perte sans objet':fmt(r.wastePercent,4)+' % de perte sur le besoin')+(r.reviewed?' · vérifié':' · à vérifier');
-  host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Tuiles et coupes</h3><p id="tileTakeoffSummary">${esc(summary)}</p><p id="tileLossFormula" class="tile-loss-rule">Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)${equation?`<br><strong>${esc(equation)}</strong>`:''}</p>${r?.complete?`<p>Net · ${fmt(r.netSqft,3)} pi². Perte · ${fmt(r.wasteSqft,3)} pi². ${r.reusedPieces} coupe(s) réemployée(s) dans la zone.${r.conservativePieces?' Emprise des coupes irrégulières réservée.':''}</p>`:''}${!item.tiling?'<button type="button" id="tileCalculateLoss">Calculer la perte par dalle</button>':''}<button type="button" id="tileTakeoffSettings">Format, départ et calcul des tuiles</button></section>`);
+    (r.proposal?'Calcul automatique · ':'')+'Débit réel · '+r.fullTiles+' complètes · '+r.cutPieces+' coupes · '+r.consumedTiles+' tuiles consommées · '+fmt(r.requiredSqft,3)+' pi² avec pertes · '+(r.wastePercent===null?'perte sans objet':fmt(r.wastePercent,4)+' % de perte sur le besoin')+(r.reviewed?' · vérifié':' · à vérifier');
+  const equivalent=r?.complete&&item.kind==='area'?`<p id="tileEquivalentSummary" class="tile-count-summary">${esc(tileEquivalentText(r))}</p>${tileCountLegend}`:'';
+  host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Tuiles et coupes</h3>${equivalent}<p id="tileTakeoffSummary">${esc(summary)}</p><p id="tileLossFormula" class="tile-loss-rule">Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)${equation?`<br><strong>${esc(equation)}</strong>`:''}</p>${r?.complete?`<p>Net · ${fmt(r.netSqft,3)} pi². Perte · ${fmt(r.wasteSqft,3)} pi². ${r.reusedPieces} coupe(s) réemployée(s) dans la zone.${r.conservativePieces?' Emprise des coupes irrégulières réservée.':''}</p>`:''}${!item.tiling?'<button type="button" id="tileCalculateLoss">Calculer la perte par dalle</button>':''}<button type="button" id="tileTakeoffSettings">Format, départ et calcul des tuiles</button></section>`);
   $('#tileTakeoffSettings').onclick=tileModal;
   if($('#tileCalculateLoss'))$('#tileCalculateLoss').onclick=()=>tileModal(true);
 }
 function tileExportSheet() {
-  const header=['Feuille','Pièce','Code','Format nominal (po)','Net (pi²)','Tuiles complètes posées','Morceaux coupés','Dont demi-tuiles','Tuiles consommées','Avec pertes (pi²)','Perte (%)','Réemploi','Départ','Source du départ','Revue','Contrôle'];
-  return ['Tuiles et pertes',[header,...S.items.filter(i=>usesTileCalculation(i)).map(i=>{const r=tileCalculation(i)||{complete:false,issues:[]},c=i.tiling||{...tileFormatOf(i),reuse:'zone',source:i.layout?.manualOrigin?'manual':'proposed'};return [pageName(i.page),i.name,displayCodeForItem(i),c.width?c.width+'×'+c.height:'À compléter',r.complete?r.netSqft:'À compléter',r.complete?r.fullTiles:'À compléter',r.complete?r.cutPieces:'À compléter',r.complete?r.halfPieces:'À compléter',r.complete?r.consumedTiles:'À compléter',r.complete?r.requiredSqft:'À compléter',r.complete&&r.wastePercent!==null?r.wastePercent:'À compléter',c.reuse==='zone'?'Cette zone':'Aucun',c.source,c.sourceRef?c.sourceRef.documentKey+' · p.'+c.sourceRef.page+' · '+c.sourceRef.label:'',r.reviewed?'Vérifié':'À vérifier',r.issues.join(' · ')];})]];
+  const header=['Feuille','Pièce','Code','Format nominal (po)','Net (pi²)','Tuiles complètes posées','Morceaux coupés','Dont demi-tuiles','Tuiles consommées','Avec pertes (pi²)','Perte (%)','Réemploi','Départ','Source du départ','Revue','Contrôle','Pièces à 1','Pièces à ½','Dalles équivalentes','Dalles équivalentes arrondies'];
+  const rows=S.items.filter(i=>usesTileCalculation(i)).map(i=>{
+    const r=tileCalculation(i)||{complete:false,issues:[]};
+    const c=i.tiling||{...tileFormatOf(i),reuse:'zone',source:i.layout?.manualOrigin?'manual':'proposed'};
+    const value=key=>r.complete&&r[key]!==null?r[key]:'À compléter';
+    return [pageName(i.page),i.name,displayCodeForItem(i),c.width?c.width+'×'+c.height:'À compléter',
+      value('netSqft'),value('fullTiles'),value('cutPieces'),value('halfPieces'),value('consumedTiles'),value('requiredSqft'),value('wastePercent'),
+      c.reuse==='zone'?'Cette zone':'Aucun',c.source,c.sourceRef?c.sourceRef.documentKey+' · p.'+c.sourceRef.page+' · '+c.sourceRef.label:'',
+      r.reviewed?'Vérifié':'À vérifier',r.issues.join(' · '),value('equivalentWholePieces'),value('equivalentHalfPieces'),value('equivalentTiles'),value('roundedEquivalentTiles')];
+  });
+  return ['Tuiles et pertes',[header,...rows]];
 }
 
 function tileLayout(item) {
@@ -20177,8 +20283,36 @@ function drawBrickGrid(context,frame,box) {
   }
   context.stroke();
 }
+function drawTileCountMarks(context,item,layout,occupied) {
+  if(!S.plan||S.loading||S.detectJob||S.selection.size!==1||!S.selection.has(item.id))return;
+  const frames=layout.sections.map(({frame})=>({frame,radius:Math.min(4,Math.min(frame.width,frame.height)*S.zoom/6)/S.zoom}));
+  if(!frames.some(({radius})=>radius*S.zoom>=1.25))return;
+  const result=tileCalculation(item);
+  if(!result?.complete)return;
+  const width=canvas.clientWidth,height=canvas.clientHeight,factor=S.scale*12;
+  const transform={width:S.plan.width,height:S.plan.height,rotation:viewRotation(),zoom:S.zoom,pan:S.pan};
+  const bounds=boundsOf([{x:0,y:0},{x:width,y:0},{x:width,y:height},{x:0,y:height}].map(point=>view.screenToPlan(point,transform)));
+  context.save();clipItem(context,item);context.lineWidth=1/S.zoom;
+  for(const placement of result.placements){
+    const mark=placement.mark,section=frames.length===1?frames[0]:frames[placement.contourIndex??0];
+    if(!mark||!section||section.radius*S.zoom<1.25)continue;
+    const {frame,radius}=section,{x,y}=frame.world({x:mark.x/factor,y:mark.y/factor});
+    if(x+radius<bounds.x||x-radius>bounds.right||y+radius<bounds.y||y-radius>bounds.bottom)continue;
+    context.fillStyle=placement.full?'#174f63':'#ffffff';
+    context.strokeStyle=placement.full?'#ffffff':mark.axis?'#8b4d11':'#174f63';
+    context.beginPath();context.arc(x,y,radius,0,Math.PI*2);context.fill();context.stroke();
+    if(mark.axis){
+      const angle=frame.angle*Math.PI/180+(mark.axis==='x'?Math.PI/2:Math.PI);
+      context.fillStyle='#8b4d11';context.beginPath();context.arc(x,y,radius,angle,angle+Math.PI);context.closePath();context.fill();
+    }
+    const halo=radius+1/S.zoom;
+    occupied.push({x:x-halo,y:y-halo,right:x+halo,bottom:y+halo});
+  }
+  context.restore();
+}
 function drawTileGrids(context) {
-  if(!S.scale)return;
+  const occupied=[];
+  if(!S.scale)return occupied;
   const textured=S.settings.surfaceDisplay==='materials';
   const surfaces=S.items.filter(i=>visibleOnPlan(i)&&i.kind==='area'&&(gridFamily(i)||i.tiling||textured&&floorFinishKind(i)==='wood')),current=activeAreaTrace();
   if(S.tool==='area'&&S.draft.length>=3) {
@@ -20187,7 +20321,8 @@ function drawTileGrids(context) {
   }
   for(const item of surfaces) {
     const kind=floorFinishKind(item),layout=finishFrames(item,kind);
-    for(const {frame:f,contours} of layout.sections)if(kind!=='wood'&&(S.tileGrid||textured&&kind==='carpet')&&f.width*S.zoom>=3&&f.height*S.zoom>=3)for(const points of contours) {
+    const gridVisible=kind!=='wood'&&(S.tileGrid||textured&&kind==='carpet');
+    for(const {frame:f,contours} of layout.sections)if(gridVisible&&f.width*S.zoom>=3&&f.height*S.zoom>=3)for(const points of contours) {
       const b=boundsOf(points.map(f.local));
       context.save();clipItem(context,{...item,points,extraContours:undefined});
       context.translate(f.origin.x,f.origin.y);context.rotate(f.angle*Math.PI/180);
@@ -20213,6 +20348,7 @@ function drawTileGrids(context) {
       if(showDirection)for(const marker of finishMarkers(item,layout))floorFinishRendering.arrows(context,marker);
       context.restore();
     }
+    if(gridVisible&&item.id)drawTileCountMarks(context,item,layout,occupied);
     if(S.selection.size===1&&S.selection.has(item.id)&&canSetTileOrigin(item)&&['select','tileOrigin'].includes(S.tool)) {
       const f=layout.sections[0]?.frame;if(!f)continue;
       context.save();context.translate(f.origin.x,f.origin.y);context.rotate(f.angle*Math.PI/180);
@@ -20222,6 +20358,7 @@ function drawTileGrids(context) {
       context.moveTo(2.4*r,-.4*r);context.lineTo(3*r,0);context.lineTo(2.4*r,.4*r);context.stroke();context.restore();
     }
   }
+  return occupied;
 }
 function tileModal(preferCalculated=false,returnToSurface=false) {
   const item=S.items.find(i=>i.id===S.selected&&(i.kind==='area'||isWallTakeoff(i)));if(!item)return toast('Sélectionnez une surface ou un relevé mural.');
@@ -20232,7 +20369,7 @@ function tileModal(preferCalculated=false,returnToSurface=false) {
   const automaticPose=tileTakeoff.corridorPose({...item,layout:undefined},format,plane.factor),followsCorridor=!!tileTakeoff.corridorPose(item,format,plane.factor),
     automaticFloor=!!gridFamily(item),countTiles=automaticFloor||!!c||preferCalculated===true;
   const refs=specificationData()?.documents||[],documents=[{key:S.documentKey,name:S.fileName,pages:S.pages},...refs.filter(d=>d.key!==S.documentKey)];
-  openDialog('Calepinage et pertes par tuiles',`<form id="tileForm"><p id="tileFormulaHint" class="tile-loss-rule">Surface avec perte = dalles consommées × surface d’une dalle.<br>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p><p id="tilePreview" role="status"></p><div class="v4-fields"><label>Méthode<select id="tileMode">${automaticFloor?'':`<option value="percent" ${!countTiles?'selected':''}>Taux saisi · historique</option>`}<option value="tiles" ${countTiles?'selected':''}>Tuiles consommées et coupes</option></select></label><label>Format nominal<select id="tileFormat">${tilePresetOptions(preset)}</select></label><label>Largeur nominale (po)<input id="tileWidth" type="number" min="0.1" max="240" step="any" value="${format.width}" required></label><label>Longueur nominale (po)<input id="tileHeight" type="number" min="0.1" max="240" step="any" value="${format.height}" required></label><label>Angle de pose (°)<input id="tileAngle" type="number" min="-360" max="360" step="any" value="${angle}"></label><label>Décalage horizontal (po)<input id="tileOffsetX" type="number" step="any" value="${(origin.x-b.x)*plane.factor}"></label><label>Décalage vertical (po)<input id="tileOffsetY" type="number" step="any" value="${(origin.y-b.y)*plane.factor}"></label><label>Réutiliser les coupes<select id="tileReuse"><option value="zone" ${c?.reuse!=='none'?'selected':''}>Dans cette zone seulement</option><option value="none" ${c?.reuse==='none'?'selected':''}>Aucun réemploi</option></select></label><label>Départ de pose<select id="tileStartSource">${[['proposed','Proposition au coin · à vérifier'],['manual','Choisi par l’estimateur'],['architectural-point','Point indiqué dans le plan'],['architectural-grid','Grille dessinée dans le plan']].map(([v,t])=>`<option value="${v}" ${(c?.source||(layout.manualOrigin?'manual':'proposed'))===v?'selected':''}>${t}</option>`).join('')}</select></label></div><div id="tileSourceFields" class="v4-fields"><label>Document source<select id="tileSourceDocument">${documents.map(d=>`<option value="${esc(d.key)}" ${(c?.sourceRef?.documentKey||S.documentKey)===d.key?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label><label>Page source<input id="tileSourcePage" type="number" min="1" step="1" value="${c?.sourceRef?.page||item.page}"></label><label>Détail / repère<input id="tileSourceLabel" maxlength="500" value="${esc(c?.sourceRef?.label||'')}" placeholder="Ex. repère de départ, détail 3"></label></div><label class="check-label" ${automaticPose?'':'hidden'}><input id="tileFollowCorridor" type="checkbox" ${followsCorridor?'checked':''}> Suivre le sens du corridor${automaticPose?.seams.length?' et son joint de fractionnement':''}</label><label class="check-label"><input id="tileRotateCuts" type="checkbox" ${c?.rotateCuts?'checked':''}> Autoriser la rotation des coupes de 90° · seulement si le sens le permet</label><label class="check-label"><input id="tileReviewed" type="checkbox" ${c&&tileEvaluation(item).reviewed?'checked':''}> Départ, contours, coupes et réemploi vérifiés</label><p>Le point de départ architectural prime, puis la grille dessinée. À défaut, le coin est une proposition. Le calcul standard utilise les dimensions nominales sans ajouter les joints. La perte calculée est la part de la surface des tuiles consommées qui dépasse la surface nette.</p><p id="tileError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="tileReset">Remettre le départ au coin</button><button type="submit" class="primary">Appliquer</button></div></form>`);
+  openDialog('Calepinage et pertes par tuiles',`<form id="tileForm"><p id="tileFormulaHint" class="tile-loss-rule">Surface avec perte = dalles consommées × surface d’une dalle.<br>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p><p id="tilePreview" role="status"></p>${item.kind==='area'?`<div id="tileEquivalentBlock" hidden><p id="tileEquivalentPreview" class="tile-count-summary" role="status"></p>${tileCountLegend}</div>`:''}<div class="v4-fields"><label>Méthode<select id="tileMode">${automaticFloor?'':`<option value="percent" ${!countTiles?'selected':''}>Taux saisi · historique</option>`}<option value="tiles" ${countTiles?'selected':''}>Tuiles consommées et coupes</option></select></label><label>Format nominal<select id="tileFormat">${tilePresetOptions(preset)}</select></label><label>Largeur nominale (po)<input id="tileWidth" type="number" min="0.1" max="240" step="any" value="${format.width}" required></label><label>Longueur nominale (po)<input id="tileHeight" type="number" min="0.1" max="240" step="any" value="${format.height}" required></label><label>Angle de pose (°)<input id="tileAngle" type="number" min="-360" max="360" step="any" value="${angle}"></label><label>Décalage horizontal (po)<input id="tileOffsetX" type="number" step="any" value="${(origin.x-b.x)*plane.factor}"></label><label>Décalage vertical (po)<input id="tileOffsetY" type="number" step="any" value="${(origin.y-b.y)*plane.factor}"></label><label>Réutiliser les coupes<select id="tileReuse"><option value="zone" ${c?.reuse!=='none'?'selected':''}>Dans cette zone seulement</option><option value="none" ${c?.reuse==='none'?'selected':''}>Aucun réemploi</option></select></label><label>Départ de pose<select id="tileStartSource">${[['proposed','Proposition au coin · à vérifier'],['manual','Choisi par l’estimateur'],['architectural-point','Point indiqué dans le plan'],['architectural-grid','Grille dessinée dans le plan']].map(([v,t])=>`<option value="${v}" ${(c?.source||(layout.manualOrigin?'manual':'proposed'))===v?'selected':''}>${t}</option>`).join('')}</select></label></div><div id="tileSourceFields" class="v4-fields"><label>Document source<select id="tileSourceDocument">${documents.map(d=>`<option value="${esc(d.key)}" ${(c?.sourceRef?.documentKey||S.documentKey)===d.key?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label><label>Page source<input id="tileSourcePage" type="number" min="1" step="1" value="${c?.sourceRef?.page||item.page}"></label><label>Détail / repère<input id="tileSourceLabel" maxlength="500" value="${esc(c?.sourceRef?.label||'')}" placeholder="Ex. repère de départ, détail 3"></label></div><label class="check-label" ${automaticPose?'':'hidden'}><input id="tileFollowCorridor" type="checkbox" ${followsCorridor?'checked':''}> Suivre le sens du corridor${automaticPose?.seams.length?' et son joint de fractionnement':''}</label><label class="check-label"><input id="tileRotateCuts" type="checkbox" ${c?.rotateCuts?'checked':''}> Autoriser la rotation des coupes de 90° · seulement si le sens le permet</label><label class="check-label"><input id="tileReviewed" type="checkbox" ${c&&tileEvaluation(item).reviewed?'checked':''}> Départ, contours, coupes et réemploi vérifiés</label><p>Le point de départ architectural prime, puis la grille dessinée. À défaut, le coin est une proposition. Le calcul standard utilise les dimensions nominales sans ajouter les joints. La perte calculée est la part de la surface des tuiles consommées qui dépasse la surface nette.</p><p id="tileError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="tileReset">Remettre le départ au coin</button><button type="submit" class="primary">Appliquer</button></div></form>`);
   const configuration=()=>{
     const source=$('#tileStartSource').value,ref=source.startsWith('architectural-')?{documentKey:$('#tileSourceDocument').value,page:Number($('#tileSourcePage').value),label:$('#tileSourceLabel').value.trim()}:undefined;
     if(ref){const doc=documents.find(d=>d.key===ref.documentKey);if(!doc||ref.page>doc.pages)throw new Error('Page source hors du document.');}
@@ -20248,12 +20385,21 @@ function tileModal(preferCalculated=false,returnToSurface=false) {
   };
   const preview=()=>{
     const documented=$('#tileStartSource').value.startsWith('architectural-'),carpet=$('#tileFormat').value.startsWith('TAP')||item.material.startsWith('TAP')&&$('#tileFormat').value==='CUSTOM';
+    const equivalentBlock=$('#tileEquivalentBlock');
+    if(equivalentBlock)equivalentBlock.hidden=true;
     $('#tileSourceFields').hidden=!documented;
     $('#tileFollowCorridor').disabled=documented||!automaticPose||!carpet;
     const follow=$('#tileFollowCorridor').checked&&!$('#tileFollowCorridor').disabled;
     for(const id of ['tileAngle','tileOffsetX','tileOffsetY'])$('#'+id).disabled=follow;
     if($('#tileMode').value==='percent'){$('#tilePreview').textContent='Taux de perte saisi conservé. Le nombre de tuiles n’est pas calculé par cette méthode.';return;}
-    try{const f=future(),r=tileEvaluation(f);$('#tilePreview').textContent=r.complete?fmt(r.netSqft,3)+' pi² nets · '+r.fullTiles+' complètes + '+r.cutPieces+' morceaux · '+r.consumedTiles+' tuiles consommées = '+fmt(r.requiredSqft,3)+' pi² avec perte · '+(r.wastePercent===null?'perte sans objet':'perte '+fmt(r.wastePercent,4)+' % du besoin')+(f.kind==='area'&&f.material.startsWith('TAP')&&tileTakeoff.brickAxis(f.tiling)?' · pose brique à demi-lame':''):r.issues.join(' · ');}catch(error){$('#tilePreview').textContent=error.message;}
+    try{
+      const f=future(),r=tileEvaluation(f);
+      $('#tilePreview').textContent=r.complete?'Débit réel · '+fmt(r.netSqft,3)+' pi² nets · '+r.fullTiles+' complètes + '+r.cutPieces+' morceaux · '+r.consumedTiles+' tuiles consommées = '+fmt(r.requiredSqft,3)+' pi² avec perte · '+(r.wastePercent===null?'perte sans objet':'perte '+fmt(r.wastePercent,4)+' % du besoin')+(f.kind==='area'&&f.material.startsWith('TAP')&&tileTakeoff.brickAxis(f.tiling)?' · pose brique à demi-lame':''):r.issues.join(' · ');
+      if(equivalentBlock&&r.complete){
+        $('#tileEquivalentPreview').textContent=tileEquivalentText(r);
+        equivalentBlock.hidden=false;
+      }
+    }catch(error){$('#tilePreview').textContent=error.message;}
   };
   $('#tileFormat').onchange=()=>{const size=TILE_PRESETS[$('#tileFormat').value]?.size;if(size){[$('#tileWidth').value,$('#tileHeight').value]=size;}preview();};
   for(const id of ['tileWidth','tileHeight'])$('#'+id).oninput=()=>{$('#tileFormat').value='CUSTOM';preview();};
@@ -21543,7 +21689,7 @@ function surfaceEditor(id,showDetails=false) {
     ${tileSurface?`<section class="surface-editor-tiles" id="surfaceTileCalculation" aria-labelledby="surfaceTileHeading">
       <div class="surface-editor-section-heading"><h3 id="surfaceTileHeading">Calepinage et pertes</h3><button type="button" id="surfaceOpenTileCalculation">Ouvrir le calepinage</button></div>
       <p>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p>
-      ${calculation?.complete?`<p>${calculation.proposal?'Calcul automatique · ':''}${calculation.consumedTiles} dalles consommées ${tileLossEquation(calculation)?`· <strong>${esc(tileLossEquation(calculation))}</strong>`:''}</p>`:`<p>${esc(calculation?.issues.join(' · ')||'Indiquez le format des dalles.')}</p>`}
+      ${calculation?.complete?`<p id="surfaceTileEquivalentSummary" class="tile-count-summary">${esc(tileEquivalentText(calculation))}</p><p>${calculation.proposal?'Calcul automatique · ':''}Débit réel · ${calculation.consumedTiles} dalles consommées ${tileLossEquation(calculation)?`· <strong>${esc(tileLossEquation(calculation))}</strong>`:''}</p>`:`<p>${esc(calculation?.issues.join(' · ')||'Indiquez le format des dalles.')}</p>`}
       <p id="surfaceTileMessage" role="status" hidden></p></section>`:''}
     <details class="surface-editor-details" ${showDetails?'open':''}><summary>Détails du relevé</summary><div class="surface-editor-fields">
       <label>Dossier<select id="surfaceFolder">${folderOptions(folderId)}${S.folders.length<200?'<option value="__new_surface_folder__">Créer un dossier…</option>':''}</select></label>
