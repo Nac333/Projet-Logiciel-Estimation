@@ -20024,14 +20024,12 @@ function tileExportSheet() {
 
 function tileLayout(item) {
   const b=boundsOf(item.points),layout=item.layout||{};
-  return {origin:layout.origin||{x:b.x,y:b.y},angle:layout.angle||0,joint:layout.joint??.125};
+  return {origin:layout.origin||{x:b.x,y:b.y},angle:layout.angle||0,joint:0};
 }
 function tileFrame(item,scale=S.scales[item.page],section=null,format=tileFormatOf(item)||{width:24,height:24}) {
   const layout={...tileLayout(item),...(section?{angle:section.angle,origin:section.origin}:{})},angle=layout.angle*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
-  const carpet=gridFamily(item)==='carpet',joint=item.tiling||carpet?0:layout.joint;
-  return {...layout,joint,c,s,staggerAxis:carpet?tileTakeoff.brickAxis(format):null,width:format.width/12/scale,
-    height:format.height/12/scale,pitchX:(format.width+joint)/12/scale,
-    pitchY:(format.height+joint)/12/scale,
+  return {...layout,c,s,staggerAxis:gridFamily(item)==='carpet'?tileTakeoff.brickAxis(format):null,
+    width:format.width/12/scale,height:format.height/12/scale,
     local:p=>({x:(p.x-layout.origin.x)*c+(p.y-layout.origin.y)*s,y:-(p.x-layout.origin.x)*s+(p.y-layout.origin.y)*c}),
     world:p=>({x:layout.origin.x+p.x*c-p.y*s,y:layout.origin.y+p.x*s+p.y*c})};
 }
@@ -20161,7 +20159,7 @@ function showsFinishDirection(item,kind) {
     (surfaceSpaceType(item)==='dwelling'||work?.locationScope==='unit'||!!(work?.unitId||work?.unit?.trim()));
 }
 function drawBrickGrid(context,frame,box) {
-  const alongX=frame.staggerAxis==='x',pitch=alongX?frame.pitchX:frame.pitchY,bandWidth=alongX?frame.pitchY:frame.pitchX;
+  const alongX=frame.staggerAxis==='x',pitch=alongX?frame.width:frame.height,bandWidth=alongX?frame.height:frame.width;
   const from=alongX?box.x:box.y,to=alongX?box.right:box.bottom;
   const first=alongX?box.y:box.x,last=alongX?box.bottom:box.right;
   const line=(a,b,c,d)=>{
@@ -20189,21 +20187,19 @@ function drawTileGrids(context) {
   }
   for(const item of surfaces) {
     const kind=floorFinishKind(item),layout=finishFrames(item,kind);
-    for(const {frame:f,contours} of layout.sections)if(kind!=='wood'&&(S.tileGrid||textured&&kind==='carpet')&&f.pitchX*S.zoom>=3&&f.pitchY*S.zoom>=3)for(const points of contours) {
+    for(const {frame:f,contours} of layout.sections)if(kind!=='wood'&&(S.tileGrid||textured&&kind==='carpet')&&f.width*S.zoom>=3&&f.height*S.zoom>=3)for(const points of contours) {
       const b=boundsOf(points.map(f.local));
       context.save();clipItem(context,{...item,points,extraContours:undefined});
       context.translate(f.origin.x,f.origin.y);context.rotate(f.angle*Math.PI/180);
       context.strokeStyle='rgba(10,70,90,.55)';context.lineWidth=1/S.zoom;
       if(f.staggerAxis){drawBrickGrid(context,f,b);context.restore();continue;}
       let count=0;
-      for(let n=Math.floor(b.x/f.pitchX);n<=Math.ceil(b.right/f.pitchX)&&count++<2000;n++) {
-        context.beginPath();context.moveTo(n*f.pitchX,b.y);context.lineTo(n*f.pitchX,b.bottom);context.stroke();
-        if(f.joint/12/S.scale*S.zoom>1.5){context.beginPath();context.moveTo(n*f.pitchX+f.width,b.y);context.lineTo(n*f.pitchX+f.width,b.bottom);context.stroke();}
+      for(let n=Math.floor(b.x/f.width);n<=Math.ceil(b.right/f.width)&&count++<2000;n++) {
+        context.beginPath();context.moveTo(n*f.width,b.y);context.lineTo(n*f.width,b.bottom);context.stroke();
       }
       count=0;
-      for(let n=Math.floor(b.y/f.pitchY);n<=Math.ceil(b.bottom/f.pitchY)&&count++<2000;n++) {
-        context.beginPath();context.moveTo(b.x,n*f.pitchY);context.lineTo(b.right,n*f.pitchY);context.stroke();
-        if(f.joint/12/S.scale*S.zoom>1.5){context.beginPath();context.moveTo(b.x,n*f.pitchY+f.height);context.lineTo(b.right,n*f.pitchY+f.height);context.stroke();}
+      for(let n=Math.floor(b.y/f.height);n<=Math.ceil(b.bottom/f.height)&&count++<2000;n++) {
+        context.beginPath();context.moveTo(b.x,n*f.height);context.lineTo(b.right,n*f.height);context.stroke();
       }
       context.restore();
     }
@@ -20230,25 +20226,25 @@ function drawTileGrids(context) {
 function tileModal(preferCalculated=false,returnToSurface=false) {
   const item=S.items.find(i=>i.id===S.selected&&(i.kind==='area'||isWallTakeoff(i)));if(!item)return toast('Sélectionnez une surface ou un relevé mural.');
   let plane;try{plane=tileTakeoff.plane({...item,material:item.kind==='area'&&!/^(CER|TAP)/.test(item.material)?'CER-01':item.material},S);}catch(error){return toast(error.message);}
-  const b=boundsOf(plane.points),layout=item.layout||{},origin=layout.origin||{x:b.x,y:b.y},c=item.tiling,format=tileFormatOf(item)||{width:24,height:24},angle=layout.angle||0,joint=layout.joint??.125;
+  const b=boundsOf(plane.points),layout=item.layout||{},origin=layout.origin||{x:b.x,y:b.y},c=item.tiling,format=tileFormatOf(item)||{width:24,height:24},angle=layout.angle||0;
   const prefix=item.material.startsWith('TAP')?'TAP':'CER';
   const preset=Object.entries(TILE_PRESETS).find(([code,{size}])=>code.startsWith(prefix)&&Math.abs(size[0]-format.width)<1e-7&&Math.abs(size[1]-format.height)<1e-7)?.[0]||'CUSTOM';
   const automaticPose=tileTakeoff.corridorPose({...item,layout:undefined},format,plane.factor),followsCorridor=!!tileTakeoff.corridorPose(item,format,plane.factor),
     automaticFloor=!!gridFamily(item),countTiles=automaticFloor||!!c||preferCalculated===true;
   const refs=specificationData()?.documents||[],documents=[{key:S.documentKey,name:S.fileName,pages:S.pages},...refs.filter(d=>d.key!==S.documentKey)];
-  openDialog('Calepinage et pertes par tuiles',`<form id="tileForm"><p id="tileFormulaHint" class="tile-loss-rule">Surface avec perte = dalles consommées × surface d’une dalle.<br>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p><p id="tilePreview" role="status"></p><div class="v4-fields"><label>Méthode<select id="tileMode">${automaticFloor?'':`<option value="percent" ${!countTiles?'selected':''}>Taux saisi · historique</option>`}<option value="tiles" ${countTiles?'selected':''}>Tuiles consommées et coupes</option></select></label><label>Format nominal<select id="tileFormat">${tilePresetOptions(preset)}</select></label><label>Largeur nominale (po)<input id="tileWidth" type="number" min="0.1" max="240" step="any" value="${format.width}" required></label><label>Longueur nominale (po)<input id="tileHeight" type="number" min="0.1" max="240" step="any" value="${format.height}" required></label><label>Angle de pose (°)<input id="tileAngle" type="number" min="-360" max="360" step="any" value="${angle}"></label><label>Joint historique (po)<input id="tileJoint" type="number" min="0" max="1" step="0.03125" value="${joint}"></label><label>Décalage horizontal (po)<input id="tileOffsetX" type="number" step="any" value="${(origin.x-b.x)*plane.factor}"></label><label>Décalage vertical (po)<input id="tileOffsetY" type="number" step="any" value="${(origin.y-b.y)*plane.factor}"></label><label>Réutiliser les coupes<select id="tileReuse"><option value="zone" ${c?.reuse!=='none'?'selected':''}>Dans cette zone seulement</option><option value="none" ${c?.reuse==='none'?'selected':''}>Aucun réemploi</option></select></label><label>Départ de pose<select id="tileStartSource">${[['proposed','Proposition au coin · à vérifier'],['manual','Choisi par l’estimateur'],['architectural-point','Point indiqué dans le plan'],['architectural-grid','Grille dessinée dans le plan']].map(([v,t])=>`<option value="${v}" ${(c?.source||(layout.manualOrigin?'manual':'proposed'))===v?'selected':''}>${t}</option>`).join('')}</select></label></div><div id="tileSourceFields" class="v4-fields"><label>Document source<select id="tileSourceDocument">${documents.map(d=>`<option value="${esc(d.key)}" ${(c?.sourceRef?.documentKey||S.documentKey)===d.key?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label><label>Page source<input id="tileSourcePage" type="number" min="1" step="1" value="${c?.sourceRef?.page||item.page}"></label><label>Détail / repère<input id="tileSourceLabel" maxlength="500" value="${esc(c?.sourceRef?.label||'')}" placeholder="Ex. repère de départ, détail 3"></label></div><label class="check-label" ${automaticPose?'':'hidden'}><input id="tileFollowCorridor" type="checkbox" ${followsCorridor?'checked':''}> Suivre le sens du corridor${automaticPose?.seams.length?' et son joint de fractionnement':''}</label><label class="check-label"><input id="tileRotateCuts" type="checkbox" ${c?.rotateCuts?'checked':''}> Autoriser la rotation des coupes de 90° · seulement si le sens le permet</label><label class="check-label"><input id="tileReviewed" type="checkbox" ${c&&tileEvaluation(item).reviewed?'checked':''}> Départ, contours, coupes et réemploi vérifiés</label><p>Le point de départ architectural prime, puis la grille dessinée. À défaut, le coin est une proposition. Le calcul standard utilise les dimensions nominales sans ajouter les joints. La perte calculée est la part de la surface des tuiles consommées qui dépasse la surface nette.</p><p id="tileError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="tileReset">Remettre le départ au coin</button><button type="submit" class="primary">Appliquer</button></div></form>`);
+  openDialog('Calepinage et pertes par tuiles',`<form id="tileForm"><p id="tileFormulaHint" class="tile-loss-rule">Surface avec perte = dalles consommées × surface d’une dalle.<br>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p><p id="tilePreview" role="status"></p><div class="v4-fields"><label>Méthode<select id="tileMode">${automaticFloor?'':`<option value="percent" ${!countTiles?'selected':''}>Taux saisi · historique</option>`}<option value="tiles" ${countTiles?'selected':''}>Tuiles consommées et coupes</option></select></label><label>Format nominal<select id="tileFormat">${tilePresetOptions(preset)}</select></label><label>Largeur nominale (po)<input id="tileWidth" type="number" min="0.1" max="240" step="any" value="${format.width}" required></label><label>Longueur nominale (po)<input id="tileHeight" type="number" min="0.1" max="240" step="any" value="${format.height}" required></label><label>Angle de pose (°)<input id="tileAngle" type="number" min="-360" max="360" step="any" value="${angle}"></label><label>Décalage horizontal (po)<input id="tileOffsetX" type="number" step="any" value="${(origin.x-b.x)*plane.factor}"></label><label>Décalage vertical (po)<input id="tileOffsetY" type="number" step="any" value="${(origin.y-b.y)*plane.factor}"></label><label>Réutiliser les coupes<select id="tileReuse"><option value="zone" ${c?.reuse!=='none'?'selected':''}>Dans cette zone seulement</option><option value="none" ${c?.reuse==='none'?'selected':''}>Aucun réemploi</option></select></label><label>Départ de pose<select id="tileStartSource">${[['proposed','Proposition au coin · à vérifier'],['manual','Choisi par l’estimateur'],['architectural-point','Point indiqué dans le plan'],['architectural-grid','Grille dessinée dans le plan']].map(([v,t])=>`<option value="${v}" ${(c?.source||(layout.manualOrigin?'manual':'proposed'))===v?'selected':''}>${t}</option>`).join('')}</select></label></div><div id="tileSourceFields" class="v4-fields"><label>Document source<select id="tileSourceDocument">${documents.map(d=>`<option value="${esc(d.key)}" ${(c?.sourceRef?.documentKey||S.documentKey)===d.key?'selected':''}>${esc(d.name)}</option>`).join('')}</select></label><label>Page source<input id="tileSourcePage" type="number" min="1" step="1" value="${c?.sourceRef?.page||item.page}"></label><label>Détail / repère<input id="tileSourceLabel" maxlength="500" value="${esc(c?.sourceRef?.label||'')}" placeholder="Ex. repère de départ, détail 3"></label></div><label class="check-label" ${automaticPose?'':'hidden'}><input id="tileFollowCorridor" type="checkbox" ${followsCorridor?'checked':''}> Suivre le sens du corridor${automaticPose?.seams.length?' et son joint de fractionnement':''}</label><label class="check-label"><input id="tileRotateCuts" type="checkbox" ${c?.rotateCuts?'checked':''}> Autoriser la rotation des coupes de 90° · seulement si le sens le permet</label><label class="check-label"><input id="tileReviewed" type="checkbox" ${c&&tileEvaluation(item).reviewed?'checked':''}> Départ, contours, coupes et réemploi vérifiés</label><p>Le point de départ architectural prime, puis la grille dessinée. À défaut, le coin est une proposition. Le calcul standard utilise les dimensions nominales sans ajouter les joints. La perte calculée est la part de la surface des tuiles consommées qui dépasse la surface nette.</p><p id="tileError" class="v4-error" role="alert" hidden></p><div class="modal-actions"><button type="button" id="tileReset">Remettre le départ au coin</button><button type="submit" class="primary">Appliquer</button></div></form>`);
   const configuration=()=>{
     const source=$('#tileStartSource').value,ref=source.startsWith('architectural-')?{documentKey:$('#tileSourceDocument').value,page:Number($('#tileSourcePage').value),label:$('#tileSourceLabel').value.trim()}:undefined;
     if(ref){const doc=documents.find(d=>d.key===ref.documentKey);if(!doc||ref.page>doc.pages)throw new Error('Page source hors du document.');}
     return {version:1,width:Number($('#tileWidth').value),height:Number($('#tileHeight').value),reuse:$('#tileReuse').value,rotateCuts:$('#tileRotateCuts').checked,source,...(ref?{sourceRef:ref}:{}),reviewedSignature:''};
   };
   const future=()=>{
-    const angle=Number($('#tileAngle').value),joint=Number($('#tileJoint').value),dx=Number($('#tileOffsetX').value),dy=Number($('#tileOffsetY').value);
-    if(![angle,joint,dx,dy].every(Number.isFinite)||Math.abs(angle)>360||joint<0||joint>1||Math.abs(dx)>12000||Math.abs(dy)>12000)throw new Error('Vérifiez l’angle, le joint et les décalages.');
+    const angle=Number($('#tileAngle').value),dx=Number($('#tileOffsetX').value),dy=Number($('#tileOffsetY').value);
+    if(![angle,dx,dy].every(Number.isFinite)||Math.abs(angle)>360||Math.abs(dx)>12000||Math.abs(dy)>12000)throw new Error('Vérifiez l’angle et les décalages.');
     const config=configuration();tileTakeoff.validate(config);
     const material=item.kind==='linear'?'PL-01':$('#tileFormat').value.startsWith('TAP')||item.material.startsWith('TAP')&&$('#tileFormat').value==='CUSTOM'?'TAP-01':config.width===12&&config.height===24?'CER-12X24':'CER-01';
     const follow=automaticPose&&material==='TAP-01'&&$('#tileFollowCorridor').checked&&!config.source.startsWith('architectural-');
-    return {...item,material,tiling:config,layout:{origin:{x:b.x+dx/plane.factor,y:b.y+dy/plane.factor},angle:(angle%360+360)%360,joint,...(follow?{autoRotation:layout.autoRotation||0}:{}),...(layout.manualOrigin&&config.source==='manual'?{manualOrigin:true}:{})}};
+    return {...item,material,tiling:config,layout:{origin:{x:b.x+dx/plane.factor,y:b.y+dy/plane.factor},angle:(angle%360+360)%360,joint:0,...(follow?{autoRotation:layout.autoRotation||0}:{}),...(layout.manualOrigin&&config.source==='manual'?{manualOrigin:true}:{})}};
   };
   const preview=()=>{
     const documented=$('#tileStartSource').value.startsWith('architectural-'),carpet=$('#tileFormat').value.startsWith('TAP')||item.material.startsWith('TAP')&&$('#tileFormat').value==='CUSTOM';
@@ -20261,7 +20257,7 @@ function tileModal(preferCalculated=false,returnToSurface=false) {
   };
   $('#tileFormat').onchange=()=>{const size=TILE_PRESETS[$('#tileFormat').value]?.size;if(size){[$('#tileWidth').value,$('#tileHeight').value]=size;}preview();};
   for(const id of ['tileWidth','tileHeight'])$('#'+id).oninput=()=>{$('#tileFormat').value='CUSTOM';preview();};
-  for(const id of ['tileMode','tileAngle','tileJoint','tileOffsetX','tileOffsetY','tileReuse','tileRotateCuts','tileFollowCorridor','tileStartSource','tileSourceDocument','tileSourcePage','tileSourceLabel'])$('#'+id).oninput=preview;
+  for(const id of ['tileMode','tileAngle','tileOffsetX','tileOffsetY','tileReuse','tileRotateCuts','tileFollowCorridor','tileStartSource','tileSourceDocument','tileSourcePage','tileSourceLabel'])$('#'+id).oninput=preview;
   $('#tileReset').onclick=()=>{$('#tileOffsetX').value='0';$('#tileOffsetY').value='0';$('#tileStartSource').value='proposed';$('#tileReviewed').checked=false;preview();};
   if(returnToSurface){
     $('#tileReset').insertAdjacentHTML('beforebegin','<button type="button" id="tileReturnSurface">Retour à la surface</button>');
@@ -21111,7 +21107,7 @@ function renderInspector() {
   renderInspectorBase();const host=inspectorPropertiesHost(),item=S.items.find(i=>i.id===S.selected);
   delete host.dataset.arranged;
   if(S.selection.size===1&&item?.kind==='area') {
-    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><label class="check-label"><input id="bathroomFlag" type="checkbox" ${item.bathroom?'checked':''}>Salle de bains · équipements</label><button type="button" id="editVertices" class="selection-action">${surfaceToolIcon('edit')}Modifier les coins · E</button><button type="button" id="excludeInside" class="selection-action">Soustraire une zone · X</button>${canSetTileOrigin(item)?`<h3>Départ du calepinage</h3><p>Croix orange sur le plan · angle ${fmt(tileLayout(item).angle,0)}° · joint ${fmt(tileLayout(item).joint,3)} po</p><button type="button" id="placeTileOrigin" class="selection-action">Choisir le point de départ · T</button><button type="button" id="openTileSettings" class="selection-action">Format, angle et décalages</button><button type="button" id="rotateTiles" class="selection-action">Tourner de 90° · O</button><p>Dans l’outil T : flèches = 1 po, Maj + flèches = 12 po. La superficie mesurée reste identique.</p>`:''}${getHoles(item).length?`<p>${getHoles(item).length} exclusion(s) déjà retranchée(s) du net.</p>`:''}</section>`);
+    host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><label class="check-label"><input id="bathroomFlag" type="checkbox" ${item.bathroom?'checked':''}>Salle de bains · équipements</label><button type="button" id="editVertices" class="selection-action">${surfaceToolIcon('edit')}Modifier les coins · E</button><button type="button" id="excludeInside" class="selection-action">Soustraire une zone · X</button>${canSetTileOrigin(item)?`<h3>Départ du calepinage</h3><p>Croix orange sur le plan · angle ${fmt(tileLayout(item).angle,0)}°</p><button type="button" id="placeTileOrigin" class="selection-action">Choisir le point de départ · T</button><button type="button" id="openTileSettings" class="selection-action">Format, angle et décalages</button><button type="button" id="rotateTiles" class="selection-action">Tourner de 90° · O</button><p>Dans l’outil T : flèches = 1 po, Maj + flèches = 12 po. La superficie mesurée reste identique.</p>`:''}${getHoles(item).length?`<p>${getHoles(item).length} exclusion(s) déjà retranchée(s) du net.</p>`:''}</section>`);
     if(item.bathroom)host.insertAdjacentHTML('beforeend','<p class="selection-help">Excluez le bain, la douche ou les meubles fixes avec X si leur surface ne reçoit pas le revêtement prévu.</p>');
     if(item.floorCorrection)host.insertAdjacentHTML('beforeend',`<p class="selection-help">Contour repris depuis ${esc(S.sheetNames[item.floorCorrection.sourcePage]?.code||'la feuille '+item.floorCorrection.sourcePage)}.</p>`);
     $('#bathroomFlag').onchange=event=>updateItem(item.id,{bathroom:event.target.checked,spaceType:event.target.checked?'bathroom':surfaceSpaceType(item)==='bathroom'?'room':surfaceSpaceType(item)});
