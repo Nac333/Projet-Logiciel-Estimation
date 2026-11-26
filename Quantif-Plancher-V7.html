@@ -2548,7 +2548,7 @@ function previewCandidate(index) {
   S.zoom=Math.max(.02,Math.min(12,(w-80)/Math.max(b.right-b.x,20),(h-80)/Math.max(b.bottom-b.y,20)));
   S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};
   $$('[data-preview]').forEach(button=>button.setAttribute('aria-pressed',String(+button.dataset.preview===index)));
-  $('#zoomText').textContent=fmt(S.zoom*100,0)+' %';
+  refreshZoomText();
   refreshManualUI();
 }
 function detectionChoiceKey(documentKey,page,candidate) {
@@ -2670,7 +2670,7 @@ function previewSanitary(index) {
   const b=bath.bounds,w=canvas.clientWidth,h=canvas.clientHeight;
   S.zoom=Math.max(.02,Math.min(12,(w-80)/Math.max(b.right-b.x,80),(h-80)/Math.max(b.bottom-b.y,80)));
   S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};S.previewFocus=null;
-  S.fixturePreview={page:S.page,cuts:[{points:bath.basinRing,type:bath.kind==='shower'?'shower':'bath'}]};$('#zoomText').textContent=fmt(S.zoom*100,0)+' %';refreshManualUI();
+  S.fixturePreview={page:S.page,cuts:[{points:bath.basinRing,type:bath.kind==='shower'?'shower':'bath'}]};refreshZoomText();refreshManualUI();
   toast('Bassin intérieur proposé : délimitez le vrai sol et l’emprise extérieure.');
 }
 function renderDetectionPanel() {
@@ -15826,6 +15826,14 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     if(source.contains(document.activeElement))visibility.focus({preventScroll:true});
     for(const group of source.querySelectorAll(':scope > [role="group"]'))host.append(group);
     nav.hidden=!floating;docked.hidden=floating;
+    const zoomHost=collapsed?host.querySelector('[data-plan-tool-group="navigation"]'):find('ribbonZoomActions');
+    const zoomIn=find('manualZoomIn'),zoomOut=find('manualZoomOut'),exportButton=find('exportBtn');
+    if(zoomIn.parentElement!==zoomHost){
+      if(collapsed)zoomHost.append(zoomIn,zoomOut);
+      else{find('ribbonZoomText').before(zoomOut);zoomHost.append(zoomIn);}
+    }
+    if(collapsed){if(exportButton.parentElement!==toggle.parentElement)toggle.before(exportButton);}
+    else if(exportButton.parentElement!==find('ribbonActions'))find('ribbonActions').append(exportButton);
     parkPlanTools?.(host,collapsed);
     if(persist)save();positionNavigation();
   }
@@ -15965,6 +15973,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     try{const saved=JSON.parse(window.localStorage.getItem(key)||'null');if(saved&&typeof saved==='object'){preferences.collapsed=saved.collapsed===true;preferences.floatingVisible=saved.floatingVisible!==false;preferences.view=saved.view==='folders'?'folders':'finishes';preferences.theme=saved.theme;for(const field of ['closed','opened'])preferences[field]=Array.isArray(saved[field])?saved[field].filter(x=>typeof x==='string').slice(-2000):[];const p=saved.toolbarPosition;if(p&&[p.x,p.y].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1))preferences.toolbarPosition={x:p.x,y:p.y};}}catch{}
     setTheme(preferences.theme);
     const app=document.querySelector('.app'),ribbon=find('manualRibbon'),main=ribbon.querySelector('.manual-ribbon-main');app.classList.add('aite-workspace');main.id='aiteRibbonTools';
+    main.insertAdjacentHTML('beforeend','<div id="ribbonActions" class="atelier-ribbon-actions"><div id="ribbonZoomActions" role="group" aria-label="Zoom du plan"><span id="ribbonZoomText">100 %</span></div></div>');
     for(const [id,label]of [['layoutPanel-plans','Projet et pages'],['layoutPanel-measures','Mesures du plan']]){const title=find(id)?.querySelector('.pane-title>span');if(title&&!title.classList.contains('layout-panel-actions'))title.innerHTML=(icons?.svg(id==='layoutPanel-plans'?'folder':'area')||folderIcon)+esc(label);}
     const heading=document.createElement('div');heading.className='aite-ribbon-heading';heading.innerHTML='<strong>Relevé</strong><div><button type="button" id="workspaceFocus" aria-pressed="false" title="Agrandir le plan puis retrouver la disposition précédente"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg><span>Focus</span></button><button type="button" id="toggleAiteRibbon" aria-controls="aiteRibbonTools" aria-expanded="true"><span>Replier le ruban</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button></div>';ribbon.prepend(heading);
     // Atelier reuses the original command nodes: listeners, shortcuts and IDs stay intact.
@@ -16086,13 +16095,24 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace .topbar :is(.menu button,.top-actions button):hover:not(:disabled){background:var(--aite-hover)}
     .aite-workspace .brand{font:700 15px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:0}.aite-workspace .brandmark{width:62px;height:38px;background:transparent;flex:none}.aite-workspace .brand b{color:var(--aite-blue)}
     .aite-workspace .project-title{border-color:var(--aite-line);padding-left:12px}.aite-workspace.layout-compact .project-title input{font-size:12px;color:var(--aite-ink)}.aite-workspace .project-title span{font-size:11px;color:var(--aite-muted)}
-    .aite-workspace .topbar button{position:relative}.aite-workspace .top-actions button{height:32px;min-height:32px;border-radius:5px;font-size:12px;font-weight:500;color:var(--aite-ink);border-color:transparent;padding-inline:9px;background:transparent}.aite-workspace #exportBtn{background:var(--aite-success-bg);border-color:var(--aite-success);color:var(--aite-success)}.aite-workspace #exportBtn:hover:not(:disabled){background:var(--aite-hover);border-color:var(--aite-success)}.aite-workspace #count{background:var(--aite-selection);color:var(--aite-blue)}
+    .aite-workspace .topbar button{position:relative}.aite-workspace .top-actions button{height:32px;min-height:32px;border-radius:5px;font-size:12px;font-weight:500;color:var(--aite-ink);border-color:transparent;padding-inline:9px;background:transparent}.aite-workspace #count{background:var(--aite-selection);color:var(--aite-blue)}
     .aite-workspace.layout-compact #manualRibbon{position:relative;min-height:0;padding:0;background:var(--aite-surface);border-block:1px solid var(--aite-line);box-shadow:none;z-index:5}
     .aite-ribbon-heading{min-height:28px;padding:2px 10px 2px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--aite-sky);border-bottom:1px solid var(--aite-line)}.aite-ribbon-heading>strong{font-size:12px;font-weight:600;color:var(--aite-blue)}.aite-ribbon-heading>div{display:flex;align-items:center;gap:6px}
     .aite-ribbon-heading button{display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:2px 8px;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--aite-ink);font-size:11px}.aite-ribbon-heading button:hover,.aite-ribbon-heading button[aria-pressed=true]{background:var(--aite-selection);border-color:var(--aite-border)}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main{min-height:48px;padding:5px 10px;background:var(--aite-chrome)}.aite-workspace .manual-ribbon-scroll{gap:3px;background:transparent}.aite-workspace .manual-group{border-color:var(--aite-line);padding-inline:6px}.aite-workspace .manual-ribbon-main .manual-group-label{display:none}.aite-workspace .manual-group-label{font-size:9px;letter-spacing:.02em;color:var(--aite-muted)}
-    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:36px;min-height:36px;width:auto;min-width:36px;max-width:none;flex:0 0 auto;padding:6px;gap:6px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:18px;height:18px;color:var(--aite-muted)}
-    .aite-workspace #aiteRibbonTools #manualUndo span,.aite-workspace #aiteRibbonTools #manualRedo span,.aite-workspace #aiteRibbonTools #tileOriginBtn span,.aite-workspace #aiteRibbonTools #toggleTileGrid span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main{min-height:43px;margin:5px 8px;padding:2px 4px;align-items:center;background:var(--aite-field);border:1px solid var(--aite-line);border-radius:10px}.aite-workspace .manual-ribbon-scroll{gap:3px;padding:0 3px;background:transparent}.aite-workspace .manual-group{border-color:var(--aite-line);padding-inline:6px}.aite-workspace .manual-ribbon-main .manual-group-label{display:none}.aite-workspace .manual-group-label{font-size:9px;letter-spacing:.02em;color:var(--aite-muted)}
+    .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:34px;min-height:34px;width:auto;min-width:32px;max-width:none;flex:0 0 auto;padding:4px;gap:5px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:17px;height:17px;color:var(--aite-muted)}
+    .aite-workspace #aiteRibbonTools :is(#manualUndo,#manualRedo,#tileSettings,#tileOriginBtn,#toggleTileGrid,#repairBathroom) span,.aite-workspace #ribbonZoomActions button span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .aite-workspace .atelier-ribbon-actions,.aite-workspace #ribbonZoomActions{display:flex;flex:none;align-items:center;gap:2px}
+    .aite-workspace .atelier-ribbon-actions{margin-inline-start:auto}
+    .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden]))){flex:none;padding:0}
+    .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden])))+.manual-overflow-holder{border-left:0}
+    .aite-workspace #ribbonZoomActions{border-inline:1px solid var(--aite-line);padding-inline:3px;margin-right:3px}
+    .aite-workspace #ribbonZoomText{min-width:39px;text-align:center;color:var(--aite-muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .aite-workspace #exportBtn{display:inline-flex;flex:none;align-items:center;justify-content:center;gap:6px;padding:5px 9px;height:32px;min-height:32px;border:1px solid #53687a;border-radius:6px;background:#202e39;color:#fff;font-size:12px;font-weight:600;white-space:nowrap}
+    .aite-workspace #exportBtn:hover:not(:disabled){background:#304454;border-color:#728da1}
+    .aite-workspace #exportBtn svg{flex:none;width:16px;height:16px;stroke-width:1.6}
+    @media(max-width:1279px){.aite-workspace #exportBtn{padding-inline:8px}.aite-workspace #exportBtn span{display:none}}
+    @media(max-width:779px){.aite-workspace.layout-compact #manualRibbon #ribbonZoomActions button{min-width:32px;padding-inline:5px}}
     .aite-workspace.layout-compact #manualRibbon .manual-button:hover:not(:disabled){background:var(--aite-hover);border-color:var(--aite-border)}.aite-workspace.layout-compact #manualRibbon .manual-button[aria-pressed=true]{background:var(--aite-selection);border-color:var(--aite-blue);color:var(--aite-blue)}.aite-workspace .manual-button:disabled{opacity:.45}
     .aite-workspace .manual-status-line{min-height:23px;padding:2px 12px;border-top:1px solid var(--aite-line);background:var(--aite-paper);color:var(--aite-muted)}.aite-workspace #manualStatus{font-size:12px;margin:0}.aite-workspace .advanced-tools{top:100%!important;border-color:var(--aite-border);background:var(--aite-field);border-radius:0 0 8px 8px;box-shadow:0 8px 24px #24324418}.aite-workspace .aite-ribbon-folded:not(.aite-floating-tools-hidden) .advanced-tools{display:none}
     .aite-workspace #planToolsInMore:not([hidden]){display:grid;gap:6px;margin:8px 10px;padding-bottom:8px;border-bottom:1px solid var(--aite-line)}
@@ -16209,7 +16229,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
 
     .aite-workspace #manualRectangle span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace .inspector-section-body>label>select,.aite-workspace .inspector-section-body>label>input{border-color:transparent;background:transparent;font-size:13px}.aite-workspace .inspector-section-body>label>select:hover,.aite-workspace .inspector-section-body>label>select:focus,.aite-workspace .inspector-section-body>label>input:hover,.aite-workspace .inspector-section-body>label>input:focus{border-color:var(--aite-border);background:var(--aite-paper)}
-    @media(max-width:1599px){.aite-workspace #ribbonPdfIntelligence .manual-button span,.aite-workspace #manualUndo span,.aite-workspace #manualRedo span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{padding-inline:6px}.aite-workspace .manual-group{padding-inline:4px}}
+    @media(max-width:1599px){.aite-workspace #ribbonPdfIntelligence .manual-button span,.aite-workspace #manualUndo span,.aite-workspace #manualRedo span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.aite-workspace .manual-group{padding-inline:4px}}
 
     /* Atelier owns the shell; the commands are moved, never cloned. */
     .aite-workspace .atelier-command-rail{display:flex;flex:0 0 44px;min-width:0;min-height:0;flex-direction:column;align-items:center;padding:10px 4px;background:var(--aite-rail);border-right:1px solid var(--aite-rail);z-index:3}
@@ -16220,7 +16240,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace .atelier-view-controls button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:5px 7px;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--aite-muted);font-size:12px;white-space:nowrap}
     .aite-workspace .atelier-view-controls button:hover{background:var(--aite-hover)}.aite-workspace .atelier-view-controls button[aria-pressed=true]{background:var(--aite-selection);color:var(--aite-blue)}
     .aite-workspace .atelier-view-controls svg{flex:none}.aite-workspace #devisToolBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:500;white-space:nowrap}
-    .aite-workspace .project-command-bar{margin-left:auto}.aite-workspace .manual-overflow-holder{flex-basis:auto;padding-inline:6px}.aite-workspace .manual-overflow-holder #advancedToggle{width:auto;min-width:64px}
+    .aite-workspace .project-command-bar{margin-left:auto}.aite-workspace .manual-overflow-holder{flex-basis:auto;padding-inline:4px}.aite-workspace .manual-overflow-holder #advancedToggle{width:auto;min-width:56px}
     .aite-workspace .manual-ribbon-scroll{align-items:center}.aite-workspace .manual-group-buttons{align-items:center}.aite-workspace .top-actions{gap:3px}
     .aite-workspace .layout-panel-actions button:hover,.aite-workspace .plan-library-toolbar>button:hover{background:var(--aite-hover)}.aite-workspace .finish-measure-group>summary:hover,.aite-workspace .finish-measure-level>summary:hover{background:var(--aite-hover)}
     .aite-workspace.aite-focus .atelier-command-rail{display:none}
@@ -16272,6 +16292,201 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     @media(prefers-reduced-motion:reduce){.aite-workspace *{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
   `;}
   return {install,render,setView,organizeInspector,isMeasureVisible,visibilityButton};
+});
+const workspaceTooltipsFactory = (function createWorkspaceTooltips(options={}) {
+  const doc=options.document||document,win=options.window||doc.defaultView;
+  const id='workspaceTooltip',styleId='workspaceTooltipStyle';
+  const controls='button,a[href],[role="button"]';
+  const bars='#manualRibbon,#floatingPlanNavigation,#surfaceQuickActions,.atelier-command-rail,.atelier-command-panel,.plan-library-toolbar,.layout-panel-actions,[role="toolbar"]';
+  // Plan tabs keep the document title, and PDF markers have their own previews.
+  const excluded='#pdfMarkers,#pdfReferenceCard,#pdfSourceHighlight,.pdf-reference-marker,[role="tab"],[role="tooltip"],[data-workspace-tooltip-ignore]';
+  let installed=false,tip=null,active=null,hovered=null,focused=null,dismissed=null,observer=null,treeObserver=null,keyboardMode=true,escapePending=false;
+  const element=node=>node?.nodeType===1?node:node?.parentElement;
+  const title=node=>active?.titles.has(node)?active.titles.get(node):node.getAttribute('title');
+  const visible=node=>node.isConnected&&!node.closest('[hidden],[inert],[aria-hidden="true"]')&&node.getClientRects().length&&
+    !['hidden','collapse'].includes(win.getComputedStyle(node).visibility)&&win.getComputedStyle(node).display!=='none';
+
+  function describe(target) {
+    target=element(target);
+    if(!target||target.closest(excluded))return null;
+    const control=target.closest(controls);
+    if(!control||control===dismissed||!visible(control))return null;
+    let source=target.closest('[title]');
+    if(!source||!control.contains(source)||!title(source)?.trim())source=control;
+    const text=title(source)?.trim()||(control.closest(bars)?control.getAttribute('aria-label')?.trim():'');
+    return text?{control,source,target,text}:null;
+  }
+  function titleChanges(records) {
+    if(!active)return;
+    for(const record of records)if(record.type==='attributes'&&record.attributeName==='title'&&active.titles.has(record.target))
+      active.titles.set(record.target,record.target.getAttribute('title'));
+  }
+  function disconnect() {
+    if(!observer)return;
+    titleChanges(observer.takeRecords());observer.disconnect();treeObserver?.disconnect();
+  }
+  function watch() {
+    if(!active||!observer)return;
+    const filters=['hidden','inert','class','style','aria-hidden'];
+    // Child-list changes find reparented/removed controls. Only the active
+    // control's ancestry needs attribute observation, not every plan/status node.
+    const nodes=new Set();
+    for(let node=active.target;node&&node!==doc.body;node=node.parentElement)nodes.add(node);
+    nodes.add(active.control);
+    for(const node of nodes)observer.observe(node,{attributes:true,attributeFilter:
+      node===active.control||active.titles.has(node)?[...filters,'title','aria-label','aria-labelledby','aria-description','aria-describedby']:filters});
+    observer.observe(doc.body,{attributes:true,attributeFilter:filters});
+    treeObserver?.observe(doc.body,{subtree:true,childList:true});
+  }
+  function accessibleName(control) {
+    const ids=control.getAttribute('aria-labelledby')?.trim().split(/\s+/)||[];
+    return (ids.map(key=>doc.getElementById(key)?.textContent||'').join(' ').trim()||control.getAttribute('aria-label')||
+      control.textContent.trim()||[...control.querySelectorAll('img[alt]')].map(image=>image.alt).join(' ')).replace(/\s+/g,' ').trim();
+  }
+  function description(text) {
+    const control=active.control;
+    // A title-only icon must keep its original accessible name while the native
+    // bubble is suspended. Existing aria labels/descriptions are never replaced.
+    if(!accessibleName(control)&&!control.hasAttribute('aria-label')&&!control.hasAttribute('aria-labelledby')){
+      active.generatedLabel=text;control.setAttribute('aria-label',text);
+    }else if(active.generatedLabel&&control.getAttribute('aria-label')===active.generatedLabel){
+      active.generatedLabel=text;control.setAttribute('aria-label',text);
+    }
+    const distinct=text.replace(/\s+/g,' ').trim()!==accessibleName(control);
+    if(distinct&&!control.hasAttribute('aria-description')){
+      const ids=control.getAttribute('aria-describedby')?.trim().split(/\s+/).filter(Boolean)||[];
+      if(!ids.includes(id)){active.descriptionAdded=true;control.setAttribute('aria-describedby',[...ids,id].join(' '));}
+    }else removeDescription();
+  }
+  function removeDescription() {
+    if(!active?.descriptionAdded)return;
+    const control=active.control,ids=(control.getAttribute('aria-describedby')||'').split(/\s+/).filter(key=>key&&key!==id);
+    if(ids.length)control.setAttribute('aria-describedby',ids.join(' '));
+    else if(active.originalDescription==='')control.setAttribute('aria-describedby','');
+    else control.removeAttribute('aria-describedby');
+    active.descriptionAdded=false;
+  }
+  function hide() {
+    disconnect();
+    if(active)for(const [node,value]of active.titles){
+      if(value===null)node.removeAttribute('title');else node.setAttribute('title',value);
+    }
+    removeDescription();
+    if(active?.generatedLabel&&active.control.getAttribute('aria-label')===active.generatedLabel)active.control.removeAttribute('aria-label');
+    active=null;if(tip)tip.hidden=true;
+  }
+  function clear() {hovered=null;focused=null;hide();}
+  function content(text) {
+    tip.replaceChildren();
+    const separator=text.lastIndexOf(' · '),suffix=separator<0?'':text.slice(separator+3).trim();
+    const shortcut=/^(?:(?:Ctrl|Cmd|Maj|Alt|Shift|Meta)(?:\/(?:Ctrl|Cmd))?\s*\+\s*)*(?:[a-z0-9]|F(?:[1-9]|1[0-2])|Échap|Echap|Entrée|Entree|Espace|Suppr|[+−?\-])$/i;
+    if(separator<0||!shortcut.test(suffix)){tip.textContent=text;return;}
+    tip.append(doc.createTextNode(text.slice(0,separator)+' '));
+    const key=doc.createElement('kbd');key.textContent=suffix;tip.append(key);
+  }
+  function position() {
+    const anchor=active.control.getBoundingClientRect(),width=win.innerWidth||doc.documentElement.clientWidth,
+      height=win.innerHeight||doc.documentElement.clientHeight,margin=8;
+    tip.style.maxWidth=Math.max(1,width-margin*2)+'px';
+    tip.style.maxHeight=Math.max(1,height-margin*2)+'px';
+    const box=tip.getBoundingClientRect();
+    const clamp=(value,size,limit)=>Math.max(0,Math.min(Math.max(margin,value),Math.max(0,limit-size-margin)));
+    const below=anchor.bottom+6;
+    tip.style.left=clamp(anchor.left+(anchor.width-box.width)/2,box.width,width)+'px';
+    tip.style.top=clamp(below+box.height<=height-margin?below:anchor.top-box.height-6,box.height,height)+'px';
+  }
+  function show(target) {
+    let next=describe(target);
+    if(!next){hide();return;}
+    if(active&&active.control!==next.control)hide();
+    disconnect();
+    if(!active)active={control:next.control,target:next.target,titles:new Map(),text:'',
+      originalDescription:next.control.getAttribute('aria-describedby'),descriptionAdded:false};
+    active.target=next.target;
+    // An empty title also suppresses a native title inherited from a parent.
+    // Observe only after these writes, so subsequent title changes are the host's.
+    for(const node of [next.control,next.source]){
+      if(!active.titles.has(node))active.titles.set(node,node.getAttribute('title'));
+      node.setAttribute('title','');
+    }
+    next=describe(next.target);
+    if(!next){hide();return;}
+    description(next.text);
+    if(active.text!==next.text){active.text=next.text;content(next.text);}
+    tip.hidden=false;position();watch();
+  }
+  function fallback() {show(focused||hovered);}
+  function install() {
+    if(installed)return;installed=true;
+    if(!doc.body||doc.getElementById(id))return;
+    const style=doc.createElement('style');style.id=styleId;
+    style.textContent=`
+      #${id}{position:fixed;z-index:11000;box-sizing:border-box;max-width:320px;margin:0;padding:6px 8px;
+        border:1px solid #748290;border-radius:5px;background:rgba(35,43,52,.76);color:#fff;
+        font:12px/1.35 'Segoe UI',Arial,sans-serif;letter-spacing:normal;text-align:left;
+        white-space:normal;overflow-wrap:anywhere;overflow:hidden;pointer-events:none;
+        box-shadow:0 2px 7px #142a3340;color-scheme:dark}
+      #${id}[hidden]{display:none!important}
+      #${id} kbd{display:inline-block;margin-left:6px;padding:0 3px;border:1px solid #748290;
+        border-radius:3px;background:transparent;color:#fff;font:inherit;white-space:nowrap}
+    `;
+    if(!doc.getElementById(styleId))doc.head.append(style);
+    tip=doc.createElement('div');tip.id=id;tip.setAttribute('role','tooltip');tip.hidden=true;doc.body.append(tip);
+    if(win.MutationObserver){const changed=records=>{
+      if(!active)return;
+      const relevant=records.filter(record=>record.target!==tip&&!tip.contains(record.target)&&
+        (record.type==='attributes'||[...record.addedNodes,...record.removedNodes].some(node=>
+          node===active.control||node.contains?.(active.control))));
+      if(!active.control.isConnected||!active.target.isConnected){hide();return;}
+      if(!relevant.length)return;
+      titleChanges(relevant);
+      show(active.target);
+    };observer=new win.MutationObserver(changed);treeObserver=new win.MutationObserver(changed);}
+    doc.addEventListener('pointerover',event=>{
+      if(event.pointerType==='touch')return;
+      const next=describe(event.target);
+      if(next){hovered=element(event.target);show(hovered);}
+    },true);
+    doc.addEventListener('pointerout',event=>{
+      const control=element(event.target)?.closest(controls);
+      if(!control||control.contains(element(event.relatedTarget)))return;
+      if(hovered&&control.contains(hovered))hovered=null;
+      if(dismissed===control)dismissed=null;
+      if(active?.control===control)fallback();
+    },true);
+    doc.addEventListener('focusin',event=>{
+      if(escapePending){focused=null;hide();return;}
+      const target=element(event.target),control=target?.closest(controls);
+      dismissed=null;
+      focused=control&&(keyboardMode||control.matches(':focus-visible'))?target:null;
+      if(focused)show(focused);
+      else if(hovered&&control?.contains(hovered))show(hovered);
+      else hide();
+    },true);
+    doc.addEventListener('focusout',event=>{
+      const control=element(event.target)?.closest(controls);
+      if(control?.contains(element(event.relatedTarget)))return;
+      focused=null;if(dismissed===control)dismissed=null;
+      if(active?.control===control)show(hovered);
+    },true);
+    doc.addEventListener('pointerdown',event=>{
+      keyboardMode=false;focused=null;
+      if(active&&!active.control.contains(element(event.target)))clear();
+    },true);
+    // Window capture still runs when a menu's document-capture listener handles
+    // Escape with stopImmediatePropagation. Never consume the host's key event.
+    win.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){
+        escapePending=true;dismissed=active?.control||null;clear();
+        win.setTimeout(()=>{escapePending=false;},0);return;
+      }
+      if(!['Control','Meta','Alt','Shift'].includes(event.key))keyboardMode=true;
+    },true);
+    doc.addEventListener('scroll',clear,true);
+    win.addEventListener('resize',clear);
+    win.addEventListener('blur',clear);
+  }
+  return {install};
 });
 const atelierCommandRailFactory = (function createAtelierCommandRail(options={}) {
   const doc=options.document||document,$=id=>doc.getElementById(id);
@@ -19220,7 +19435,7 @@ const JMC_BRAND_MARK=`<div class="jmc-logo-motion"><div class="jmc-logo-spin">
   <div class="jmc-logo-face jmc-logo-back" aria-hidden="true"><img class="jmc-logo" src="${JMC_BRAND_LOGO}" alt=""></div>
 </div></div>`;
 $('#root').innerHTML=`<div class="app">
-<header class="topbar"><div class="brand" aria-label="JMC-BN" title="JMC-BN — Automated Interior Takeoff &amp; Estimation — BOUDJEMAI NACER"><div class="brandmark">${JMC_BRAND_MARK}</div><span>JMC-BN</span></div><div class="menu"><button class="active">Accueil</button><button>Plan</button><button>Mesures</button><button id="estimateNav">Estimation</button><button id="catalogNav">Assemblages</button><button id="reportNav">Rapports</button></div><div class="project-title"><input id="projectName" value="Projet sans titre"><span id="fileName">Aucun plan</span></div><div class="top-actions"><button class="outline" id="takeoffBtn"><i data-lucide="file-text"></i> Rapport <span id="count">0</span></button><button type="button" class="outline quantity-transfer-launch" id="quantityTransferBtn" title="Transfert des quantités par unité et par niveau"><i data-lucide="table-properties"></i><span>Transfert</span></button><button class="primary" id="exportBtn"><i data-lucide="download"></i> Excel</button></div></header>
+<header class="topbar"><div class="brand" aria-label="JMC-BN" title="JMC-BN — Automated Interior Takeoff &amp; Estimation — BOUDJEMAI NACER"><div class="brandmark">${JMC_BRAND_MARK}</div><span>JMC-BN</span></div><div class="menu"><button class="active">Accueil</button><button>Plan</button><button>Mesures</button><button id="estimateNav">Estimation</button><button id="catalogNav">Assemblages</button><button id="reportNav">Rapports</button></div><div class="project-title"><input id="projectName" value="Projet sans titre"><span id="fileName">Aucun plan</span></div><div class="top-actions"><button class="outline" id="takeoffBtn"><i data-lucide="file-text"></i> Rapport <span id="count">0</span></button><button type="button" class="outline quantity-transfer-launch" id="quantityTransferBtn" title="Transfert des quantités par unité et par niveau"><i data-lucide="table-properties"></i><span>Transfert</span></button><button type="button" class="primary" id="exportBtn" aria-label="Export Excel" title="Exporter les quantités vers Excel · Ctrl+E"><i data-lucide="download" aria-hidden="true"></i><span>Export Excel</span></button></div></header>
 <section class="ribbon"><div class="ribbon-group"><button id="uploadBtn"><i data-lucide="folder-open"></i><span>Ouvrir<br>un plan</span></button><input id="fileInput" hidden type="file" accept="application/pdf,image/*"><button id="demoBtn"><i data-lucide="file-text"></i><span>Plan<br>d’exemple</span></button><small>Projet</small></div><div class="ribbon-group compact"><button id="undo" title="Annuler"><i data-lucide="undo-2"></i><span>Annuler</span></button><button id="redo" title="Rétablir · Ctrl+Y"><i data-lucide="redo-2"></i><span>Rétablir</span></button><button id="deleteSelection" title="Supprimer la sélection · Suppr"><i data-lucide="trash-2"></i><span>Supprimer</span></button><small>Historique</small></div><div class="ribbon-group" id="tools"></div><div class="ribbon-group"><button id="tileSettings" title="Calepinage des carreaux"><i data-lucide="grid-3x3"></i><span>Carreaux<br>12×24 / 24×24</span></button><button id="toggleTileGrid" title="Afficher la trame de carreaux"><i data-lucide="layout-grid"></i><span>Trame<br>ON/OFF</span></button><small>Céramique</small></div><div class="ribbon-group ai-group"><button class="ai-action" id="aiAnalyze"><i data-lucide="sparkles"></i><span>Analyse IA<br><b>Tout quantifier</b></span></button><button id="aiReview"><i data-lucide="list-checks"></i><span>Réviser<br>les détections</span></button><small>Détection des pièces</small></div><div class="ribbon-group compact"><button type="button" id="saveProjectBtn" title="Sauvegarder le relevé · Ctrl+S"><i data-lucide="save"></i><span>Sauvegarder<br>le relevé</span></button><input id="projectInput" hidden type="file" accept=".json"><button type="button" id="helpBtn" title="Souris et raccourcis · ?"><i data-lucide="keyboard"></i><span>Souris et<br>raccourcis</span></button><small>Relevé et aide</small></div></section>
 <div class="workspace"><aside class="sidebar"><div class="pane-title"><span>PROJET ET PAGES</span><button><i data-lucide="panel-left-close"></i></button></div><div class="side-tabs"><button class="active">Pages</button><button>Takeoff</button></div><div class="side-search"><i data-lucide="search"></i><input placeholder="Rechercher"></div><div class="tree"><div class="tree-root"><i data-lucide="folder-open"></i><b id="treeProject">Projet sans titre</b></div><div class="tree-page active"><i data-lucide="file-text"></i><span id="treeFile">Aucun plan</span><em id="treePageCount">0 page</em></div></div><div class="pane-title split-title"><span>MESURES DU PLAN</span><b id="zoneCount">0</b></div><div class="measure-tree" id="measureTree"><p>Aucune quantité mesurée</p></div></aside>
 <main class="stage"><div class="stagebar"><div class="document"><i data-lucide="file-text"></i><strong id="stageFile">Aucun plan</strong><div class="pages" id="pages" hidden><button id="prevPage">‹</button><span id="pageNum">1 / 1</span><button id="nextPage">›</button></div></div><button type="button" class="scale" id="scaleStatus" aria-label="Réglages de l’échelle"><span class="dot"></span><span>Échelle non calibrée</span></button></div><section id="takeoffSummary" class="takeoff-summary" role="status" aria-live="polite" aria-label="Récapitulatif net de la feuille" hidden></section><div class="canvas-wrap"><canvas id="planCanvas"></canvas><button class="empty-demo" id="emptyDemo">Ouvrir le plan d’exemple</button><div class="zoom"><button id="zoomOut"><i data-lucide="minus"></i></button><span id="zoomScaleText" aria-label="Échelle du plan">Échelle non calibrée</span><span id="zoomText" aria-label="Zoom à l’écran">82 %</span><button id="zoomIn"><i data-lucide="plus"></i></button></div><div class="hint" id="hint" hidden></div></div><section class="quantity-grid"><div class="grid-head"><b>QUANTITÉS</b><span id="gridSummary">0 zone · 0,0 pi²</span><button id="collapseGrid"><i data-lucide="chevron-down"></i></button></div><div class="grid-scroll"><table><thead><tr><th>Pièce / zone</th><th>Code</th><th>Type</th><th>Net</th><th>Perte</th><th>Total</th><th>Statut</th></tr></thead><tbody id="gridRows"><tr><td colspan="7" class="grid-empty">Lancez l’analyse IA ou tracez une surface pour commencer.</td></tr></tbody></table></div></section></main>
@@ -20001,7 +20216,7 @@ function refreshBase() {
   if (document.activeElement !== $('#projectName')) $('#projectName').value=S.project;
   $('#count').textContent=S.items.length; $('#zoneCount').textContent=S.items.length;
   $('#treePageCount').textContent=`${S.pages} page${S.pages>1?'s':''}`;
-  $('#zoomText').textContent=`${Math.round(S.zoom*100)} %`;
+  refreshZoomText();
   $('#emptyDemo').hidden=!!S.plan; $('#hint').hidden=!S.plan;
   $('#saveProjectBtn').disabled=!S.plan||S.loading;
   $('#hint').textContent=S.loading ? 'Chargement de la feuille…' : {
@@ -20912,7 +21127,12 @@ function zoomAt(next,x,y) {
   const changed=view.zoomAt({zoom:S.zoom,pan:S.pan},next,anchor);S.zoom=changed.zoom;S.pan=changed.pan;
   refreshZoomText();
 }
-function refreshZoomText(){const text=Math.round(S.zoom*100)+' %';if($('#zoomText').textContent!==text)$('#zoomText').textContent=text;}
+function refreshZoomText(){
+  const text=Math.round(S.zoom*100)+' %';
+  for(const id of ['zoomText','ribbonZoomText']){
+    const output=document.getElementById(id);if(output&&output.textContent!==text)output.textContent=text;
+  }
+}
 function fitPlan(image=S.plan) {
   draw();
   if(!image)return;
@@ -22778,6 +22998,7 @@ workspaceAppearance=workspaceAppearanceFactory({document,window,onThemeChange:up
     layoutRibbonOverflow();
   }
 });workspaceAppearance.install();
+workspaceTooltipsFactory({document,window}).install();
 
 
 function projectArchiveDialog() {
