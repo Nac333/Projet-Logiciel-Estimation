@@ -18949,6 +18949,7 @@ const MATERIALS = [
 const TOOLS = [['select','mouse-pointer-2','Sélection','V'],['auto','wand-sparkles','Pièce au clic','A'],['area','pentagon','Surface polygonale','S'],['linear','ruler','Ligne / plinthe','L'],['calibrate','maximize','Calibrer','C'],['split','scissors','Fractionner','F']];
 const S = {plan:null,pdf:null,fileName:'Aucun plan',page:1,pages:1,tool:'select',zoom:.82,pan:{x:40,y:54},scale:null,draft:[],items:readSaved('quantif-items',[]),selected:null,selection:new Set(),material:'VP-01',history:[],redo:[],project:'Projet sans titre',scales:readSaved('quantif-scales',{}),scaleMeta:{},pageInfo:{},tileGrid:true,documentKey:'legacy',loadVersion:0,renderVersion:0,loading:false};
 let dashboardUI=null,dashboardController=null;
+let surfaceActionsHiddenByZoom=false;
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const fmt=(n,d=1)=>Number(n||0).toLocaleString('fr-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -19194,7 +19195,7 @@ function renderPlanScene() {
 function renderSurfaceQuickActions() {
   const actions=$('#surfaceQuickActions');
   if(!actions)return;
-  const target=S.plan&&!S.loading&&!S.detectJob&&!S.dragging&&!S.panning&&!S.selectionBox?.moved&&!planOverlayUI?.aligning()&&
+  const target=!surfaceActionsHiddenByZoom&&S.plan&&!S.loading&&!S.detectJob&&!S.dragging&&!S.panning&&!S.selectionBox?.moved&&!planOverlayUI?.aligning()&&
     ['select','edit'].includes(S.tool)&&actionableSurface();
   if(!target){actions.hidden=true;return;}
   $('#surfaceOriginBtn').hidden=target.preview||!canSetTileOrigin(target.item);
@@ -19353,6 +19354,7 @@ function redoChange() {
 function pushItems(items) { remember();const oldIds=new Set(S.items.map(item=>item.id));applyActiveSpecification(items.filter(item=>!oldIds.has(item.id))); S.items = items; save(); refresh(); }
 function setSelection(ids) {
   if(S.tool==='finishAlign'){S.tool='select';S.draft=[];}
+  surfaceActionsHiddenByZoom=false;
   S.selection = new Set(ids); S.selected = [...S.selection].at(-1) || null;
 }
 function selectItem(id, event = {}, resumeDrawing = false) {
@@ -20547,16 +20549,24 @@ function recalculatePage(page) {
   });refreshSanitarySpecifications(page);S.detectorCache=null;
 }
 
-function zoomAt(next,x=canvas.clientWidth/2,y=canvas.clientHeight/2) {
+function zoomAt(next,x,y) {
   draw();
   if(!S.plan)return;
-  const changed=view.zoomAt({zoom:S.zoom,pan:S.pan},next,{x,y});S.zoom=changed.zoom;S.pan=changed.pan;
+  const anchor={x:x??canvas.clientWidth/2,y:y??canvas.clientHeight/2};
+  if(next<S.zoom)surfaceActionsHiddenByZoom=true;
+  else if(next>S.zoom&&surfaceActionsHiddenByZoom){
+    const item=x===undefined?null:actionableSurface()?.item;
+    const point=item&&view.screenToPlan(anchor,{width:S.plan.width,height:S.plan.height,rotation:viewRotation(),zoom:S.zoom,pan:S.pan});
+    if(!item||areaContours(item).some(points=>inside(point,points)))surfaceActionsHiddenByZoom=false;
+  }
+  const changed=view.zoomAt({zoom:S.zoom,pan:S.pan},next,anchor);S.zoom=changed.zoom;S.pan=changed.pan;
   refreshZoomText();
 }
 function refreshZoomText(){const text=Math.round(S.zoom*100)+' %';if($('#zoomText').textContent!==text)$('#zoomText').textContent=text;}
 function fitPlan(image=S.plan) {
   draw();
   if(!image)return;
+  surfaceActionsHiddenByZoom=true;
   const w=canvas.clientWidth||800,h=canvas.clientHeight||600;
   const fitted=view.fit({width:image.width,height:image.height,canvasWidth:w,canvasHeight:h,rotation:viewRotation()});S.zoom=fitted.zoom;S.pan=fitted.pan;
 }
@@ -20564,6 +20574,7 @@ function zoomSelection() {
   draw();
   const points=S.items.filter(i=>S.selection.has(i.id)&&i.page===S.page).flatMap(allAreaPoints);
   if(!points.length)return fitPlan();
+  surfaceActionsHiddenByZoom=false;
   const b=boundsOf(points.map(point=>view.rotate(point,{width:S.plan.width,height:S.plan.height,rotation:viewRotation()}))),w=canvas.clientWidth,h=canvas.clientHeight;
   S.zoom=Math.max(.02,Math.min(16,(w-80)/Math.max(b.right-b.x,5),(h-80)/Math.max(b.bottom-b.y,5)));
   S.pan={x:(w-(b.right+b.x)*S.zoom)/2,y:(h-(b.bottom+b.y)*S.zoom)/2};
