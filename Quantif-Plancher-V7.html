@@ -252,6 +252,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-v
 .manual-ribbon .manual-actions button{min-height:28px;padding:4px 8px;border:1px solid var(--manual-border);border-radius:4px;background:var(--manual-white);color:var(--manual-ink);font:600 11px/1.3 Arial,sans-serif;white-space:nowrap;cursor:pointer}
 .manual-ribbon .manual-actions #manualFinish{background:var(--manual-area);color:var(--manual-white);border-color:var(--manual-area)}
 .manual-ribbon .manual-actions button:disabled{background:#e6ece8;color:#657169;border-color:#b1bdb5;cursor:default}
+#traceDirectionMode:not([hidden]){display:inline-flex;gap:2px;padding:2px;border:1px solid var(--aite-line,var(--manual-divider));border-radius:7px}
+.manual-ribbon .manual-actions #traceDirectionMode button{min-height:23px;padding:2px 7px;border-color:transparent;background:transparent}
+.manual-ribbon .manual-actions #traceDirectionMode button[aria-pressed="true"]{color:var(--aite-blue,var(--manual-ink));background:var(--aite-selection,var(--manual-active))}
 .manual-ribbon button:focus-visible{outline:3px solid var(--manual-focus);outline-offset:2px}
 .zoom{min-width:0;padding:7px 10px}.zoom #zoomText{min-width:0}
 @media(max-width:1150px){.manual-ribbon-scroll{padding-inline:8px}.manual-group{padding-inline:6px}.manual-ribbon .manual-button{width:50px;min-width:50px}}
@@ -3251,6 +3254,11 @@ function initManualUI() {
   $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
   $('#manualZoomOut').onclick=()=>zoomAt(S.zoom/1.2);
   $('#manualUndo').onclick=undoChange;$('#manualRedo').onclick=redoChange;
+  $('#manualActions').insertAdjacentHTML('afterbegin','<div id="traceDirectionMode" role="group" aria-label="Direction du tracé" hidden><button type="button" id="traceFreeMode" data-trace-direction="free" aria-pressed="true" title="Tracer à tout angle · Maj pour aligner temporairement">Main levée</button><button type="button" id="traceOrthoMode" data-trace-direction="ortho" aria-pressed="false" title="Aligner les segments à l’horizontale ou à la verticale">Ortho</button></div>');
+  $('#traceDirectionMode').onclick=event=>{
+    const button=event.target.closest('[data-trace-direction]');if(!button)return;
+    orthogonalTrace=button.dataset.traceDirection==='ortho';refreshManualUI();canvas.focus({preventScroll:true});
+  };
   $('#manualFinish').onclick=()=>{finishManualTool();if(!$('#overlay').querySelector('[role="dialog"]'))canvas.focus();};
   $('#manualCancel').onclick=()=>{S.draft=[];S.tool='select';refresh();canvas.focus();};
   lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
@@ -3336,10 +3344,10 @@ function refreshRibbonOverflowState() {
   const active=!!state.panel.querySelector('.manual-button[aria-pressed="true"],.manual-button.selection-ready');
   state.toggle.classList.toggle('contains-active-tool',active);
 }
-function manualStatusText() {
+function manualStatusText(point=S.mouseWorld) {
   if(!S.plan)return 'Ouvrez un plan pour commencer le relevé manuel.';
   if(S.loading||S.detectJob)return 'Chargement ou analyse en cours…';
-  const n=S.draft.length,scale=S.scale,point=S.mouseWorld;
+  const n=S.draft.length,scale=S.scale;
   if(S.tool==='wallSamples')return ['1/3 · Cliquez un mur extérieur.','2/3 · Cliquez un mur séparateur de logements.','3/3 · Cliquez un mur de corridor.'][S.wallSampleDraft?.length||0];
   if(S.tool==='count')return `${n} élément${n>1?'s':''} pointé${n>1?'s':''} · Cliquez chaque élément, puis Terminer ou Entrée. Aucune échelle requise.`;
   if(S.tool==='rectangle') {
@@ -3429,6 +3437,9 @@ function refreshManualUI() {
   for(const id of ['wallTakeoffBtn','traceWallBtn']){$('#'+id).disabled=busy||!S.scale;$('#'+id).title=busy?(!S.plan?'Ouvrez un plan pour relever la céramique murale.':'Attendez la fin du chargement ou de l’analyse.'):!S.scale?'Calibrez le plan avant de calculer les surfaces murales.':$('#'+id).getAttribute('aria-label');}
   const finishable=['area','linear','split','exclude','extendSurface','rectangle','segment','count','dimension','wallTrace'].includes(S.tool);
   $('#manualActions').hidden=!finishable;
+  $('#traceDirectionMode').hidden=busy||!usesTraceDirection();
+  $('#traceFreeMode').setAttribute('aria-pressed',String(!orthogonalTrace));
+  $('#traceOrthoMode').setAttribute('aria-pressed',String(orthogonalTrace));
   const n=S.draft.length;
   const stopArea=S.tool==='area'&&!n&&!!activeAreaTrace();
   $('#manualFinish').disabled=busy||(!stopArea&&(['area','exclude','extendSurface'].includes(S.tool)?n<3:S.tool==='count'?n<1:S.tool==='segment'?n===1:S.tool!=='linear'&&n<2));
@@ -3514,12 +3525,12 @@ function drawManualLineDecorations(context,item) {
   const x=(a.x+b.x)/2+nx*12/S.zoom,y=(a.y+b.y)/2+ny*12/S.zoom,label=formatFeet(item.qty);
   context.font=`700 ${12/S.zoom}px Arial`;context.textAlign='center';context.textBaseline='middle';context.lineWidth=4/S.zoom;context.strokeStyle='#ffffff';context.strokeText(label,x,y);context.fillStyle=colorForItem(item);context.fillText(label,x,y);context.restore();
 }
-function drawManualGuides(context) {
+function drawManualGuides(context,pointer=S.mouseWorld) {
   if(!S.draft.length)return;
   context.save();
   if(S.tool==='count')S.draft.forEach((point,index)=>drawManualPoint(context,point,index+1,'#6846a3'));
   else if(['rectangle','segment','dimension'].includes(S.tool)) {
-    const first=S.draft[0],last=S.mouseWorld||first,color=S.tool==='rectangle'?'#256d54':'#25649a';
+    const first=S.draft[0],last=pointer||first,color=S.tool==='rectangle'?'#256d54':'#25649a';
     context.strokeStyle=color;context.fillStyle=color+'18';context.lineWidth=1.5/S.zoom;context.setLineDash([6/S.zoom,4/S.zoom]);
     context.beginPath();
     if(S.tool==='rectangle'){const b=boundsOf([first,last]);context.rect(b.x,b.y,b.right-b.x,b.bottom-b.y);context.fill();context.stroke();}
@@ -3529,8 +3540,42 @@ function drawManualGuides(context) {
   context.restore();
   // Drawing reads the current pointer even when no takeoff state is committed.
   if(['rectangle','segment','dimension'].includes(S.tool)){
-    const status=$('#manualStatus'),text=manualStatusText();if(status&&status.textContent!==text)status.textContent=text;
+    const status=$('#manualStatus'),text=manualStatusText(pointer);if(status&&status.textContent!==text)status.textContent=text;
   }
+}
+
+function usesTraceDirection() {return ['area','linear','segment','dimension'].includes(S.tool);}
+function traceCursor() {
+  if(!usesTraceDirection()&&S.tool!=='rectangle')return null;
+  if(!tracePointer||!S.plan||!S.scale||!S.draft.length||S.loading||S.detectJob||S.panning||S.dragging||S.spaceHeld||planOverlayUI?.aligning())return null;
+  const rect=canvas.getBoundingClientRect(),x=tracePointer.clientX-rect.left,y=tracePointer.clientY-rect.top;
+  if(x<0||y<0||x>=rect.width||y>=rect.height)return null;
+  return {x,y,point:snapPoint(canvasPoint(tracePointer),tracePointer)};
+}
+function traceMeasurement(point) {
+  const {draft,tool,scale}=S,last=draft.at(-1),distance=dist(last,point);
+  const segment=distance>.5?distance:0;
+  if(tool==='rectangle')return {label:'Surface provisoire',value:fmt(Math.abs((point.x-last.x)*(point.y-last.y))*scale**2,2)+' pi²'};
+  if(tool==='area'&&draft.length>1){
+    const points=segment?[...draft,point]:draft;
+    return {label:'Aire du tracé',value:fmt(area(points)*scale**2,2)+' pi²'};
+  }
+  const line=activeLinearTrace(),previous=(line?lineLength(line.points,line.sectionStarts):0)+lineLength(draft);
+  return {label:tool==='area'?'Côté en cours':previous?'Longueur totale':'Longueur',value:formatFeet((previous+segment)*scale)};
+}
+function renderTraceMeasurement(cursor) {
+  const overlay=$('#traceMeasurementPreview');if(!overlay)return;
+  overlay.hidden=!cursor;
+  if(!cursor)return;
+  const measure=traceMeasurement(cursor.point);
+  for(const [key,text] of Object.entries(measure)){
+    const node=overlay.querySelector(`[data-trace-preview="${key}"]`);
+    if(node.textContent!==text)node.textContent=text;
+  }
+  const {x,y}=cursor,w=overlay.offsetWidth,h=overlay.offsetHeight,margin=8,gap=14;
+  const left=x+w+gap+margin<=canvas.clientWidth?x+gap:x-w-gap;
+  const top=y+h+gap+margin<=canvas.clientHeight?y+gap:y-h-gap;
+  overlay.style.transform=`translate(${Math.max(margin,Math.round(left))}px,${Math.max(margin,Math.round(top))}px)`;
 }
 
 /* Project folders organize measurements without changing their quantities. */
@@ -18950,6 +18995,7 @@ const TOOLS = [['select','mouse-pointer-2','Sélection','V'],['auto','wand-spark
 const S = {plan:null,pdf:null,fileName:'Aucun plan',page:1,pages:1,tool:'select',zoom:.82,pan:{x:40,y:54},scale:null,draft:[],items:readSaved('quantif-items',[]),selected:null,selection:new Set(),material:'VP-01',history:[],redo:[],project:'Projet sans titre',scales:readSaved('quantif-scales',{}),scaleMeta:{},pageInfo:{},tileGrid:true,documentKey:'legacy',loadVersion:0,renderVersion:0,loading:false};
 let dashboardUI=null,dashboardController=null;
 let surfaceActionsHiddenByZoom=false;
+let tracePointer=null,orthogonalTrace=false;
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const fmt=(n,d=1)=>Number(n||0).toLocaleString('fr-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -19152,6 +19198,7 @@ function draw() {planRendering.request();}
 function visibleOnPlan(item) {return item.page===S.page&&(workspaceAppearance?.isMeasureVisible(item.id)??true);}
 function renderPlanScene() {
   const d=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;
+  const cursor=traceCursor(),pointer=cursor?.point||S.mouseWorld;
   const pixelWidth=Math.round(w*d),pixelHeight=Math.round(h*d);
   if(canvas.width!==pixelWidth||canvas.height!==pixelHeight){canvas.width=pixelWidth;canvas.height=pixelHeight;}
   ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle=planAppearance.background;ctx.fillRect(0,0,w,h);
@@ -19184,11 +19231,12 @@ function renderPlanScene() {
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle='#df5e43';ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#df5e43';ctx.stroke();}
   }
-  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>visibleOnPlan(item)&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));
+  drawTileGrids(ctx);drawWallInspection(ctx);drawGuides(ctx,pointer);drawSurfaceLabels(ctx);drawFixtureGuides(ctx);drawManualGuides(ctx,pointer);drawWallTakeoffGuides(ctx);drawReference(ctx);for(const item of S.items.filter(item=>visibleOnPlan(item)&&item.kind==='count'&&item.sanitarySource))drawCountItem(ctx,item,S.selection.has(item.id));
   }
   ctx.restore();
   drawSelectionBox(ctx);
   renderSurfaceQuickActions();
+  renderTraceMeasurement(cursor);
   if(!S.plan){ctx.fillStyle=planAppearance.ink;ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle=planAppearance.muted;ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
   if(!planOverlayUI?.aligning())pdfIntelligenceUI?.paint();
 }
@@ -20763,12 +20811,12 @@ function keyboard(event) {
   if(tool){event.preventDefault();if(['count','rectangle','segment','dimension'].includes(tool))startManualTool(tool);else activateTool(tool);}
 }
 function snapPoint(point,event) {
-  if(event.shiftKey&&S.draft.length) {
+  if(S.draft.length&&(event.shiftKey||orthogonalTrace&&usesTraceDirection())) {
     const prior=S.draft.at(-1);return Math.abs(point.x-prior.x)>Math.abs(point.y-prior.y)?{x:point.x,y:prior.y}:{x:prior.x,y:point.y};
   }
   return point;
 }
-function drawGuides(context) {
+function drawGuides(context,pointer=S.mouseWorld) {
   context.save();context.lineWidth=2/S.zoom;context.strokeStyle='#b73f24';context.setLineDash([6/S.zoom,4/S.zoom]);
   for(const divider of S.dividers[S.page]||[]){context.beginPath();divider.points.forEach((p,i)=>i?context.lineTo(p.x,p.y):context.moveTo(p.x,p.y));context.stroke();}
   const roi=S.detectBounds[S.page];if(roi){context.strokeStyle='#256d54';context.strokeRect(roi.x,roi.y,roi.right-roi.x,roi.bottom-roi.y);}
@@ -20783,8 +20831,10 @@ function drawGuides(context) {
     context.setLineDash(item.needsSeparation||!item.selected?[5/S.zoom,3/S.zoom]:[]);
     traceItem(context,item);context.strokeStyle=item.needsSeparation?'#b73f24':focused?'#101713':surfaceColorForItem(item);context.lineWidth=(focused?3:1.5)/S.zoom;context.stroke();context.restore();
   }
-  if(S.draft.length&&S.mouseWorld&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
-    context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(S.mouseWorld.x,S.mouseWorld.y);context.stroke();
+  if(S.draft.length&&pointer&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
+    context.strokeStyle='#b73f24';context.beginPath();const p=S.draft.at(-1);context.moveTo(p.x,p.y);context.lineTo(pointer.x,pointer.y);
+    if(S.tool==='area'&&S.draft.length>=2)context.lineTo(S.draft[0].x,S.draft[0].y);
+    context.stroke();
   }
   context.setLineDash([]);
   if(S.tool==='split')for(const point of S.draft){
@@ -22128,7 +22178,7 @@ canvas.insertAdjacentHTML('afterend',`<div id="surfaceQuickActions" role="group"
   </div>
   <button type="button" id="surfaceOriginBtn" data-surface-action="origin" aria-label="Point de départ du calepinage" title="Point de départ du calepinage · T" hidden><i data-lucide="locate-fixed"></i></button>
   <button type="button" id="surfaceRotateBtn" data-surface-action="rotate" aria-label="Tourner le sens de pose de 90°" aria-description="Double-cliquez ou appuyez sur Maj et Entrée pour aligner sur deux points." aria-keyshortcuts="Shift+Enter" title="Clic pour tourner de 90° · Double-clic pour aligner sur deux points" hidden>${surfaceToolIcon('direction')}</button>
-</div><div id="finishAlignHint" role="status" hidden></div>`);
+</div><div id="finishAlignHint" role="status" hidden></div><div id="traceMeasurementPreview" aria-live="off" hidden><small data-trace-preview="label"></small><strong data-trace-preview="value"></strong></div>`);
 document.head.insertAdjacentHTML('beforeend',`<style>
 #surfaceQuickActions:not([hidden]){position:absolute;z-index:3;left:0;top:0;display:flex;gap:3px;padding:3px;background:var(--aite-paper,#fff);border:1px solid var(--aite-border,#7d8999);border-radius:9px;box-shadow:0 3px 12px #1f344326}
 #surfaceQuickActions .surface-shape-actions{display:flex;gap:3px;padding-left:3px;border-left:1px solid var(--aite-border,#7d8999)}
@@ -22138,6 +22188,9 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 #surfaceRotateBtn{touch-action:manipulation}
 #surfaceQuickActions:not([hidden]){background-image:var(--aite-theme-grain,none)}
 #finishAlignHint{position:absolute;z-index:4;inset:12px auto auto 50%;transform:translateX(-50%);max-width:calc(100% - 24px);width:max-content;pointer-events:none;padding:8px 12px;border:1px solid var(--aite-border,#7d8999);border-radius:9px;background:color-mix(in srgb,var(--aite-paper,#fff) 86%,transparent);color:var(--aite-ink,#24282f);font-size:12px;text-align:center}
+#traceMeasurementPreview:not([hidden]){position:absolute;z-index:4;inset:0 auto auto 0;display:grid;gap:1px;pointer-events:none;white-space:nowrap;padding:4px 8px 5px;border:1px solid var(--aite-border,#7d8999);border-radius:6px;background:var(--aite-paper,#fff);color:var(--aite-ink,#24282f);box-shadow:0 2px 7px #14293d2b;font-variant-numeric:tabular-nums}
+#traceMeasurementPreview small{font-size:11px;line-height:1.15;color:var(--aite-muted,#545c68)}
+#traceMeasurementPreview strong{font-size:15px;line-height:1.2}
 :is(#editVertices,#surfaceEditOutline) svg{width:16px;height:16px;vertical-align:middle;margin-inline-end:6px}
 </style>`);
 $('#surfaceMoveBtn').onclick=()=>activateTool('moveSurface');
@@ -22169,6 +22222,7 @@ surfaceRotateButton.onkeydown=event=>{
 };
 lucide.createIcons();
 canvas.onpointerdown=event=>{
+  tracePointer=event;
   draw();
   if(!S.plan||S.loading)return;S.dragged=false;canvas.focus();
   if(event.button===1||(S.spaceHeld||S.tool==='hand'&&!planOverlayUI?.aligning())&&event.button===0) {
@@ -22209,6 +22263,7 @@ canvas.onpointerdown=event=>{
   }
 };
 canvas.onpointermove=event=>{
+  tracePointer=event;
   if(!S.panning&&planOverlayUI?.pointerMove(event,canvasPoint(event)))return;
   if(!S.plan||S.loading)return;
   const point=snapPoint(canvasPoint(event),event);S.mouseWorld=point;draw();
@@ -22239,7 +22294,8 @@ canvas.onpointerup=event=>{
   S.panning=null;canvas.style.cursor=planOverlayUI?.aligning()?'crosshair':S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
   if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);
 };
-canvas.onpointercancel=()=>{planOverlayUI?.pointerCancel();if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;S.dragged=true;draw();};
+canvas.onpointerleave=()=>{tracePointer=null;draw();};
+canvas.onpointercancel=()=>{tracePointer=null;planOverlayUI?.pointerCancel();if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;S.dragged=true;draw();};
 $$('[data-tool]').forEach(button=>button.onclick=()=>activateTool(button.dataset.tool));
 $('#uploadBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=event=>{loadFile(event.target.files[0]);event.target.value='';};
 const openDemo=async()=>{
