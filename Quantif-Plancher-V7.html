@@ -19423,6 +19423,7 @@ const TOOLS = [['select','mouse-pointer-2','Sélection','V'],['auto','wand-spark
 const S = {plan:null,pdf:null,fileName:'Aucun plan',page:1,pages:1,tool:'select',zoom:.82,pan:{x:40,y:54},scale:null,draft:[],items:readSaved('quantif-items',[]),selected:null,selection:new Set(),material:'VP-01',history:[],redo:[],project:'Projet sans titre',scales:readSaved('quantif-scales',{}),scaleMeta:{},pageInfo:{},tileGrid:true,documentKey:'legacy',loadVersion:0,renderVersion:0,loading:false};
 let dashboardUI=null,dashboardController=null;
 let surfaceActionsHiddenByZoom=false;
+let surfaceActionAnchor=null;
 let tracePointer=null,orthogonalTrace=false;
 const $=(q,e=document)=>e.querySelector(q), $$=(q,e=document)=>[...e.querySelectorAll(q)];
 const fmt=(n,d=1)=>Number(n||0).toLocaleString('fr-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -19671,6 +19672,24 @@ function renderPlanScene() {
   if(!S.plan){ctx.fillStyle=planAppearance.ink;ctx.font='600 17px Arial';ctx.textAlign='center';ctx.fillText('Ouvrez un plan PDF ou une image pour commencer',w/2,h/2-10);ctx.font='14px Arial';ctx.fillStyle=planAppearance.muted;ctx.fillText('ou ouvrez le plan d’exemple',w/2,h/2+18);}
   if(!planOverlayUI?.aligning())pdfIntelligenceUI?.paint();
 }
+function surfaceActionsByClick(point,barWidth,barHeight,maxLeft,maxTop,rail) {
+  const gap=22,center=point.x-barWidth/2;
+  const above=point.y-gap-barHeight,below=point.y+gap,middle=point.y-barHeight/2;
+  const positions=[[center,above],[center,below],[point.x+gap,middle],[point.x-gap-barWidth,middle]];
+  if(rail){
+    for(const x of [rail.right+6,rail.left-barWidth-6])positions.push([x,above],[x,below],[x,middle]);
+    positions.push([center,rail.bottom+6],[center,rail.top-barHeight-6]);
+  }
+  let closest=null,distance=Infinity;
+  for(const [x,y] of positions){
+    const left=Math.max(8,Math.min(maxLeft,x)),top=Math.max(8,Math.min(maxTop,y));
+    const right=left+barWidth,bottom=top+barHeight;
+    if(rail&&left<rail.right+6&&right>rail.left-6&&top<rail.bottom+6&&bottom>rail.top-6)continue;
+    const clearance=Math.hypot(Math.max(0,left-point.x,point.x-right),Math.max(0,top-point.y,point.y-bottom));
+    if(clearance>=gap-.5&&clearance<distance-.01){closest={left,top};distance=clearance;}
+  }
+  return closest;
+}
 function renderSurfaceQuickActions() {
   const actions=$('#surfaceQuickActions');
   if(!actions)return;
@@ -19686,19 +19705,25 @@ function renderSurfaceQuickActions() {
   actions.hidden=false;
   const barWidth=actions.offsetWidth,barHeight=actions.offsetHeight;
   const maxLeft=width-barWidth-8,maxTop=height-barHeight-8;
+  const navigation=$('#floatingPlanNavigation')?.getBoundingClientRect(),viewer=canvas.getBoundingClientRect();
+  const rail=navigation?.width&&navigation.height?{left:navigation.left-viewer.left,right:navigation.right-viewer.left,
+    top:navigation.top-viewer.top,bottom:navigation.bottom-viewer.top}:null;
+  const anchor=surfaceActionAnchor;
+  const point=anchor?.item===target.item&&anchor.page===S.page&&anchor.documentKey===S.documentKey?view.planToScreen(anchor.point,transform):null;
+  if(point&&point.x>=Math.max(0,bounds.x-8)&&point.x<=Math.min(width,bounds.right+8)&&
+     point.y>=Math.max(0,bounds.y-8)&&point.y<=Math.min(height,bounds.bottom+8)){
+    const position=surfaceActionsByClick(point,barWidth,barHeight,maxLeft,maxTop,rail);
+    if(!position){actions.hidden=true;return;}
+    actions.style.transform=`translate(${Math.round(position.left)}px,${Math.round(position.top)}px)`;
+    return;
+  }
   let left=Math.max(8,Math.min(maxLeft,(bounds.x+bounds.right-barWidth)/2));
   let top=Math.max(8,Math.min(maxTop,bounds.y>=barHeight+8?bounds.y-barHeight-8:bounds.y+8));
-  const navigation=$('#floatingPlanNavigation')?.getBoundingClientRect();
-  if(navigation?.width&&navigation.height){
-    const viewer=canvas.getBoundingClientRect();
-    const rail={left:navigation.left-viewer.left,right:navigation.right-viewer.left,
-      top:navigation.top-viewer.top,bottom:navigation.bottom-viewer.top};
-    if(left<rail.right+6&&left+barWidth>rail.left-6&&top<rail.bottom+6&&top+barHeight>rail.top-6){
-      if(rail.right+6<=maxLeft)left=rail.right+6;
-      else if(rail.left-barWidth-6>=8)left=rail.left-barWidth-6;
-      else if(rail.bottom+6<=maxTop)top=rail.bottom+6;
-      else if(rail.top-barHeight-6>=8)top=rail.top-barHeight-6;
-    }
+  if(rail&&left<rail.right+6&&left+barWidth>rail.left-6&&top<rail.bottom+6&&top+barHeight>rail.top-6){
+    if(rail.right+6<=maxLeft)left=rail.right+6;
+    else if(rail.left-barWidth-6>=8)left=rail.left-barWidth-6;
+    else if(rail.bottom+6<=maxTop)top=rail.bottom+6;
+    else if(rail.top-barHeight-6>=8)top=rail.top-barHeight-6;
   }
   actions.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
 }
@@ -19834,9 +19859,14 @@ function pushItems(items) { remember();const oldIds=new Set(S.items.map(item=>it
 function setSelection(ids) {
   if(S.tool==='finishAlign'){S.tool='select';S.draft=[];}
   surfaceActionsHiddenByZoom=false;
+  surfaceActionAnchor=null;
   S.selection = new Set(ids); S.selected = [...S.selection].at(-1) || null;
 }
-function selectItem(id, event = {}, resumeDrawing = false) {
+function rememberSurfaceActionAnchor(point) {
+  const target=actionableSurface();
+  if(target)surfaceActionAnchor={point,item:target.item,page:S.page,documentKey:S.documentKey};
+}
+function selectItem(id, event = {}, resumeDrawing = false, surfacePoint = null) {
   S.previewFocus=null;S.previewSelection=new Set();
   const itemsOnPage=S.items.filter(item=>item.page===S.page),fromFolders=event.target?.closest?.('#measureTree');
   const visible=fromFolders?$$('.measure-row',$('#measureTree')).filter(row=>row.getClientRects().length).map(row=>itemsOnPage.find(item=>item.id===row.dataset.item)).filter(Boolean):itemsOnPage;
@@ -19856,6 +19886,7 @@ function selectItem(id, event = {}, resumeDrawing = false) {
     const next = new Set(S.selection); next.has(id) ? next.delete(id) : next.add(id);
     setSelection(next); S.anchorId = id;
   } else { setSelection([id]); S.anchorId = id; }
+  if(surfacePoint)rememberSurfaceActionAnchor(surfacePoint);
   refresh();
 }
 function applyScale(scale, meta, allPages = false) {
@@ -21615,14 +21646,15 @@ function validPreviewEditedItem(item,index) {
   return !S.items.some(other=>other.page===S.page&&other.kind==='area'&&overlapItems(item,other));
 }
 function selectSurfaceAt(point,event) {
+  const surfacePoint=canvasPoint(event);
   S.previewSelection=new Set();
   if(S.reviewOpen) {
     const candidates=S.reviewByPage[S.page]?.items||[];
     const index=candidates.findLastIndex(item=>!item.duplicate&&(workspaceAppearance?.isMeasureVisible(item.autoSavedId)??true)&&(insideItem(point,item)||item.points.some((p,n)=>distanceToSegment(point,p,item.points[(n+1)%item.points.length])<=8/S.zoom)));
-    if(index>=0){setSelection([]);S.previewFocus=index;refresh();return;}
+    if(index>=0){setSelection([]);S.previewFocus=index;rememberSurfaceActionAnchor(surfacePoint);refresh();return;}
   }
   const hit=surfaceForEdit(point);
-  if(hit)selectItem(hit.id,event,true);
+  if(hit)selectItem(hit.id,event,true,surfacePoint);
   else if(!(event.ctrlKey||event.metaKey||event.shiftKey)){S.previewFocus=null;setSelection([]);refresh();}
 }
 
