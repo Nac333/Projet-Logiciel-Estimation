@@ -13158,9 +13158,15 @@ const tileLayoutEngine = (function createTileLayout(geometry,clipping=require('p
     const crossing=scanBands([...new Set(levels)].sort((a,b)=>a-b));if(crossing)return crossing;
     return null;
   }
-  function marker(outer,holes,box,axis) {
+  function marker(outer,holes,box,axis,cell=box) {
     // Le repère visuel facultatif ne doit jamais bloquer un débit valide.
-    try {const p=markPoint(outer,holes,box);return p?{...p,axis}:null;}catch{return null;}
+    try {
+      const point=markPoint(outer,holes,box);
+      if(!point)return null;
+      if(!axis)return {...point,axis};
+      const positive=axis==='x'?box.x+box.right>cell.x+cell.right:box.y+box.bottom>cell.y+cell.bottom;
+      return {...point,axis,positive};
+    }catch{return null;}
   }
   function pack(cuts,width,height,reuse,rotateCuts,firstId) {
     const stocks=[],placements=[];
@@ -13273,7 +13279,7 @@ const tileLayoutEngine = (function createTileLayout(geometry,clipping=require('p
         if(b.rectangular&&Math.abs(net-area/2)<=tolerance&&((Math.abs(w-width)<=EPS&&Math.abs(h-height/2)<=EPS)||(Math.abs(w-width/2)<=EPS&&Math.abs(h-height)<=EPS)))halfPieces++;
         const actual=equivalentBox(polygon,localHoles,b),axis=actual.right-actual.x<=width/2+EPS?'x':actual.bottom-actual.y<=height/2+EPS?'y':null;
         if(axis!==null)equivalentHalfPieces++;
-        cuts.push({row,column,netArea:net,width:w,height:h,rectangular:b.rectangular,bounds:b,full:false,mark:marker(polygon,localHoles,actual,axis),...source});
+        cuts.push({row,column,netArea:net,width:w,height:h,rectangular:b.rectangular,bounds:b,full:false,mark:marker(polygon,localHoles,actual,axis,cell),...source});
       }
     }
     if(Math.abs(accumulated-totalNet)>Math.max(.0001,totalNet*1e-7))fail('les cellules ne concordent pas avec le contour net.');
@@ -20185,6 +20191,15 @@ function finishMarkers(item,layout) {
   }
   return markers;
 }
+function tileOriginPointerPoint(item,point,event) {
+  if(!item||event.altKey)return point;
+  let nearest=6/S.zoom,corner=point;
+  for(const vertex of allAreaPoints(item)){
+    const distance=dist(point,vertex);
+    if(distance<=nearest){nearest=distance;corner=vertex;}
+  }
+  return corner;
+}
 function setTileOrigin(id,point,record=true) {
   const item=S.items.find(i=>i.id===id&&canSetTileOrigin(i));
   if(!item||!Number.isFinite(point.x)||!Number.isFinite(point.y))return false;
@@ -20292,17 +20307,44 @@ function drawTileCountMarks(context,item,layout,occupied) {
   const width=canvas.clientWidth,height=canvas.clientHeight,factor=S.scale*12;
   const transform={width:S.plan.width,height:S.plan.height,rotation:viewRotation(),zoom:S.zoom,pan:S.pan};
   const bounds=boundsOf([{x:0,y:0},{x:width,y:0},{x:width,y:height},{x:0,y:height}].map(point=>view.screenToPlan(point,transform)));
-  context.save();clipItem(context,item);context.lineWidth=1/S.zoom;
+  const corners=new Map(),cellSize=12/S.zoom;
+  if(focusedSurfaceEdit()?.item===item){
+    for(const vertex of [...allAreaPoints(item),...(item.holes||[]).flat()]){
+      const key=Math.floor(vertex.x/cellSize)+':'+Math.floor(vertex.y/cellSize);
+      if(!corners.has(key))corners.set(key,[]);
+      corners.get(key).push(vertex);
+    }
+  }
+  // Ancrés dans les coupes, ces repères doivent rester entiers aux rives.
+  context.save();context.lineWidth=1/S.zoom;
   for(const placement of result.placements){
     const mark=placement.mark,section=frames.length===1?frames[0]:frames[placement.contourIndex??0];
     if(!mark||!section||section.radius*S.zoom<1.25)continue;
-    const {frame,radius}=section,{x,y}=frame.world({x:mark.x/factor,y:mark.y/factor});
+    const {frame,radius}=section,anchor=frame.world({x:mark.x/factor,y:mark.y/factor});
+    let {x,y}=anchor;
+    const reach=radius+7/S.zoom;
+    if(x+reach<bounds.x||x-reach>bounds.right||y+reach<bounds.y||y-reach>bounds.bottom)continue;
+    if(corners.size){
+      const u=Math.floor(x/cellSize),v=Math.floor(y/cellSize);
+      let corner=null,clearance=reach;
+      for(let i=u-1;i<=u+1;i++)for(let j=v-1;j<=v+1;j++)for(const vertex of corners.get(i+':'+j)||[]){
+        const distance=dist(anchor,vertex);
+        if(distance>0&&distance<clearance){corner=vertex;clearance=distance;}
+      }
+      if(corner){
+        x=corner.x+(anchor.x-corner.x)*reach/clearance;
+        y=corner.y+(anchor.y-corner.y)*reach/clearance;
+      }
+    }
     if(x+radius<bounds.x||x-radius>bounds.right||y+radius<bounds.y||y-radius>bounds.bottom)continue;
+    if(x!==anchor.x||y!==anchor.y){
+      context.strokeStyle='#545c68';context.beginPath();context.moveTo(anchor.x,anchor.y);context.lineTo(x,y);context.stroke();
+    }
     context.fillStyle=placement.full?'#174f63':'#ffffff';
     context.strokeStyle=placement.full?'#ffffff':mark.axis?'#8b4d11':'#174f63';
     context.beginPath();context.arc(x,y,radius,0,Math.PI*2);context.fill();context.stroke();
     if(mark.axis){
-      const angle=frame.angle*Math.PI/180+(mark.axis==='x'?Math.PI/2:Math.PI);
+      const angle=frame.angle*Math.PI/180+(mark.axis==='x'?Math.PI/2:Math.PI)+(mark.positive?Math.PI:0);
       context.fillStyle='#8b4d11';context.beginPath();context.arc(x,y,radius,angle,angle+Math.PI);context.closePath();context.fill();
     }
     const halo=radius+1/S.zoom;
@@ -20348,7 +20390,6 @@ function drawTileGrids(context) {
       if(showDirection)for(const marker of finishMarkers(item,layout))floorFinishRendering.arrows(context,marker);
       context.restore();
     }
-    if(gridVisible&&item.id)drawTileCountMarks(context,item,layout,occupied);
     if(S.selection.size===1&&S.selection.has(item.id)&&canSetTileOrigin(item)&&['select','tileOrigin'].includes(S.tool)) {
       const f=layout.sections[0]?.frame;if(!f)continue;
       context.save();context.translate(f.origin.x,f.origin.y);context.rotate(f.angle*Math.PI/180);
@@ -20357,6 +20398,7 @@ function drawTileGrids(context) {
       context.beginPath();context.moveTo(-r,0);context.lineTo(3*r,0);context.moveTo(0,-r);context.lineTo(0,r);
       context.moveTo(2.4*r,-.4*r);context.lineTo(3*r,0);context.lineTo(2.4*r,.4*r);context.stroke();context.restore();
     }
+    if(gridVisible&&item.id)drawTileCountMarks(context,item,layout,occupied);
   }
   return occupied;
 }
@@ -21289,7 +21331,7 @@ function refresh() {
     divider:'Cliquez les deux extrémités du passage à fermer · Maj : aligner · Ctrl+Z : annuler',
     region:'Cliquez deux coins autour du dessin à analyser',edit:'Glissez les carrés pour corriger le contour · Ctrl+Z : annuler',
     exclude:'Tracez au moins trois sommets dans la surface sélectionnée. Double-cliquez sur le dernier ou appuyez sur Entrée.',
-    tileOrigin:'Cliquez pour placer le départ · flèches : 1 po · Maj + flèches : 12 po · O : 90° · Échap : terminer',
+    tileOrigin:'Cliquez pour placer le départ · Accrochage aux coins (Alt : libre) · flèches : 1 po · Maj + flèches : 12 po · O : 90° · Échap : terminer',
     auto:'Cliquez dans une pièce · B ferme un passage · contours et finis à vérifier'};
   if(hints[S.tool]&&!S.loading)$('#hint').textContent=hints[S.tool];
   canvas.style.cursor=S.tool==='hand'?'grab':S.tool==='select'?'default':'crosshair';
@@ -22257,7 +22299,10 @@ canvas.onclick=event=>{
     if(selected&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey&&finishArrowHit(selected,canvasPoint(event)))return rotateTile();
     selectSurfaceAt(point,event);
   }
-  else if(S.tool==='tileOrigin')setTileOrigin(S.selected,point);
+  else if(S.tool==='tileOrigin'){
+    const item=S.items.find(item=>item.id===S.selected);
+    setTileOrigin(S.selected,tileOriginPointerPoint(item,point,event));
+  }
   else if(S.tool==='auto')detectRoom(point);
   else if(S.tool==='roomRepair')findRoomRepair(point);
   else if(['area','split','exclude','linear','wallTrace','calibrate','divider','region'].includes(S.tool)) {
@@ -22419,7 +22464,7 @@ canvas.onpointermove=event=>{
     if(['moveSurface','previewMoveSurface'].includes(S.dragging.type)){if(S.dragged)applySurfaceMove(S.dragging,point);return;}
     const item=S.dragging.type==='previewVertex'?S.reviewByPage[S.page]?.items[S.dragging.indexInReview]:S.items.find(i=>i.id===S.dragging.id);if(!item)return;
     if(S.dragging.type==='fixtureVertex'){const cut=item.fixtureCuts?.find(c=>c.id===S.dragging.cutId);if(cut)cut.points[S.dragging.index]=point;}
-    else if(S.dragging.type==='origin')setTileOrigin(item.id,point,false);
+    else if(S.dragging.type==='origin')setTileOrigin(item.id,tileOriginPointerPoint(item,point,event),false);
     else if(S.dragging.holeIndex!==undefined){if(S.dragged)item.holes[S.dragging.holeIndex][S.dragging.index]=point;}
     else {
       const ring=areaContours(item)[S.dragging.contourIndex||0];
