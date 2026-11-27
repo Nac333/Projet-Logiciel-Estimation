@@ -953,6 +953,35 @@ body[data-aite-theme="nuit"] .app.aite-workspace :is(.review-panel, .advanced-to
 .material-library details {margin-top:6px}
 .material-library summary {padding:8px 3px;font-weight:650;cursor:pointer}
 .material-library .stairs-heading {margin:8px 3px 2px;font-size:12px;font-weight:650;color:var(--aite-theme-ink,var(--ink))}
+#overlay .v4-dialog:is(.material-color-dialog,.moulding-takeoff-dialog) {width:min(432px,calc(100vw - 24px))}
+#overlay .material-color-field {margin:12px 0;padding:0;border:0;min-width:0}
+#overlay .material-color-field legend {font-size:12px;padding:0;color:var(--aite-theme-ink,var(--ink))}
+#overlay .material-color-palette {display:grid;grid-template-columns:repeat(9,30px);gap:5px 6px;margin:6px 0 9px}
+#overlay .material-color-palette label {position:relative;display:grid;place-items:center;cursor:pointer;width:30px;height:30px;box-sizing:border-box;margin:0;border:1px solid var(--aite-theme-line,var(--line));border-radius:7px;background:var(--aite-theme-field,#fff)}
+#overlay .material-color-palette label:hover {background:var(--aite-theme-hover,#eceef1)}
+#overlay .material-color-palette input {position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+#overlay .material-color-palette span {width:19px;height:19px;box-sizing:border-box;border:1px solid #16242c48;border-radius:50%;background:var(--trace-color);pointer-events:none}
+#overlay .material-color-palette input:checked+span {outline:2px solid var(--aite-theme-blue,#304454);outline-offset:2px}
+#overlay .material-color-palette label:has(input:focus-visible) {outline:2px solid var(--aite-theme-focus,#426a90);outline-offset:1px}
+@media(max-width:430px){#overlay .material-color-palette {grid-template-columns:repeat(6,30px)}}
+#overlay .material-color-custom {display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px}
+#overlay .material-color-custom label {display:flex;align-items:center;gap:7px;margin:0}
+#overlay #libraryMaterialColor {appearance:none;width:29px;height:29px;margin:0;padding:3px;border-radius:50%;cursor:pointer}
+#overlay #libraryMaterialColor::-webkit-color-swatch-wrapper {padding:0}
+#overlay #libraryMaterialColor::-webkit-color-swatch {border:0;border-radius:50%}
+#overlay #libraryMaterialColor::-moz-color-swatch {border:0;border-radius:50%}
+#overlay #libraryMaterialColorName {color:var(--aite-theme-muted,var(--muted));text-align:right}
+#overlay .moulding-totals {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+#overlay .moulding-totals div {padding:7px 9px;border:1px solid var(--aite-theme-line,var(--line));border-radius:5px}
+#overlay .moulding-totals dt {font-size:11px;color:var(--aite-theme-muted,var(--muted))}
+#overlay .moulding-totals dd {margin:2px 0 0;font-size:17px;font-weight:650}
+#overlay .moulding-placements {border-block-start:1px solid var(--aite-theme-line,var(--line));padding-block:7px;font-size:12px}
+#overlay .moulding-placements summary {cursor:pointer}
+#overlay .moulding-placements ul {margin:6px 0 0;padding-inline-start:18px}
+#overlay .moulding-folder-name {grid-column:1/-1}
+.takeoff-finish-notice {margin:4px 0 8px;color:var(--aite-theme-muted,var(--muted));font-size:12px}
+.takeoff-finish-notice button {color:var(--aite-theme-blue,#304454);border:0;background:transparent;padding:3px 4px;text-decoration:underline;cursor:pointer}
+.takeoff-classification p {margin:6px 0;font-size:12px}
 .material-library .library-item i[data-stair-marker="circle"] {border-radius:50%}
 .material-library .library-item i[data-stair-marker="square"] {border-radius:0}
 .material-library .library-item i[data-stair-marker="triangle"] {border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
@@ -2095,7 +2124,7 @@ function drawSurfaceLabels(context,marks=[]) {
 }
 function confirmationIssues(item,state=S) {
   const reasons=[];
-  if (item.kind!=='count'&&(!state.scales[item.page] || !state.scaleMeta[item.page]?.verified)) reasons.push('échelle à vérifier');
+  if (item.kind!=='count'&&!isMouldingPoint(item)&&(!state.scales[item.page] || !state.scaleMeta[item.page]?.verified)) reasons.push('échelle à vérifier');
   if (hasPendingFixtures(item)) reasons.push('bain ou douche à délimiter');
   if (item.materialNeedsReview) reasons.push('revêtement à choisir');
   if(item.sanitarySource?.typeNeedsReview)reasons.push('type sanitaire à confirmer');
@@ -2926,6 +2955,27 @@ function readDetectionFinish(value,documentFinishes) {
   const entry=documentFinishes.get(value);
   return entry?{material:specificationMaterial(entry),specificationId:entry.id}:{material:value};
 }
+function surfaceFinishOnPlan(item,documentFinishes) {
+  const defaults=new Map(materialsFor().map(material=>[normalizeName(material.code),{key:material.code,label:material.name}]));
+  const documented=new Map();
+  for(const [key,entry] of documentFinishes){
+    const code=normalizeName(entry.code),group=documented.get(code)||[];
+    group.push({key,label:entry.model||entry.label||entry.code,conflict:entry.conflict||entry.ignored});documented.set(code,group);
+  }
+  const found=new Map();
+  for(const row of S.pageInfo[item.page]?.texts||[]){
+    const code=normalizeName(String(row.text??'').replace(/^\s*FINI(?:\s+DU\s+PLANCHER)?\s*[:–-]\s*/i,''));
+    const matches=documented.get(code)||(defaults.has(code)?[defaults.get(code)]:[]);
+    if(matches.length&&insideItem({x:row.cx,y:row.cy},item))for(const match of matches)found.set(match.key,match);
+  }
+  if(found.size>1||[...found.values()].some(match=>match.conflict))return {ambiguous:true};
+  return found.values().next().value||null;
+}
+function finishOnPlanNotice(suggestion,buttonId) {
+  if(!suggestion)return '';
+  if(suggestion.ambiguous)return '<p class="takeoff-finish-notice">Plusieurs finis repérés sur le plan. Choisissez la référence.</p>';
+  return `<p class="takeoff-finish-notice">Repéré sur le plan <button type="button" id="${buttonId}">${esc(suggestion.label)}</button></p>`;
+}
 function readDetectionFinishPreferences(previous,choices) {
   const config={...previous,specifications:{...previous.specifications}};
   for(const [slot,{material,specificationId}] of Object.entries(choices)){
@@ -3380,7 +3430,9 @@ function layoutRibbonOverflow() {
   holder.hidden=(!planToolsMenu||planToolsMenu.hidden)&&!entries.some(entry=>entry.alwaysAdvanced);
   if(strip.scrollWidth>strip.clientWidth+1){
     holder.hidden=false;
-    for(const entry of order){
+    const isTileTool=entry=>['tileSettings','tileOriginBtn','toggleTileGrid'].includes(entry.button.id);
+    const overflowOrder=main.clientWidth>=1200?[...order.filter(entry=>!isTileTool(entry)),...order.filter(isTileTool)]:order;
+    for(const entry of overflowOrder){
       if(entry.alwaysAdvanced)continue;
       if(strip.scrollWidth<=strip.clientWidth+1)break;
       entry.buttons.append(entry.button);entry.overflow.hidden=false;
@@ -3409,6 +3461,7 @@ function manualStatusText(point=S.mouseWorld) {
   const n=S.draft.length,scale=S.scale;
   if(S.tool==='wallSamples')return ['1/3 · Cliquez un mur extérieur.','2/3 · Cliquez un mur séparateur de logements.','3/3 · Cliquez un mur de corridor.'][S.wallSampleDraft?.length||0];
   if(S.tool==='count')return `${n} élément${n>1?'s':''} pointé${n>1?'s':''} · Cliquez chaque élément, puis Terminer ou Entrée. Aucune échelle requise.`;
+  if(S.tool==='mouldingPoint')return 'Moulure · Cliquez un emplacement sur le plan, puis saisissez la longueur à poser.';
   if(S.tool==='rectangle') {
     const quantity=n&&point&&scale?Math.abs((point.x-S.draft[0].x)*(point.y-S.draft[0].y))*scale*scale:null;
     return n?`Rectangle : choisissez le coin opposé${quantity!==null?' · aperçu '+fmt(quantity)+' pi²':''}.`:'Rectangle : cliquez le premier coin, puis le coin opposé.';
@@ -3529,6 +3582,7 @@ function addManualLine(points,dimension=false) {
   const item={id:uid(),kind:'linear',name:(dimension?'Cote ':'Segment ')+number,material:'PL-01',points:structuredClone(points),qty:dist(points[0],points[1])*S.scale,waste:dimension?0:5,page:S.page,status:'à valider',method};
   if(dimension)item.measureOnly=true;
   pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool=dimension?'select':'segment';refresh();
+  if(!dimension)revealTakeoffProperties();
   toast(dimension?'Cote de référence ajoutée · exclue des commandes.':'Segment ajouté · cliquez deux points pour le suivant.');
 }
 function finishManualTool() {
@@ -3540,7 +3594,7 @@ function finishManualTool() {
   if(tool==='count') {
     if(!S.draft.length){toast('Cliquez au moins un élément avant de terminer le comptage.');return true;}
     const item={id:uid(),kind:'count',name:'Comptage '+(S.items.filter(entry=>entry.kind==='count').length+1),material:'QT-01',points:structuredClone(S.draft),qty:S.draft.length,waste:0,page:S.page,status:'à valider',method:'Comptage manuel'};
-    pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool='select';refresh();toast(item.qty+' élément(s) ajouté(s) au relevé.');
+    pushItems([...S.items,item]);setSelection([item.id]);S.draft=[];S.tool='select';refresh();revealTakeoffProperties();toast(item.qty+' élément(s) ajouté(s) au relevé.');
   } else if(tool==='rectangle') {
     if(S.draft.length!==2){toast('Cliquez deux coins opposés pour mesurer le rectangle.');return true;}
     const b=boundsOf(S.draft);
@@ -4099,7 +4153,7 @@ function openWallTakeoffEditor(points,existing=null,context={}) {
     validateWork(work,'linear');
     if(existing){remember();existing.work=work;existing.wallTakeoff={...existing.wallTakeoff,type,source:existing.wallTakeoff?.source||'manual',reviewed,runKey:wallRunKey(points,sectionStarts),heightBasis:measured.basis};existing.status='à valider';}
     else{const item=createWallTakeoffItem(points,type,height,openings,reviewed,'manual',context.hint);item.work=work;item.wallTakeoff.heightBasis=measured.basis;remember();applyActiveSpecification([item]);S.items.push(item);setSelection([item.id]);}
-    S.wallTakeoffPreview=null;closeDialog();save();refresh();toast('Relevé mural enregistré, à valider avant commande.');
+    S.wallTakeoffPreview=null;closeDialog();save();refresh();if(!existing)revealTakeoffProperties();toast('Relevé mural enregistré, à valider avant commande.');
   }catch(error){$('#wallTakeoffError').textContent=error.message;}};
   update();
 }
@@ -5586,7 +5640,9 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
   const {getState,projects,planLibrary:library,documents,openFile,remember,save,refresh,openDialog,closeDialog,toast,esc,uid,projectSession,openComparison,closeCurrentPlan,renamePage,pageName,folderIcon}=options;
   const $=selector=>document.querySelector(selector), model=()=>getState().estimation.workspace;
   const catalogue=()=>library.catalogue(model());
-  let signature='',selection=null,menu=null,menuOrigin=null,importing=false,lastType='other';
+  let signature='',selection=null,menu=null,menuOrigin=null,importing=false,lastType='other',installed=false,sheetCursor=-1;
+  const openLevels=new Map();
+  const searchText=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/\s+/g,' ').trim();
   const icons={add:'M14.2 3.7H6.5c-.8 0-1.4.6-1.4 1.4v13.8c0 .8.6 1.4 1.4 1.4h11c.8 0 1.4-.6 1.4-1.4V8.4m-4.7-4.7 4.7 4.7h-4.7zM9 14h6m-3-3v6',folder:'M3.5 18V6.3c0-.6.5-1.1 1.1-1.1h4.8l2.1 2h8.1c.6 0 1.1.5 1.1 1.1V18c0 .6-.5 1.1-1.1 1.1h-15c-.6 0-1.1-.5-1.1-1.1ZM9.4 13.2h5.2m-2.6-2.6v5.2',type:'M4 4h16v16H4zM7 8h10M12 8v9',rename:'M4 20l4-1L20 7l-3-3L5 16z',remove:'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7',compare:'M14 3h7v7M21 3L11 13M10 5H4v16h16v-6',tabs:'M3 4h18v5H3zM3 9v11h9M17 12v9M13 16.5h8',restore:'M4 10h11a6 6 0 1 1-5 10M4 10l5-5M4 10l5 5'};
   const icon=id=>`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${icons[id]}"></path></svg>`;
   const button=(id,label,name)=>`<button type="button" id="${id}" title="${label}" aria-label="${label}">${icon(name)}</button>`;
@@ -5642,9 +5698,68 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
   function importDialog() {
     const chosen=selection?.kind==='folder'?selection.id:selection?.kind==='document'?library.folderOf(model(),model().documents.find(d=>d.id===selection.id)):null;
     const type=catalogue().folders.find(f=>f.id===chosen)?.typeId||'other';
-    openDialog('Ajouter des plans',`<form id="addSourcePlans">${select('sourcePlanFolder','Dossier',folderEntries(),chosen||'')}${select('sourcePlanType','Type de plans',typeEntries(),type)}<label for="sourcePlanFiles">Plans PDF ou images<input id="sourcePlanFiles" type="file" accept=".pdf,.png,.jpg,.jpeg" multiple required></label>${actions('Ajouter les plans')}</form>`);
+    openDialog('Ajouter des plans',`<style id="sourcePlanImportStyle">
+    #addSourcePlans .source-plan-picker{position:relative;margin:12px 0;color:var(--aite-ink,#25333d)}
+    #addSourcePlans .source-plan-dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:170px;padding:20px 16px;border:1.5px dashed var(--aite-border,#8f9aa5);border-radius:8px;background:var(--aite-chrome,#f1f3f5);cursor:pointer;transition:background-color 140ms ease,border-color 140ms ease}
+    #addSourcePlans .source-plan-dropzone>svg{color:var(--aite-muted,#64717e);flex:none}
+    #addSourcePlans .source-plan-dropzone>strong{font-size:13px;font-weight:600;text-align:center}
+    #addSourcePlans .source-plan-dropzone p{margin:0;color:var(--aite-muted,#64717e);font-size:12px;text-align:center}
+    #addSourcePlans #chooseSourcePlanFiles{padding:8px 14px;min-height:34px;border:1px solid var(--aite-border,#8f9aa5);border-radius:5px;background:var(--aite-field,#fff);color:var(--aite-ink,#25333d);font:12px 'Segoe UI',Arial,sans-serif;cursor:pointer}
+    #addSourcePlans #chooseSourcePlanFiles:focus-visible{outline:2px solid var(--aite-focus,#2d5780);outline-offset:3px}
+    #addSourcePlans .source-plan-dropzone:focus-within{border-color:var(--aite-focus,#2d5780)}
+    #addSourcePlans .source-plan-dropzone.is-dragover{border-color:var(--aite-focus,#2d5780);background:var(--aite-selection,#e0e9f1)}
+    #addSourcePlans .source-plan-native-input{position:absolute;width:1px!important;height:1px!important;padding:0!important;margin:0!important;opacity:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    #addSourcePlans #sourcePlanSelection{margin:9px 0 0;font-size:12px;color:var(--aite-ink,#25333d)}
+    #addSourcePlans #sourcePlanFilesList{max-height:125px;margin:6px 0 0;padding:0;overflow:auto;list-style:none;border:1px solid var(--aite-line,#ccd5dd);border-radius:4px;background:var(--aite-field,#fff)}
+    #addSourcePlans #sourcePlanFilesList[hidden]{display:none}
+    #addSourcePlans #sourcePlanFilesList li{padding:7px 9px;overflow-wrap:anywhere;font-size:12px;line-height:1.4}
+    #addSourcePlans #sourcePlanFilesList li+li{border-top:1px solid var(--aite-line,#ccd5dd)}
+    #addSourcePlans .source-plan-import-help{margin:8px 0 0;font-size:11px;color:var(--aite-muted,#64717e)}
+    @media(max-width:480px){#addSourcePlans .source-plan-dropzone{min-height:150px;padding:16px 12px}}
+    @media(prefers-reduced-motion:reduce){#addSourcePlans .source-plan-dropzone{transition:none}}
+  </style><form id="addSourcePlans">${select('sourcePlanFolder','Dossier',folderEntries(),chosen||'')}${select('sourcePlanType','Type de plans',typeEntries(),type)}<section class="source-plan-picker" aria-label="Choisir ou déposer les plans">
+    <div id="sourcePlanDropzone" class="source-plan-dropzone" role="group" aria-labelledby="sourcePlanDropTitle" aria-describedby="sourcePlanDropHelp">
+      <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
+      <strong id="sourcePlanDropTitle">Déposez vos plans PDF ici</strong>
+      <button type="button" id="chooseSourcePlanFiles">Choisir des fichiers</button>
+      <p id="sourcePlanDropHelp">PDF, PNG et JPEG · plusieurs fichiers possibles</p>
+    </div>
+    <input class="source-plan-native-input" aria-label="Plans PDF ou images" aria-describedby="sourcePlanDropHelp sourcePlanSelection" tabindex="-1" id="sourcePlanFiles" type="file" accept=".pdf,.png,.jpg,.jpeg" multiple required>
+    <p id="sourcePlanSelection" role="status" aria-live="polite" aria-atomic="true">Aucun fichier sélectionné.</p>
+    <ul id="sourcePlanFilesList" aria-label="Fichiers sélectionnés" hidden></ul>
+    <p class="source-plan-import-help">Cliquez sur « Ajouter les plans » pour lancer leur lecture.</p>
+  </section>${actions('Ajouter les plans')}</form>`);
     $('#sourcePlanFolder').onchange=()=>{$('#sourcePlanType').value=catalogue().folders.find(f=>f.id===$('#sourcePlanFolder').value)?.typeId||'other';};
     $('#cancelPlanLibrary').onclick=closeDialog;
+    const dropInput=$('#sourcePlanFiles'),dropZone=$('#sourcePlanDropzone'),dropChoose=$('#chooseSourcePlanFiles'),dropStatus=$('#sourcePlanSelection'),dropList=$('#sourcePlanFilesList');
+    let dropDepth=0;
+    const dropFeedback=message=>{const alert=$('#planLibraryError');if(alert)alert.textContent=message;};
+    const showSelectedPlans=()=>{
+      const selected=[...dropInput.files];dropList.replaceChildren();dropList.hidden=!selected.length;
+      dropStatus.textContent=selected.length?(selected.length===1?'1 fichier sélectionné.':selected.length+' fichiers sélectionnés.'):'Aucun fichier sélectionné.';
+      for(const file of selected){const row=document.createElement('li'),size=file.size>=1048576?(file.size/1048576).toLocaleString('fr-CA',{maximumFractionDigits:1})+' Mio':Math.max(1,Math.ceil(file.size/1024))+' Kio';row.textContent=file.name+' · '+size;dropList.append(row);}
+    };
+    dropChoose.onclick=()=>dropInput.click();
+    dropZone.addEventListener('click',event=>{if(!event.target.closest('button,input,a'))dropInput.click();});
+    dropInput.addEventListener('change',()=>{dropFeedback('');showSelectedPlans();});
+    dropInput.addEventListener('invalid',event=>{event.preventDefault();dropFeedback('Choisissez au moins un plan PDF ou une image.');dropChoose.focus();});
+    const containsFiles=event=>[...(event.dataTransfer?.types||[])].includes('Files')||!!event.dataTransfer?.files?.length;
+    dropZone.addEventListener('dragenter',event=>{if(!containsFiles(event))return;event.preventDefault();event.stopPropagation();dropDepth++;dropZone.classList.add('is-dragover');});
+    dropZone.addEventListener('dragover',event=>{if(!containsFiles(event))return;event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='copy';dropZone.classList.add('is-dragover');});
+    dropZone.addEventListener('dragleave',event=>{if(!containsFiles(event))return;event.preventDefault();event.stopPropagation();dropDepth=Math.max(0,dropDepth-1);if(!dropDepth)dropZone.classList.remove('is-dragover');});
+    dropZone.addEventListener('drop',event=>{
+      if(!containsFiles(event))return;event.preventDefault();event.stopPropagation();dropDepth=0;dropZone.classList.remove('is-dragover');
+      const incoming=[...event.dataTransfer.files];if(!incoming.length)return;
+      const unsupported=incoming.filter(file=>!/\.(pdf|png|jpe?g)$/i.test(file.name)&&!['application/pdf','image/png','image/jpeg'].includes(file.type));
+      if(unsupported.length){dropFeedback('Formats pris en charge : PDF, PNG et JPEG. Fichier non ajouté : '+unsupported.map(file=>file.name).join(', '));return;}
+      try{
+        const transfer=new DataTransfer(),seen=new Set();
+        for(const file of [...dropInput.files,...incoming]){const key=JSON.stringify([file.name,file.size,file.lastModified,file.type]);if(!seen.has(key)){seen.add(key);transfer.items.add(file);}}
+        dropInput.files=transfer.files;dropInput.dispatchEvent(new Event('change',{bubbles:true}));
+      }catch{dropFeedback('Le dépôt n’est pas disponible ici. Utilisez « Choisir des fichiers ».');dropChoose.focus();}
+    });
+    showSelectedPlans();
+
     $('#addSourcePlans').onsubmit=event=>{event.preventDefault();const files=[...$('#sourcePlanFiles').files],folder=$('#sourcePlanFolder').value||null,type=$('#sourcePlanType').value;closeDialog();importFiles(files,folder,type);};
   }
   function folderDialog(id=null) {
@@ -5765,6 +5880,84 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     const r=menu.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(x,innerWidth-r.width-8))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-r.height-8))+'px';
     menu.onkeydown=event=>{event.stopPropagation();const nodes=[...menu.querySelectorAll('button')],i=nodes.indexOf(document.activeElement);if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();nodes[event.key==='Home'?0:event.key==='End'?nodes.length-1:(i+(event.key==='ArrowDown'?1:-1)+nodes.length)%nodes.length].focus();}else if(event.key==='Escape'){event.preventDefault();closeMenu(true);}else if(event.key==='Tab')closeMenu(true);};menu.firstElementChild.focus();
   }
+  function sheetCandidates() {return [...($('#sheetList')?.querySelectorAll('.plan-sheet-row')||[])].filter(row=>!row.hidden);}
+  function filterSheets() {
+    const host=$('#sheetList');if(!host)return;
+    const query=searchText($('#sheetSearch')?.value);
+    sheetCursor=-1;
+    for(const row of host.querySelectorAll('.plan-sheet-row')) {
+      row.hidden=!!query&&!row.dataset.keywords.includes(query);
+      row.classList.remove('sheet-keyboard');
+    }
+    for(const section of host.querySelectorAll('.plan-sheet-level')) {
+      section.hidden=![...section.querySelectorAll('.plan-sheet-row')].some(row=>!row.hidden);
+      section.open=query&&!section.hidden?true:openLevels.get(section.dataset.levelKey)!==false;
+    }
+    const count=sheetCandidates().length,empty=$('#sheetSearchEmpty'),status=$('#sheetSearchStatus');
+    if(empty)empty.hidden=count>0;
+    if(status)status.textContent=count+' feuille'+(count>1?'s':'')+' correspondante'+(count>1?'s':'')+'.';
+  }
+  function decorateSheets() {
+    const host=$('#sheetList');if(!host)return;
+    const rows=[...host.querySelectorAll('[data-sheet]')];if(!rows.length)return;
+    const state=getState(),groups=new Map(),query=searchText($('#sheetSearch')?.value);
+    // Reparent the original controls: native navigation, multiselection and overlay
+    // listeners remain attached. Only the host owns which physical pages exist.
+    for(const row of rows) {
+      const number=+row.dataset.sheet,context=options.sheetFloorContext?.(number),level=context?.primary&&context.level?String(context.level):'Autres feuilles',key=JSON.stringify([state.documentKey,level]);
+      if(!groups.has(key)) {
+        const group=document.createElement('details');group.className='plan-sheet-level';group.dataset.levelKey=key;
+        group.open=query?true:openLevels.get(key)!==false;
+        const heading=document.createElement('summary');heading.textContent=level;group.append(heading);
+        group.addEventListener('toggle',()=>{if(group.isConnected&&!searchText($('#sheetSearch')?.value))openLevels.set(key,group.open);});
+        groups.set(key,group);
+      }
+      const wrapper=document.createElement('div');wrapper.className='plan-sheet-row';
+      const sheet=state.sheetNames?.[number],info=state.pageInfo?.[number];
+      wrapper.dataset.keywords=searchText([number,pageName(number),typeof sheet==='string'?sheet:sheet?.code,typeof sheet==='string'?'':sheet?.title,info?.code,info?.title,level,level.replace(/^Niv\s+/,'Niveau '),level==='RDC'?'Rez-de-chaussée':''].filter(Boolean).join(' '));
+      const more=document.createElement('button');more.type='button';more.className='plan-sheet-menu';more.dataset.sheetMenu=row.dataset.sheet;more.textContent='⋯';
+      more.setAttribute('aria-label','Actions de la feuille '+pageName(number));more.setAttribute('aria-haspopup','menu');more.title='Actions de la feuille '+pageName(number);
+      more.onclick=event=>{event.preventDefault();event.stopPropagation();const rect=more.getBoundingClientRect();showMenu('page',row.dataset.sheet,rect.right,rect.bottom,more);};
+      const overlay=row.nextElementSibling?.id==='planOverlayLayer'?row.nextElementSibling:null;
+      wrapper.append(row,...(overlay?[overlay]:[]),more);groups.get(key).append(wrapper);
+    }
+    const empty=document.createElement('p');empty.id='sheetSearchEmpty';empty.className='selection-help';empty.textContent='Aucune feuille correspondante.';
+    host.replaceChildren(...groups.values(),empty);filterSheets();
+  }
+  function installSheetSearch() {
+    const input=$('#sheetSearch');if(!input)return;
+    input.placeholder='Numéro, titre ou niveau';input.setAttribute('aria-label','Rechercher une feuille par numéro, titre ou niveau');
+    input.setAttribute('aria-controls','sheetList');
+    const help=document.createElement('span');help.id='sheetSearchHelp';help.className='plan-library-sr-only';help.textContent='Flèches pour parcourir, Entrée pour ouvrir, Échap pour effacer la recherche.';
+    const status=document.createElement('span');status.id='sheetSearchStatus';status.className='plan-library-sr-only';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+    input.after(help,status);
+    const descriptions=new Set((input.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean));descriptions.add(help.id);input.setAttribute('aria-describedby',[...descriptions].join(' '));
+    // Filter the decorated rows when the host does not render again on input.
+    input.addEventListener('input',filterSheets);
+    input.addEventListener('keydown',event=>{
+      if(!['ArrowDown','ArrowUp','Home','End','Enter','Escape'].includes(event.key)||event.isComposing)return;
+      if(event.key==='Escape') {
+        if(input.value||sheetCursor>=0){event.preventDefault();event.stopPropagation();input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));}
+        return;
+      }
+      // Home/End retain text editing unless a result is already being browsed.
+      if(['Home','End'].includes(event.key)&&sheetCursor<0)return;
+      const rows=sheetCandidates();if(!rows.length)return;
+      event.preventDefault();event.stopPropagation();
+      if(event.key==='Enter') {
+        const row=rows[Math.max(0,sheetCursor)],group=row.closest('details'),button=row.querySelector('[data-sheet]');
+        openLevels.set(group.dataset.levelKey,true);input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));
+        // Input rendering may replace the original row before activation.
+        const current=[...$('#sheetList').querySelectorAll('[data-sheet]')].find(node=>node.dataset.sheet===button.dataset.sheet);
+        current?.click();return;
+      }
+      const direction=event.key==='ArrowDown'?1:-1;
+      sheetCursor=event.key==='Home'?0:event.key==='End'?rows.length-1:sheetCursor<0?(direction>0?0:rows.length-1):(sheetCursor+direction+rows.length)%rows.length;
+      rows.forEach((row,index)=>row.classList.toggle('sheet-keyboard',index===sheetCursor));
+      const row=rows[sheetCursor];row.closest('details').open=true;row.scrollIntoView({block:'nearest'});
+      status.textContent=(sheetCursor+1)+' sur '+rows.length+' · '+pageName(+row.querySelector('[data-sheet]').dataset.sheet);
+    });
+  }
   function render() {
     const tree=$('#treeProject')?.closest('.tree');if(!tree)return;
     let host=$('#planSourceFolders');if(!host){tree.querySelector('.tree-root').insertAdjacentHTML('afterend','<div id="planSourceFolders" aria-label="Dossiers des plans"></div>');host=$('#planSourceFolders');}
@@ -5791,9 +5984,10 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     if(selection)selectNode(selection.kind,selection.id);else updateToolbar();
   }
   function install() {
+    if(installed)return;
     if(getState().documentKey==='legacy'&&!model()){const resumed=projectSession?.attach(null);if(resumed){getState().estimation=resumed;getState().project=resumed.workspace.project.name;}}
-    const tree=$('#treeProject')?.closest('.tree');if(!tree)return;
-    const target=node=>{const page=node.closest('[data-sheet]'),doc=node.closest('[data-source-document]'),folder=node.closest('summary')?.closest('[data-source-folder]');return page?['page',page.dataset.sheet,page]:doc?['document',doc.dataset.sourceDocument,doc]:folder&&folder.dataset.sourceFolder!=='unfiled'?['folder',folder.dataset.sourceFolder,folder.querySelector('summary')]:[null,null,tree];};
+    const tree=$('#treeProject')?.closest('.tree');if(!tree)return;installed=true;
+    const target=node=>{const page=node.closest('[data-sheet]')||node.closest('[data-sheet-menu]')?.parentElement.querySelector('[data-sheet]'),doc=node.closest('[data-source-document]'),folder=node.closest('summary')?.closest('[data-source-folder]');return page?['page',page.dataset.sheet,node.closest('[data-sheet-menu]')||page]:doc?['document',doc.dataset.sourceDocument,doc]:folder&&folder.dataset.sourceFolder!=='unfiled'?['folder',folder.dataset.sourceFolder,folder.querySelector('summary')]:[null,null,tree];};
     tree.addEventListener('click',event=>{const row=event.target.closest('#sheetList [data-sheet]');if(row)selectNode('page',row.dataset.sheet);},true);
     tree.addEventListener('contextmenu',event=>{event.preventDefault();event.stopPropagation();const [kind,id,node]=target(event.target);showMenu(kind,id,event.clientX,event.clientY,node);});
     tree.addEventListener('keydown',event=>{if(event.target.closest('input,textarea,select'))return;const [kind,id,node]=target(event.target);if((event.shiftKey&&event.key==='F10')||event.key==='ContextMenu'){event.preventDefault();event.stopPropagation();const r=node.getBoundingClientRect();showMenu(kind,id,r.left+12,r.bottom,node);}else if(kind&&['F2','Delete'].includes(event.key)){event.preventDefault();event.stopPropagation();selectNode(kind,id);event.key==='F2'?editSelection():removeSelection();}});
@@ -5801,9 +5995,20 @@ const planLibraryUIFactory = (function createPlanLibraryUI(options) {
     const style=document.createElement('style');style.id='planLibraryStyle';style.textContent=`
       .plan-library-toolbar{display:flex;flex-wrap:wrap;gap:2px;padding:4px;border-bottom:1px solid #bfd6e5}.plan-library-toolbar>button{display:grid;place-items:center;width:24px;height:24px;padding:3px;border:1px solid #527f9f;border-radius:3px;background:#fff;color:#174b72;cursor:pointer}.plan-library-toolbar>button:disabled{opacity:.45;cursor:default}.plan-library-toolbar>button:focus-visible,.plan-library-menu button:focus-visible{outline:2px solid #236b99;outline-offset:-2px}.source-folder.library-selected>summary,.source-document.library-selected{outline:1px solid #527f9f;outline-offset:-1px}
       .plan-library-menu{position:fixed;z-index:1200;display:flex;flex-direction:column;min-width:190px;max-width:calc(100% - 16px);padding:4px;background:#fff;border:1px solid #527f9f;border-radius:3px;box-shadow:0 4px 16px #17354d30;color:#17354d;font:12px/1.4 'Segoe UI',Arial,sans-serif}.plan-library-menu button{border:0;background:#fff;color:inherit;text-align:left;padding:7px 10px;min-height:30px;white-space:normal;cursor:pointer}.plan-library-menu button:hover,.plan-library-menu button:focus{background:#d9efff}.plan-types-list>div,.plan-retired-list>div{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #bfd6e5}.plan-types-list span,.plan-retired-list span{flex:1;min-width:0;overflow-wrap:anywhere}
-    `;document.head.append(style);render();
+      #sheetList .plan-sheet-level{margin:3px 7px 5px;border:1px solid var(--aite-line,#dfe1e5);border-radius:5px;overflow:hidden}
+      #sheetList .plan-sheet-level>summary{padding:7px 8px;font-size:12px;font-weight:650;background:var(--aite-chrome,#f1f2f4);color:var(--aite-ink,#25333d);cursor:pointer}
+      #sheetList .plan-sheet-row{display:grid;grid-template-columns:minmax(0,1fr) 29px;align-items:center;min-width:0}
+      #sheetList .plan-sheet-row[hidden],#sheetList .plan-sheet-level[hidden]{display:none}
+      #sheetList .plan-sheet-row>.sheet-row{grid-column:1;grid-row:1;width:100%;min-width:0;margin:0;text-align:left}
+      #sheetList .plan-sheet-row>.overlay-layer-row{grid-column:1/-1}
+      #sheetList .plan-sheet-menu{grid-column:2;grid-row:1;height:26px;width:26px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--aite-ink,#25333d);font-size:16px;cursor:pointer}
+      #sheetList .plan-sheet-menu:hover{background:var(--aite-hover,#eceef1)}
+      #sheetList .sheet-keyboard{outline:2px solid var(--aite-focus,#426a90);outline-offset:-2px;background:var(--aite-hover,#eceef1)}
+      #sheetList :is(.plan-sheet-level>summary,.plan-sheet-menu):focus-visible{outline:2px solid var(--aite-focus,#426a90);outline-offset:-2px}
+      .plan-library-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+    `;document.head.append(style);installSheetSearch();options.registerSheetDecorator?.(decorateSheets);decorateSheets();render();
   }
-  return {install,render,capture,classificationFields,openDocument};
+  return {install,render,capture,classificationFields,openDocument,decorateSheets};
 });
 const planTabs = (function createPlanTabs() {
   let tabs=[],activeKey=null;
@@ -15972,37 +16177,51 @@ const quantityTransferUIFactory = (function createQuantityTransferUI({document,g
   const number=value=>value===null?'À vérifier':value.toLocaleString('fr-CA',{maximumFractionDigits:2});
   const filename=value=>String(value||'projet').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]+/g,'_').slice(0,120);
   const style=`<style>
-  .quantity-transfer-dialog{width:min(1180px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:90vh;display:flex;flex-direction:column;gap:12px;padding:16px;box-sizing:border-box;font-size:12px}
-  .quantity-transfer-dialog header h2{font-size:18px}.qt-intro{margin:0;color:var(--muted)}
-  .qt-filters{display:flex;gap:12px;flex-wrap:wrap}.qt-filters label{display:grid;gap:4px;min-width:0;flex:1}.qt-filters select{width:100%;min-width:0;max-width:100%;padding:8px;font:inherit}
-  .qt-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}.qt-tabs button{padding:8px 12px;background:white;border:1px solid transparent;font:inherit;color:var(--ink)}.qt-tabs [aria-selected=true]{border-color:var(--line);border-bottom-color:white;color:var(--green);font-weight:700}
-  .qt-result{overflow:auto;min-height:120px;max-height:52vh;border:1px solid var(--line)}.qt-result table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}.qt-result th{position:sticky;top:0;background:#edf7ff;text-align:left}.qt-result td,.qt-result th{padding:8px;border-bottom:1px solid var(--line)}.qt-result .qt-amount{text-align:right;font-variant-numeric:tabular-nums}.qt-result .qt-note{white-space:normal;min-width:180px;max-width:320px}.qt-result input{accent-color:var(--green)}.qt-empty{padding:24px;text-align:center;color:var(--muted)}
-  .qt-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.qt-toolbar p{margin:0}.qt-error{color:#a62d1a;margin:0;white-space:normal}.qt-help{margin:0;color:var(--muted)}.qt-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.qt-actions button{font:inherit;min-height:36px;padding:8px 12px}.qt-actions button:focus-visible,.qt-tabs button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
-  @media(max-width:640px){.quantity-transfer-dialog{padding:12px;gap:8px}.qt-filters label{flex-basis:100%}.qt-result{max-height:42vh}.qt-actions button{flex:1}.quantity-transfer-launch span{display:none}}
+  #overlay .modal-back:has(.quantity-transfer-dialog){display:flex;justify-content:flex-end;align-items:flex-start;padding:102px 20px 45px;background:color-mix(in srgb,var(--aite-theme-rail,#172f3d) 20%,transparent)}
+  #overlay .quantity-transfer-dialog{--qt-ink:var(--aite-theme-ink,var(--aite-ink,#25333d));--qt-muted:var(--aite-theme-muted,var(--aite-muted,#576574));--qt-paper:var(--aite-theme-paper,var(--aite-paper,#fbfbfa));--qt-field:var(--aite-theme-field,#fff);--qt-chrome:var(--aite-theme-chrome,#f1f2f4);--qt-line:var(--aite-theme-line,var(--aite-line,#d5dbe1));--qt-blue:var(--aite-theme-blue,var(--aite-blue,#315f89));--qt-focus:var(--aite-theme-focus,var(--aite-focus,#315f89));width:min(760px,calc(100vw - 40px));max-width:100%;max-height:calc(100dvh - 151px);display:flex;flex-direction:column;gap:8px;padding:12px;overflow:auto;box-sizing:border-box;font-size:12px;line-height:1.4;color:var(--qt-ink);background:var(--qt-paper);border:1px solid var(--qt-line);border-radius:8px}
+  #overlay .quantity-transfer-dialog.dossier-details{width:min(875px,100%)}
+  #overlay .quantity-transfer-dialog header{margin:0;min-height:36px;flex:none}#overlay .quantity-transfer-dialog header h2{font-size:18px;margin:0}.quantity-transfer-dialog .qt-intro{display:none}
+  .quantity-transfer-dialog .qt-filters{display:flex;gap:8px;flex-wrap:wrap;flex:none}.quantity-transfer-dialog .qt-filters label{display:grid;gap:4px;min-width:0;flex:1;margin:0;font-size:12px}.quantity-transfer-dialog .qt-filters label:first-child{flex:1.5}.quantity-transfer-dialog .qt-filters label:nth-child(2){flex:.6}.quantity-transfer-dialog .qt-filters :is(input,select){box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:32px;margin:0;padding:5px 8px;font:inherit;border:1px solid var(--qt-line);border-radius:5px;background:var(--qt-field);color:var(--qt-ink)}
+  .quantity-transfer-dialog .qt-tabs{position:relative;isolation:isolate;display:flex;gap:3px;flex:none;align-self:flex-start;max-width:100%;padding:3px;border:1px solid var(--qt-line);border-radius:6px;background:var(--qt-chrome)}.quantity-transfer-dialog .qt-tabs button{position:relative;z-index:1;margin:0;padding:6px 14px;min-height:32px;border:0;border-radius:4px;background:transparent;font:inherit;color:var(--qt-muted);white-space:nowrap}.quantity-transfer-dialog .qt-tabs [aria-selected=true]{color:var(--qt-ink);font-weight:600}#qtActiveIndicator{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;border-radius:4px;background:var(--qt-field);box-shadow:0 1px 3px #172f3d15;transition:transform .16s ease,width .16s ease;pointer-events:none}
+  .quantity-transfer-dialog .qt-toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--qt-muted)}.quantity-transfer-dialog .qt-toolbar p{margin:0;color:inherit}#dossierQtDetails{flex:none;min-height:30px;margin:0;padding:4px 8px;border:1px solid var(--qt-line);border-radius:4px;background:var(--qt-chrome);color:var(--qt-ink);font:inherit}#dossierQtDetails[aria-pressed=true]{background:var(--aite-theme-selection,#dce8f3)}
+  .quantity-transfer-dialog .qt-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:none;margin:0;border:1px solid var(--qt-line);border-radius:5px;background:var(--qt-field)}.quantity-transfer-dialog .qt-totals>div{padding:6px 10px;min-width:0}.quantity-transfer-dialog .qt-totals>div+div{border-left:1px solid var(--qt-line)}.quantity-transfer-dialog .qt-totals dt{font-size:11px;color:var(--qt-muted)}.quantity-transfer-dialog .qt-totals dd{display:flex;gap:6px;align-items:baseline;margin:1px 0 0;font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}.quantity-transfer-dialog .qt-totals small{font-size:11px;font-weight:400;color:var(--qt-muted)}
+  .quantity-transfer-dialog .qt-result{overflow:auto;min-width:0;min-height:85px;max-height:min(300px,36vh);flex-shrink:1;border:1px solid var(--qt-line);border-radius:4px;background:var(--qt-field)}.quantity-transfer-dialog .qt-result table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}.quantity-transfer-dialog .qt-result th{position:sticky;top:0;z-index:1;text-align:left;background:var(--qt-chrome);color:var(--qt-ink)}.quantity-transfer-dialog .qt-result td,.quantity-transfer-dialog .qt-result th{padding:6px 8px;border-bottom:1px solid var(--qt-line)}.quantity-transfer-dialog .qt-result th button{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:24px;width:100%;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;white-space:inherit}.quantity-transfer-dialog .qt-result th button span{font-size:11px;color:var(--qt-muted)}.quantity-transfer-dialog .qt-result tbody tr:hover{background:var(--aite-theme-hover,#edf1f4)}.quantity-transfer-dialog .qt-result .qt-amount{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}.quantity-transfer-dialog .qt-result .qt-note{white-space:normal;min-width:110px;max-width:250px}.quantity-transfer-dialog .qt-result input{accent-color:var(--qt-blue)}.quantity-transfer-dialog .qt-empty{padding:24px;text-align:center;color:var(--qt-muted)}
+  .quantity-transfer-dialog:not(.dossier-details) #qtResult[data-view="finishes"] :is(th,td):is(:nth-child(2),:nth-child(6),:nth-child(7)),.quantity-transfer-dialog:not(.dossier-details) #qtResult[data-view="levels"] :is(th,td):is(:nth-child(2),:nth-child(5),:nth-child(6),:nth-child(9),:nth-child(10)),.quantity-transfer-dialog:not(.dossier-details) #qtResult[data-view="units"] :is(th,td):is(:nth-child(1),:nth-child(5),:nth-child(8),:nth-child(9),:nth-child(10)){display:none}.quantity-transfer-dialog:not(.dossier-details) #qtResult td:first-child{max-width:340px;overflow:hidden;text-overflow:ellipsis}
+  .quantity-transfer-dialog .qt-error{margin:0;color:var(--aite-theme-danger,#a62d1a);white-space:normal}.quantity-transfer-dialog .qt-help{margin:0;color:var(--qt-muted);font-size:11px;line-height:1.4}.quantity-transfer-dialog .qt-actions{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end;border-top:1px solid var(--qt-line);padding-top:6px}.quantity-transfer-dialog .qt-actions button{font:inherit;min-height:36px;margin:0;padding:7px 10px;border:1px solid var(--qt-line);border-radius:5px;background:var(--qt-field);color:var(--qt-ink)}.quantity-transfer-dialog .qt-actions button.primary{background:var(--qt-blue);color:var(--aite-theme-on-accent,#fff);border-color:transparent}.quantity-transfer-dialog button:disabled{opacity:.5;cursor:not-allowed}.quantity-transfer-dialog :is(button,input,select,[tabindex]):focus-visible{outline:2px solid var(--qt-focus);outline-offset:2px}
+  @media(max-width:700px){#overlay .modal-back:has(.quantity-transfer-dialog){padding:26px 10px 56px}#overlay .quantity-transfer-dialog{min-width:0;width:100%;max-height:calc(100dvh - 82px)}.quantity-transfer-dialog .qt-result{max-height:32vh}.quantity-transfer-dialog:not(.dossier-details) #qtResult td:first-child{max-width:250px}}
+  @media(max-width:640px){.quantity-transfer-dialog .qt-tabs{width:100%;box-sizing:border-box}.quantity-transfer-dialog .qt-tabs button{flex:1;min-width:0;padding:6px 10px}.quantity-transfer-dialog .qt-totals>div{padding:6px}.quantity-transfer-dialog .qt-totals dd{flex-wrap:wrap;gap:3px}.quantity-transfer-dialog .qt-filters{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px 10px}.quantity-transfer-dialog .qt-filters label:first-child{grid-column:1/-1}.quantity-transfer-dialog .qt-actions{position:sticky;bottom:-12px;z-index:2;display:grid;grid-template-columns:64px 1fr 1.15fr;gap:6px;padding-top:8px;background:var(--qt-paper)}.quantity-transfer-dialog .qt-actions button{min-width:0;min-height:38px;padding:5px;font-size:11px}}
+  @media(prefers-reduced-motion:reduce){#qtActiveIndicator{transition:none}}
   </style>`;
 
   function open() {
     let report,error='';try{report=getReport();}catch(e){error=e.message;report={units:[],levels:[],products:[],blocks:[]};}
-    const signature=JSON.stringify(report),reviewed=new Set();let tab='units',busy=false;
-    openDialog('Transfert des quantités',style+`
-      <p class="qt-intro">Détail par unité et récapitulatif par niveau pour le coordonnateur de projet.</p>
-      <div class="qt-filters"><label>Fini / produit<select id="qtProduct"><option value="">Tous les finis</option>${report.products.map(p=>`<option value="${esc(p.key)}">${esc(p.code+' · '+p.label+' · '+(transfer.roles[p.usage]||p.usage)+' · '+(transfer.scopes[p.scope]||'Localisation à préciser'))}</option>`).join('')}</select></label><label>Bloc<select id="qtBlock"><option value="">Tous les blocs</option>${report.blocks.map(b=>`<option value="${esc(b.key)}">${esc(b.label)}</option>`).join('')}</select></label></div>
-      <div class="qt-tabs" role="tablist" aria-label="Organisation des quantités"><button id="qtTabUnits" role="tab" aria-selected="true" aria-controls="qtResult">Par unité</button><button id="qtTabLevels" role="tab" aria-selected="false" aria-controls="qtResult" tabindex="-1">Par niveau</button></div>
-      <div class="qt-toolbar"><p id="qtScope" role="status"></p><p>Quantités nettes · sans perte ajoutée</p></div>
-      <div id="qtResult" class="qt-result" role="tabpanel" aria-labelledby="qtTabUnits"></div>
-      <p class="qt-help">Dans « Par niveau », coche les niveaux vérifiés pour remplir ton gabarit. Ses formules de pertes, de boîtes et d’estimation sont conservées.</p>
+    const signature=JSON.stringify(report),reviewed=new Set();let tab='finishes',busy=false,search='',sorting={column:null,direction:1};
+    const definitions=[['finishes','qtTabFinishes'],['levels','qtTabLevels'],['units','qtTabUnits']];
+    openDialog('Quantités',style+`
+      <p class="qt-intro">Les mêmes quantités nettes, regroupées par fini, par niveau ou par unité.</p>
+      <div class="qt-filters"><label>Fini / produit<select id="qtProduct"><option value="">Tous les finis</option>${report.products.map(p=>`<option value="${esc(p.key)}">${esc(p.code+' · '+p.label+' · '+(transfer.roles[p.usage]||p.usage)+' · '+(transfer.scopes[p.scope]||'Localisation à préciser'))}</option>`).join('')}</select></label><label>Bloc<select id="qtBlock"><option value="">Tous les blocs</option>${report.blocks.map(b=>`<option value="${esc(b.key)}">${esc(b.label)}</option>`).join('')}</select></label><label>Filtrer l’affichage<input type="search" id="qtSearch" placeholder="Fini, niveau, unité…" autocomplete="off" aria-describedby="qtSearchScope"></label></div>
+      <div class="qt-tabs" role="tablist" aria-label="Organisation des quantités"><span id="qtActiveIndicator" aria-hidden="true"></span><button id="qtTabFinishes" type="button" role="tab" aria-selected="true" aria-controls="qtResult">Par fini</button><button id="qtTabLevels" type="button" role="tab" aria-selected="false" aria-controls="qtResult" tabindex="-1">Par niveau</button><button id="qtTabUnits" type="button" role="tab" aria-selected="false" aria-controls="qtResult" tabindex="-1">Par unité</button></div>
+      <div class="qt-toolbar"><p id="qtScope" role="status"></p><p id="qtExportScope">Quantités nettes · sans perte ajoutée</p></div>
+      <dl class="qt-totals" aria-label="Totaux séparés du périmètre Fini et Bloc"><div><dt>Surface nette</dt><dd><span id="qtTotalArea">0</span><small>pi²</small></dd></div><div><dt>Longueur nette</dt><dd><span id="qtTotalLength">0</span><small>pi lin.</small></dd></div><div><dt>Comptage</dt><dd><span id="qtTotalCount">0</span><small>unités</small></dd></div></dl>
+      <div id="qtResult" class="qt-result" role="tabpanel" aria-labelledby="qtTabFinishes" tabindex="0"></div>
+      <p class="qt-help">Transfert des quantités : dans « Par niveau », coche les niveaux vérifiés pour remplir ton gabarit. Ses formules de pertes, de boîtes et d’estimation sont conservées.</p>
+      <p class="qt-help" id="qtSearchScope">La recherche filtre les lignes affichées. Les totaux et Excel couvrent toujours les finis et le bloc choisis.</p>
       <p id="qtError" class="qt-error" role="alert">${esc(error)}</p>
       <div class="qt-actions"><button id="qtClose" type="button">Fermer</button><button id="qtCoordinator" type="button">Excel coordonnateur</button><button id="qtTemplate" type="button" class="primary">Remplir mon gabarit vinyle</button></div>
       <input id="qtTemplateInput" type="file" accept=".xlsx" hidden aria-label="Sélectionner mon gabarit Excel vinyle">
     `,'quantity-transfer-dialog');
     const $=id=>document.getElementById(id),selection=()=>({productKey:$('qtProduct').value,blockKey:$('qtBlock').value,reviewedLevels:[...reviewed]});
     const dialog=document.querySelector('.quantity-transfer-dialog'),alive=()=>dialog.isConnected;
+    const detailButton=document.createElement('button');detailButton.type='button';detailButton.id='dossierQtDetails';detailButton.textContent='Détails';
+    detailButton.setAttribute('aria-pressed','false');detailButton.setAttribute('aria-controls','qtResult');
+    detailButton.onclick=()=>{const expanded=dialog.classList.toggle('dossier-details');detailButton.setAttribute('aria-pressed',String(expanded));detailButton.textContent=expanded?'Vue compacte':'Détails';};
+    dialog.querySelector('.qt-toolbar').append(detailButton);
     if(report.products.length===1)$('qtProduct').value=report.products[0].key;
     if(report.blocks.length===1)$('qtBlock').value=report.blocks[0].key;
     function fresh(){if(JSON.stringify(getReport())!==signature)throw new Error('Le relevé a changé. Rouvre cette fenêtre et vérifie les niveaux actualisés.');}
     function buttons(){
       if(!alive())return;
-      $('qtProduct').disabled=busy;$('qtBlock').disabled=busy;
+      $('qtProduct').disabled=busy;$('qtBlock').disabled=busy;$('qtSearch').disabled=busy;
       $('qtResult').querySelectorAll('[data-qt-level]').forEach(box=>box.disabled=busy||!report.levels.find(level=>level.key===box.dataset.qtLevel)?.eligible);
       $('qtCoordinator').disabled=busy||!transfer.selected(report,selection()).length;
       let valid=false;try{transfer.templatePlan(report,selection());valid=true;}catch{}
@@ -16011,20 +16230,55 @@ const quantityTransferUIFactory = (function createQuantityTransferUI({document,g
     }
     function status(row,levelKey){return row.issues.length?row.issues.join(' · '):reviewed.has(levelKey)?'Vérifié pour transfert':'À vérifier';}
     function levelLabel(row){return row.level||'Étage à affecter · '+[...new Set(row.sources.map(source=>'p. '+source.page))].join(' / ');}
+    function moveIndicator(){
+      if(!alive())return;
+      const active=dialog.querySelector('.qt-tabs [aria-selected="true"]'),indicator=$('qtActiveIndicator');
+      if(active&&indicator){indicator.style.width=active.offsetWidth+'px';indicator.style.transform='translateX('+(active.offsetLeft-3)+'px)';}
+    }
+    const view=document.defaultView,observer=typeof view.ResizeObserver==='function'?new view.ResizeObserver(moveIndicator):null;
+    observer?.observe(dialog);
+    const cleanup=typeof view.MutationObserver==='function'?new view.MutationObserver(()=>{if(!alive()){observer?.disconnect();cleanup.disconnect();}}):null;
+    cleanup?.observe(document.getElementById('overlay')||dialog.parentElement,{childList:true,subtree:true});
+    function finishGroups(levels,units){
+      const groups=new Map();
+      for(const level of levels){
+        let row=groups.get(level.productKey);
+        if(!row){row={product:level.product,known:0,unknown:false,levels:new Set(),issues:new Set()};groups.set(level.productKey,row);}
+        row.levels.add(levelLabel(level));
+        if(level.net===null)row.unknown=true;
+        for(const issue of level.issues)row.issues.add(issue);
+      }
+      for(const unit of units){const row=groups.get(unit.productKey);if(unit.net===null)row.unknown=true;else row.known+=unit.net;}
+      return [...groups.values()];
+    }
     function render(){
+      const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),query=normalize(search.trim());
       const levels=transfer.selected(report,selection()),unitKeys=new Set(levels.flatMap(level=>level.units)),units=report.units.filter(unit=>unitKeys.has(unit.key));
-      $('qtScope').textContent=units.length+' lignes par unité · '+levels.length+' lignes par niveau';
-      for(const [name,id]of [['units','qtTabUnits'],['levels','qtTabLevels']]){$(id).setAttribute('aria-selected',String(tab===name));$(id).tabIndex=tab===name?0:-1;}
-      $('qtResult').setAttribute('aria-labelledby',tab==='units'?'qtTabUnits':'qtTabLevels');
+      const finishes=finishGroups(levels,units);
+      const totals=new Map(['pi²','pi','u'].map(unit=>[unit,{known:0,unknown:false}]));
+      for(const row of units){const total=totals.get(row.product.quantityUnit);if(!total)continue;if(row.net===null)total.unknown=true;else total.known+=row.net;}
+      for(const row of levels)if(row.net===null){const total=totals.get(row.product.quantityUnit);if(total)total.unknown=true;}
+      for(const [unit,id]of [['pi²','qtTotalArea'],['pi','qtTotalLength'],['u','qtTotalCount']]){const total=totals.get(unit);$(id).textContent=number(total.known)+(total.unknown?' + ?':'');}
+      $('qtScope').textContent=finishes.length+' finis · '+levels.length+' lignes par niveau · '+units.length+' lignes par unité';
+      $('qtExportScope').textContent='Totaux et Excel : '+($('qtProduct').value?report.products.find(p=>p.key===$('qtProduct').value).code:'tous les finis')+' · '+($('qtBlock').value?report.blocks.find(b=>b.key===$('qtBlock').value).label:'tous les blocs');
+      for(const [name,id]of definitions){$(id).setAttribute('aria-selected',String(tab===name));$(id).tabIndex=tab===name?0:-1;}
+      $('qtResult').setAttribute('aria-labelledby',definitions.find(([name])=>name===tab)[1]);$('qtResult').dataset.view=tab;
+      moveIndicator();
       if(!levels.length){$('qtResult').innerHTML='<p class="qt-empty">Aucune quantité dans cette sélection. Lance le takeoff ou trace une surface.</p>';buttons();return;}
       const unitLevel=new Map(levels.flatMap(level=>level.units.map(key=>[key,level.key])));
-      const heads=tab==='units'?['Bloc','Niveau','Unité','Fini','Application','Quantité nette','Unité de mesure','Localisation','Contrôle','Provenance']:['Vérifié','Bloc','Niveau','Fini','Application','Nbre unités','Quantité nette','Unité de mesure','Localisation','Contrôle'];
-      const rows=tab==='units'?units.map(unit=>[unit.block,levelLabel(unit),unit.unit||'À affecter',unit.product.code,transfer.roles[unit.product.usage]||unit.product.usage,number(unit.net),unit.product.quantityUnit,transfer.scopes[unit.product.scope]||'À préciser',status(unit,unitLevel.get(unit.key)),[...new Set(unit.sources.map(source=>source.document+' · p. '+source.page))].join(' / ')]):levels.map(level=>[level,level.block,levelLabel(level),level.product.code,transfer.roles[level.product.usage]||level.product.usage,number(level.unitCount),number(level.net),level.product.quantityUnit,transfer.scopes[level.product.scope]||'À préciser',status(level,level.key)]);
-      $('qtResult').innerHTML='<table><thead><tr>'+heads.map(head=>'<th scope="col">'+esc(head)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((cell,index)=>tab==='levels'&&index===0?`<td><input type="checkbox" data-qt-level="${esc(cell.key)}" aria-label="Niveau ${esc(cell.level)} vérifié pour transfert" ${reviewed.has(cell.key)?'checked':''} ${cell.eligible?'':'disabled'}></td>`:`<td class="${(tab==='units'&&index===5||tab==='levels'&&[5,6].includes(index))?'qt-amount':index>=heads.length-2?'qt-note':''}">${esc(cell)}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+      const heads=tab==='finishes'?['Fini / produit','Application','Niveaux','Quantité nette','Unité de mesure','Localisation','Contrôle']:tab==='units'?['Bloc','Niveau','Unité','Fini','Application','Quantité nette','Unité de mesure','Localisation','Contrôle','Provenance']:['Vérifié','Bloc','Niveau','Fini','Application','Nbre unités','Quantité nette','Unité de mesure','Localisation','Contrôle'];
+      const rows=tab==='finishes'?finishes.map(row=>[row.product.code+' · '+row.product.label,transfer.roles[row.product.usage]||row.product.usage,[...row.levels].join(' · '),row.unknown?{known:row.known,unknown:true}:row.known,row.product.quantityUnit,transfer.scopes[row.product.scope]||'À préciser',[...row.issues].join(' · ')||'À vérifier']):tab==='units'?units.map(unit=>[unit.block,levelLabel(unit),unit.unit||'À affecter',unit.product.code,transfer.roles[unit.product.usage]||unit.product.usage,unit.net,unit.product.quantityUnit,transfer.scopes[unit.product.scope]||'À préciser',status(unit,unitLevel.get(unit.key)),[...new Set(unit.sources.map(source=>source.document+' · p. '+source.page))].join(' / ')]):levels.map(level=>[level,level.block,levelLabel(level),level.product.code,transfer.roles[level.product.usage]||level.product.usage,level.unitCount,level.net,level.product.quantityUnit,transfer.scopes[level.product.scope]||'À préciser',status(level,level.key)]);
+      const numeric=tab==='finishes'?[3]:tab==='units'?[5]:[5,6],collator=new Intl.Collator('fr-CA',{numeric:true,sensitivity:'base'});
+      if(sorting.column!==null)rows.sort((a,b)=>{let x=a[sorting.column],y=b[sorting.column];if(numeric.includes(sorting.column)){x=x?.unknown?x.known:x;y=y?.unknown?y.known:y;if(x===null)return y===null?0:1;if(y===null)return -1;return(x-y)*sorting.direction;}return collator.compare(String(x),String(y))*sorting.direction;});
+      const cellText=cell=>cell===null?'À vérifier':cell?.unknown?number(cell.known)+' + ?':typeof cell==='number'?number(cell):cell;
+      const visibleRows=rows.filter(row=>!query||normalize(row.map((cell,index)=>tab==='levels'&&index===0?'':cellText(cell)).join(' ')).includes(query));
+      if(query)$('qtScope').textContent=visibleRows.length+' lignes affichées sur '+rows.length+' · '+finishes.length+' finis dans le périmètre';
+      $('qtResult').innerHTML='<table><thead><tr>'+heads.map((head,index)=>tab==='levels'&&index===0?'<th scope="col">'+esc(head)+'</th>':'<th scope="col" aria-sort="'+(sorting.column===index?(sorting.direction===1?'ascending':'descending'):'none')+'"><button type="button" data-qt-sort="'+index+'" aria-label="Trier par '+esc(head)+'">'+esc(head)+'<span aria-hidden="true">'+(sorting.column===index?(sorting.direction===1?'↑':'↓'):'↕')+'</span></button></th>').join('')+'</tr></thead><tbody>'+visibleRows.map(row=>'<tr data-qt-row>'+row.map((cell,index)=>tab==='levels'&&index===0?`<td><input type="checkbox" data-qt-level="${esc(cell.key)}" aria-label="Niveau ${esc(cell.level)} vérifié pour transfert" ${reviewed.has(cell.key)?'checked':''} ${cell.eligible?'':'disabled'}></td>`:`<td class="${(numeric.includes(index))?'qt-amount':index>=heads.length-2?'qt-note':''}">${esc(cellText(cell))}</td>`).join('')+'</tr>').join('')+(!visibleRows.length?'<tr><td colspan="'+heads.length+'" class="qt-empty">Aucune ligne ne correspond à ce filtre d’affichage.</td></tr>':'')+'</tbody></table>';
+      $('qtResult').querySelectorAll('[data-qt-sort]').forEach(button=>button.onclick=()=>{const column=Number(button.dataset.qtSort);sorting={column,direction:sorting.column===column?-sorting.direction:1};render();$('qtResult').querySelector('[data-qt-sort="'+column+'"]').focus({preventScroll:true});});
       $('qtResult').querySelectorAll('[data-qt-level]').forEach(box=>box.onchange=()=>{box.checked?reviewed.add(box.dataset.qtLevel):reviewed.delete(box.dataset.qtLevel);box.closest('tr').lastElementChild.textContent=box.checked?'Vérifié pour transfert':'À vérifier';buttons();});buttons();
     }
-    $('qtProduct').onchange=()=>{reviewed.clear();render();};$('qtBlock').onchange=()=>{reviewed.clear();render();};
-    const tabs=[$('qtTabUnits'),$('qtTabLevels')];tabs.forEach((button,index)=>{button.onclick=()=>{tab=index?'levels':'units';render();};button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const target=event.key==='Home'?0:event.key==='End'?1:1-index;tabs[target].click();tabs[target].focus();}};});
+    $('qtProduct').onchange=()=>{reviewed.clear();render();};$('qtBlock').onchange=()=>{reviewed.clear();render();};$('qtSearch').oninput=event=>{search=event.target.value;render();};
+    const tabs=definitions.map(([,id])=>$(id));tabs.forEach((button,index)=>{button.onclick=()=>{tab=definitions[index][0];sorting={column:null,direction:1};render();};button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();event.stopPropagation();const target=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[target].click();tabs[target].focus();}};});
     $('qtClose').onclick=closeDialog;
     $('qtCoordinator').onclick=async()=>{try{
       fresh();const chosen=selection(),name=filename(projectName())+'_quantites_unites_niveaux.xlsx';busy=true;buttons();
@@ -16225,14 +16479,14 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     const heading=host.querySelector('.panel-head');if(heading){heading.querySelector('span').textContent='PROPRIÉTÉS';heading.querySelector('h2').textContent=item.kind==='area'?'Surface sélectionnée':item.kind==='linear'?'Ligne sélectionnée':'Appareil ou comptage';}
     const nodes=[...host.children],take=id=>find(id)?.closest('label'),sections={};
     const make=(key,title,open)=>{const stateKey=(focusSnapshot?'focus:':'normal:')+item.kind+':'+key,details=document.createElement('details');details.className='inspector-section';details.dataset.inspectorSection=key;details.open=sectionOpen.has(stateKey)?sectionOpen.get(stateKey):open;const summary=document.createElement('summary');summary.textContent=title;const body=document.createElement('div');body.className='inspector-section-body';details.append(summary,body);details.addEventListener('toggle',()=>sectionOpen.set(stateKey,details.open));sections[key]={details,body};return details;};
-    const finish=make('finish','Fini et classement',true),control=make('control','Mesure et contrôle',true),correction=make('correction','Corriger le relevé',!focusSnapshot||!!item.sanitarySource),advanced=make('details','Détails de pose et calcul',!focusSnapshot);
+    const finish=make('finish','Fiche du relevé',true),control=make('control','Mesure et contrôle',true),correction=make('correction','Corriger le relevé',!focusSnapshot||!!item.sanitarySource),advanced=make('details','Détails de pose et calcul',!focusSnapshot);
     const essentials=[heading,take('itemName'),host.querySelector('.quantity')].filter(Boolean);
-    for(const node of [take('itemMaterial'),take('itemSpaceType'),host.querySelector('.folder-inspector')])if(node)sections.finish.body.append(node);
+    for(const node of [host.querySelector('.folder-inspector'),take('itemMaterial'),host.querySelector('.takeoff-finish-notice'),host.querySelector('.takeoff-classification'),take('itemSpaceType')])if(node)sections.finish.body.append(node);
     if(item.viewLocation){
       const place=document.createElement('div');place.className='inspector-location';
       const fields=[['Bloc',item.viewLocation.block],['Niveau',item.viewLocation.level||'À préciser'],['Unité',item.viewLocation.unit||'À préciser']].filter(([,value])=>value);
       place.innerHTML='<div>'+fields.map(([label,value])=>'<div class="location-line"><span>'+label+'</span><b>'+esc(value)+'</b></div>').join('')+'</div><button type="button" title="Modifier le bloc, le niveau ou l’unité" aria-label="Modifier la localisation"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m16 3 5 5-12 12H4v-5zM14 5l5 5"/></svg></button>';
-      place.querySelector('button').onclick=()=>onEditLocation?.(item.id);sections.finish.body.insertBefore(place,sections.finish.body.querySelector('.folder-inspector'));
+      place.querySelector('button').onclick=()=>onEditLocation?.(item.id);sections.finish.body.append(place);
     }
     for(const node of [take('itemStatus'),host.querySelector('.status-note'),take('itemWaste'),...nodes.filter(n=>n.classList.contains('total-line'))])if(node)sections.control.body.append(node);
     for(const node of nodes){if(essentials.includes(node)||node.parentElement!==host)continue;
@@ -16304,6 +16558,26 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     const toolMenu=document.createElement('div');toolMenu.id='planToolsInMore';toolMenu.hidden=true;toolMenu.setAttribute('role','group');toolMenu.setAttribute('aria-label','Outils du plan');find('ribbonOverflowGroups').before(toolMenu);
     parkNavigation(nav);
     installAtelierIcons();
+    const directTools=document.createElement('div');
+    directTools.className='atelier-direct-tools';
+    directTools.setAttribute('role','group');
+    directTools.setAttribute('aria-label','Correction et cadrage');
+    for(const [id,label] of [['manualExclude','Déduire'],['manualFit','Ajuster']]){
+      const original=find(id),button=document.createElement('button');
+      button.type='button';button.id='ribbon-'+id;button.className='manual-button';
+      button.setAttribute('aria-label',label);
+      button.append(original.querySelector('svg').cloneNode(true));
+      const caption=document.createElement('span');caption.textContent=label;button.append(caption);
+      const sync=()=>{
+        button.disabled=original.disabled;
+        button.title=original.disabled?original.title:label+(id==='manualFit'?' la feuille · 0':' une zone · X');
+        if(original.hasAttribute('aria-pressed'))button.setAttribute('aria-pressed',original.getAttribute('aria-pressed'));
+      };
+      button.onclick=()=>original.click();sync();
+      new window.MutationObserver(sync).observe(original,{attributes:true,attributeFilter:['disabled','aria-pressed','title']});
+      directTools.append(button);
+    }
+    find('ribbonActions').before(directTools);
     installToolbarGrip(nav);
     const navigationGroup=nav.querySelector('[data-plan-tool-group="navigation"]')||nav;
     const measures=document.createElement('button');measures.type='button';measures.id='focusMeasuresToggle';measures.className='manual-button focus-rail-action';measures.hidden=true;measures.dataset.focusOnly='true';measures.setAttribute('aria-label','Ouvrir les mesures du plan');measures.setAttribute('aria-controls','focusMeasureDrawer');measures.setAttribute('aria-expanded','false');measures.title='Mesures du plan · survol pour voir, clic pour garder ouvert';measures.innerHTML=folderIcon+'<span>Mesures</span>';navigationGroup.insertBefore(measures,navigationGroup.children[2]||null);
@@ -16406,6 +16680,14 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-workspace #aiteRibbonTools :is(#manualUndo,#manualRedo,#tileSettings,#tileOriginBtn,#toggleTileGrid,#repairBathroom) span,.aite-workspace #ribbonZoomActions button span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace .atelier-ribbon-actions,.aite-workspace #ribbonZoomActions{display:flex;flex:none;align-items:center;gap:2px}
     .aite-workspace .atelier-ribbon-actions{margin-inline-start:auto}
+    .aite-workspace .atelier-direct-tools{display:flex;flex:none;align-items:center;gap:2px;border-inline-start:1px solid var(--aite-line);padding-inline-start:3px;margin-inline-start:3px}
+    .aite-workspace .atelier-direct-tools span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    @media(max-width:950px){.aite-workspace .atelier-direct-tools{display:none}}
+    @media(min-width:951px){
+      .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-group{padding-inline:3px}
+      .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-ribbon-scroll .manual-button{gap:3px;padding-inline:3px}
+      .aite-workspace #aiteRibbonTools #manualScale span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    }
     .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden]))){flex:none;padding:0}
     .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden])))+.manual-overflow-holder{border-left:0}
     .aite-workspace #ribbonZoomActions{border-inline:1px solid var(--aite-line);padding-inline:3px;margin-right:3px}
@@ -19907,8 +20189,9 @@ function toast(t){const e=$('#toast');e.innerHTML=`<i data-lucide="check"></i>${
 function viewRotation() { const rotation=S.settings?.pageRotations?.[S.page]||0;return [0,90,180,270].includes(rotation)?rotation:0; }
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return view.screenToPlan({x:e.clientX-r.left,y:e.clientY-r.top},{width:S.plan?.width||1,height:S.plan?.height||1,rotation:viewRotation(),zoom:S.zoom,pan:S.pan});}
 function canResumeLine(item) {
-  return item?.kind==='linear'&&!item.measureOnly&&!isWallTakeoff(item);
+  return item?.kind==='linear'&&!item.measureOnly&&!isWallTakeoff(item)&&!isMouldingPoint(item);
 }
+function isMouldingPoint(item) {return item?.mouldingPointFeet!==undefined;}
 function canResumeSurface(item) {return item?.kind==='area'&&!item.work?.roomBoundary;}
 function gridFamily(item,state=S) {
   if(!canResumeSurface(item))return null;
@@ -19955,7 +20238,9 @@ function finishLine(points, continueDrawing=false) {
       if(points.length)toast('Cliquez deux points distincts pour tracer une section.');
       return;
     }
-    S.draft=[];S.linearTraceId=null;S.unitBaseboardTrace=null;S.tool='select';refresh();
+    const completed=S.newLinearTraceId&&S.newLinearTraceId===activeLinearTrace()?.id;
+    S.draft=[];S.linearTraceId=null;S.newLinearTraceId=null;S.unitBaseboardTrace=null;S.tool='select';refresh();
+    if(completed)revealTakeoffProperties();
     if(points.length)toast('La section incomplète a été ignorée.');
     return;
   }
@@ -19984,7 +20269,10 @@ function finishLine(points, continueDrawing=false) {
     remember();if(!existing)S.folders.push(root);if(!existingLevel)S.folders.push(folder);S.items.push(item);S.unitBaseboardTrace=null;save();
   }else if(current){remember();S.items=S.items.map(row=>row.id===item.id?item:row);save();}
   else pushItems([...S.items,item]);
-  setSelection([item.id]);S.draft=[];S.linearTraceId=continueDrawing?item.id:null;S.tool=continueDrawing?'linear':'select';refresh();
+  const newlyTraced=!current||S.newLinearTraceId===item.id;
+  setSelection([item.id]);S.draft=[];S.linearTraceId=continueDrawing?item.id:null;
+  S.newLinearTraceId=continueDrawing&&newlyTraced?item.id:null;S.tool=continueDrawing?'linear':'select';refresh();
+  if(!continueDrawing&&newlyTraced)revealTakeoffProperties();
 }
 function drawLinePath(context,points,sectionStarts) {
   context.beginPath();
@@ -19994,13 +20282,13 @@ function drawLinePath(context,points,sectionStarts) {
     for(const point of section.slice(1))context.lineTo(point.x,point.y);
   }
 }
-function drawStairMarker(context,point,profile,rotation) {
-  const radius=4.5/S.zoom;
+function drawMouldingMarker(context,point,profile,rotation,selected=false) {
+  const radius=(selected?6:4.5)/S.zoom;
   context.save();
   context.translate(point.x,point.y);
   context.rotate(-rotation*Math.PI/180);
   context.beginPath();
-  if(profile.marker==='circle')context.arc(0,0,radius,0,Math.PI*2);
+  if(!profile.marker||profile.marker==='circle')context.arc(0,0,radius,0,Math.PI*2);
   else if(profile.marker==='square')context.rect(-radius,-radius,2*radius,2*radius);
   else {
     context.moveTo(0,-radius);
@@ -20010,7 +20298,7 @@ function drawStairMarker(context,point,profile,rotation) {
   }
   context.fillStyle=profile.color;
   context.fill();
-  context.strokeStyle='#fff';
+  context.strokeStyle=selected?'#172f3d':'#fff';
   context.lineWidth=1.5/S.zoom;
   context.lineJoin='round';
   context.stroke();
@@ -20021,10 +20309,10 @@ function drawStairLineMarkers(context,item,profile,rotation) {
     if(section.length<2)continue;
     const first=section[0],last=section.at(-1);
     if(dist(first,last)*S.zoom<10) {
-      drawStairMarker(context,{x:(first.x+last.x)/2,y:(first.y+last.y)/2},profile,rotation);
+      drawMouldingMarker(context,{x:(first.x+last.x)/2,y:(first.y+last.y)/2},profile,rotation);
     } else {
-      drawStairMarker(context,first,profile,rotation);
-      drawStairMarker(context,last,profile,rotation);
+      drawMouldingMarker(context,first,profile,rotation);
+      drawMouldingMarker(context,last,profile,rotation);
     }
   }
 }
@@ -20057,6 +20345,7 @@ function renderPlanScene() {
     const profile=item.kind==='linear'&&!item.measureOnly?mouldingOf(item.material):null;
     const color=profile?.color||colorForItem(item);ctx.save();
     if(item.kind==='count'){if(!item.sanitarySource)drawCountItem(ctx,item,active);ctx.restore();continue;}
+    if(profile&&isMouldingPoint(item)){drawMouldingMarker(ctx,item.points[0],profile,rotation,active);ctx.restore();continue;}
     if(item.kind==='area') {
       drawFloorFill(ctx,item);traceItem(ctx,item);
     }else drawLinePath(ctx,item.points,item.sectionStarts);
@@ -20071,7 +20360,7 @@ function renderPlanScene() {
     const color=profile?.marker?profile.color:'#df5e43';
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=color;ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){
-      if(profile?.marker)drawStairMarker(ctx,p,profile,rotation);
+      if(profile?.marker)drawMouldingMarker(ctx,p,profile,rotation);
       else {ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=color;ctx.stroke();}
     }
   }
@@ -20154,24 +20443,49 @@ function displayCodeForItem(item) {const entry=specificationEntry(item);if(!item
 function confirmedWallTotal() {return activePlanItems().filter(item=>isWallTakeoff(item)&&isConfirmed(item)).reduce((sum,item)=>sum+(displayDemandForItem(item)??0),0);}
 function totals(){const groups=new Map();for(const item of activePlanItems().filter(item=>item.kind==='area'&&workOf(item).included&&isConfirmed(item))){const code=item.work?.productId||specificationKeyForItem(item,'floor')||item.material,p=profile(code);if(!groups.has(code))groups.set(code,{...mat(item.material),code:displayCodeForItem(item),name:p.name,count:0,net:0,total:0});const group=groups.get(code);group.count++;group.net+=item.qty;group.total+=displayDemandForItem(item)||0;}return [...groups.values()];}
 
+const MATERIAL_TRACE_COLORS=[
+  ['Bleu marine','#183457'],['Corail','#ed5e3f'],['Jaune or','#e9b71b'],['Olive','#759025'],['Gris acier','#7b8794'],
+  ['Bleu vif','#0878d9'],['Orange','#f46805'],['Turquoise','#00a882'],['Bleu indigo','#4852dd'],
+  ['Rouge','#e72832'],['Violet','#7543e4'],['Vert lime','#6eac13'],['Rose fuchsia','#dc296e'],['Cyan','#079cb5'],
+  ['Citron','#cad621'],['Pourpre','#b334c9'],['Graphite','#253642'],['Vert émeraude','#25a64d'],
+];
+function traceColorField(color,label='Couleur du tracé') {
+  return `<fieldset class="material-color-field"><legend>${label}</legend>
+    <div class="material-color-palette">${MATERIAL_TRACE_COLORS.map(([name,value])=>`<label title="${name}"><input type="radio" name="libraryTraceSwatch" value="${value}" aria-label="${name}"><span style="--trace-color:${value}" aria-hidden="true"></span></label>`).join('')}</div>
+    <div class="material-color-custom"><label><input id="libraryMaterialColor" type="color" value="${esc(color)}"> Autre couleur</label><output id="libraryMaterialColorName" for="libraryMaterialColor"></output></div>
+  </fieldset>`;
+}
+function bindTraceColorField(form) {
+  const input=$('#libraryMaterialColor',form),name=$('#libraryMaterialColorName',form),swatches=$$('[name="libraryTraceSwatch"]',form);
+  const sync=()=>{
+    for(const swatch of swatches)swatch.checked=swatch.value===input.value;
+    const title=MATERIAL_TRACE_COLORS.find(([,color])=>color===input.value)?.[0]||'Personnalisée';
+    name.textContent=title+' · '+input.value.toUpperCase();
+  };
+  swatches.forEach(swatch=>swatch.onchange=()=>{if(swatch.checked){input.value=swatch.value;sync();}});
+  input.oninput=input.onchange=sync;
+  sync();
+  return {input,sync};
+}
 function catalogueMaterialEditor(code='') {
   const moulding=mouldingOf(code),material=code?(moulding||mat(code)):null;
   const title=material?(moulding?'Modifier le profilé':'Modifier le matériau'):'Ajouter un matériau';
-  openDialog(title,`<form id="materialLibraryForm"><div class="v4-fields">
+  openDialog(title,`<form id="materialLibraryForm">${moulding?'':`<div class="v4-fields">
     ${material?`<label>Code<input value="${esc(code)}" readonly></label>`:`<label>Type<select id="libraryMaterialBase">${MATERIALS.map(m=>`<option value="${m.code}">${esc(m.name)}</option>`).join('')}</select></label>
     <label>Code<input id="libraryMaterialCode" maxlength="28" placeholder="Ex. VP-50" required></label>`}
-    <label>Nom<input id="libraryMaterialName" value="${esc(material?.name||'')}" maxlength="120" required></label>
-    <label>Couleur du tracé<input id="libraryMaterialColor" type="color" value="${material?.color||MATERIALS[0].color}"></label></div>
-    ${moulding?`<p>${esc(moulding.detail)} · pi lin.</p>`:''}
-    <p id="materialLibraryError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="libraryMaterialCancel">Annuler</button><button type="submit" class="primary">Enregistrer</button></div></form>`);
+    <label>Nom<input id="libraryMaterialName" value="${esc(material?.name||'')}" maxlength="120" required></label></div>`}
+    ${traceColorField(material?.color||MATERIALS[0].color)}
+    ${moulding?`<p><strong>${esc(moulding.name)}</strong> · ${esc(moulding.detail)}</p>`:''}
+    <p id="materialLibraryError" class="v4-error" role="alert"></p><div class="modal-actions"><button type="button" id="libraryMaterialCancel">Annuler</button><button type="submit" class="primary">Enregistrer</button></div></form>`,'material-color-dialog');
   $('#libraryMaterialCancel').onclick=closeDialog;
-  if(!material)$('#libraryMaterialBase').onchange=event=>{$('#libraryMaterialColor').value=mat(event.target.value).color;};
+  const {input,sync}=bindTraceColorField($('#materialLibraryForm'));
+  if(!material)$('#libraryMaterialBase').onchange=event=>{input.value=mat(event.target.value).color;sync();};
   $('#materialLibraryForm').onsubmit=event=>{
     event.preventDefault();
     try {
       const reference=code||$('#libraryMaterialCode').value.trim().toUpperCase();
       if(!code&&materialsFor().some(row=>row.code===reference))throw new Error('Ce code de matériau est déjà utilisé.');
-      const name=$('#libraryMaterialName').value.trim(),color=$('#libraryMaterialColor').value;
+      const name=moulding?.name||$('#libraryMaterialName').value.trim(),color=input.value;
       const base=material?.base||$('#libraryMaterialBase')?.value;
       const library=materialLibrary.edit(S.estimation.materialLibrary,MATERIALS,{code:reference,name,color,...(base?{base}:{})});
       remember();
@@ -20188,7 +20502,7 @@ function catalogueMaterialEditor(code='') {
 function materialLibraryPanel() {
   const profileRows=materialLibrary.profiles(S.estimation?.materialLibrary,MATERIALS);
   const row=(material,moulding=false)=>{
-    const active=moulding?S.tool==='linear'&&material.code===S.activeMoulding:material.code===S.material;
+    const active=moulding?['linear','mouldingPoint'].includes(S.tool)&&material.code===S.activeMoulding:material.code===S.material;
     const note=material.code==='VP-01'?'À préciser':(['VP-COLLE','VP-CLIC'].includes(material.base||material.code)?material.waste+' %':'');
     return `<div class="library-row"><button type="button" class="library-item ${active?'active':''}" ${moulding?'data-moulding':'data-material'}="${material.code}" aria-pressed="${active}">
       <i style="background:${material.color}" ${material.marker?`data-stair-marker="${material.marker}"`:''} aria-hidden="true"></i><span><b>${esc(moulding?material.name:material.code)}</b><small>${esc(moulding?material.detail:material.name)}</small></span>${!moulding&&note?`<em>${note}</em>`:''}</button>
@@ -20197,12 +20511,13 @@ function materialLibraryPanel() {
   const profilesFor=group=>profileRows.filter(material=>material.group===group).map(material=>row(material,true)).join('');
   return `<div class="panel-section material-library"><div class="material-library-head"><span>MATÉRIAU ACTIF</span><button type="button" class="icon-btn" id="addLibraryMaterial" aria-label="Ajouter un matériau" title="Ajouter un matériau"><i data-lucide="plus"></i></button></div>
     <div class="library-list">${materialsFor().map(material=>row(material)).join('')}</div>
-    <details id="mouldingLibrary" ${S.mouldingsOpen?'open':''}><summary>Moulures</summary><div class="library-list">${profilesFor('finish')}</div>
+    <details id="mouldingLibrary" ${S.mouldingsOpen?'open':''}><summary>Moulures</summary><button type="button" id="openMouldingTakeoff" class="selection-action">Relever les moulures</button><div class="library-list">${profilesFor('finish')}</div>
       <section aria-labelledby="stairsLibraryHeading"><h3 class="stairs-heading" id="stairsLibraryHeading">Nez de marche</h3><div class="library-list">${profilesFor('stairs')}</div></section></details></div>`;
 }
 function bindMaterialLibrary(host) {
   $('#addLibraryMaterial',host).onclick=()=>catalogueMaterialEditor();
   $('#mouldingLibrary',host).ontoggle=event=>{S.mouldingsOpen=event.currentTarget.open;};
+  $('#openMouldingTakeoff',host).onclick=()=>mouldingTakeoffDialog();
   $$('[data-library-edit]',host).forEach(button=>{button.onclick=()=>catalogueMaterialEditor(button.dataset.libraryEdit);});
   $$('[data-material]',host).forEach(button=>{button.onclick=()=>{
     S.activeSpecification=null;S.material=button.dataset.material;
@@ -20221,18 +20536,33 @@ function renderInspectorBase() {
   const host=inspectorPropertiesHost();if(S.selection.size>1)return renderMultipleInspector(host);
   const item=S.items.find(item=>item.id===S.selected);
   if(item) {
-    const calculated=usesTileCalculation(item),loss=displayWasteForItem(item);
+    const calculated=usesTileCalculation(item),loss=displayWasteForItem(item),scaleFree=item.kind==='count'||isMouldingPoint(item);
+    const finishes=item.kind==='area'?detectionDocumentFinishes():null,finishId=item.work?.specificationId;
+    const keepFinish=finishId&&finishes&&![...finishes.values()].some(entry=>entry.aliases.includes(finishId));
+    const suggestion=finishes?surfaceFinishOnPlan(item,finishes):null;
     host.innerHTML=`<div class="panel-head"><div><span>INSPECTEUR</span><h2>${esc(labelForItem(item))}</h2></div></div>
       <label>Nom du relevé<input id="itemName" maxlength="300" value="${esc(item.name)}"></label>
-      ${item.kind==='area'?`<label>Type d’espace<select id="itemSpaceType">${Object.entries(SPACE_STYLES).map(([type,style])=>`<option value="${type}" ${surfaceSpaceType(item)===type?'selected':''}>${style.label}</option>`).join('')}</select></label><label>Fini<select id="itemMaterial">${materialsFor().map(material=>`<option value="${material.code}" ${material.code===item.material?'selected':''}>${material.code} · ${esc(material.name)}</option>`).join('')}</select></label>`:''}
+      ${item.kind==='area'?`<label>Type d’espace<select id="itemSpaceType">${Object.entries(SPACE_STYLES).map(([type,style])=>`<option value="${type}" ${surfaceSpaceType(item)===type?'selected':''}>${style.label}</option>`).join('')}</select></label><label>Fini<select id="itemMaterial">${keepFinish?`<option value="__keep_surface_finish__" selected>${esc(displayCodeForItem(item))} · Référence actuelle</option>`:''}${finishMaterialOptions(keepFinish?null:item.material,finishId,finishes)}</select></label>${finishOnPlanNotice(suggestion,'takeoffUsePlanFinish')}`:''}
       <div class="quantity"><span>${item.kind==='count'?'NOMBRE D’ÉLÉMENTS':isWallTakeoff(item)?'SURFACE MURALE NETTE':'QUANTITÉ NETTE'}</span><strong>${hasPendingFixtures(item)?'À délimiter':displayQuantityForItem(item)===null?'À compléter':item.kind==='linear'&&!isWallTakeoff(item)?formatFeet(displayQuantityForItem(item)):fmt(displayQuantityForItem(item),item.kind==='count'?0:1)} <small>${item.kind==='linear'&&!isWallTakeoff(item)?'':unitForItem(item)}</small></strong></div>
       ${item.kind!=='count'&&!item.measureOnly&&!isWallTakeoff(item)?`<label>Perte<div class="input-unit"><input id="itemWaste" type="number" min="0" max="1000" value="${loss===null?'':calculated?Number(loss.toFixed(4)):loss}" ${calculated?'readonly title="Part de la surface des dalles consommées perdue à la coupe"':''}><span>%</span></div></label><div class="total-line"><span>Total avec perte</span><b>${itemQuantityText(item,true)}</b></div>`:''}
       ${item.kind==='area'?`<div class="total-line"><span>Périmètre indicatif</span><b>${esc(formatFeet(outerPerimeter(item)*S.scales[item.page]))}</b></div>`:''}
       ${item.measureOnly?'<p class="selection-help">Cote de référence : exclue des commandes et des plinthes.</p>':''}
       <label>Statut<select id="itemStatus">${['confirmée','estimée','à valider'].map(status=>`<option ${status===item.status?'selected':''}>${status}</option>`).join('')}</select></label>
-      <div class="status-note"><i data-lucide="${item.status==='confirmée'&&(item.kind==='count'||S.scaleMeta[item.page]?.verified)?'check':'triangle-alert'}"></i><span>Page ${item.page}<small>${esc(item.method)}${item.kind==='count'?' · échelle non requise':S.scaleMeta[item.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer le relevé</button>`;
+      <div class="status-note"><i data-lucide="${item.status==='confirmée'&&(scaleFree||S.scaleMeta[item.page]?.verified)?'check':'triangle-alert'}"></i><span>Page ${item.page}<small>${esc(item.method)}${scaleFree?' · échelle non requise':S.scaleMeta[item.page]?.verified?'':' · échelle à vérifier'}</small></span></div><button class="danger" id="deleteItem"><i data-lucide="trash-2"></i> Supprimer le relevé</button>`;
     $('#itemName').onchange=event=>updateItem(item.id,{name:event.target.value});
-    if($('#itemMaterial'))$('#itemMaterial').onchange=event=>updateItem(item.id,{material:event.target.value});
+    if(finishes){
+      const input=$('#itemMaterial'),apply=value=>{
+        if(value==='__keep_surface_finish__')return;
+        const entry=finishes.get(value);
+        const material=entry?specificationMaterial(entry):value;
+        if(entry?entry.aliases.includes(finishId):material===item.material&&!finishId&&!item.work?.productId)return;
+        const work={...workOf(item),productId:'',productSignature:'',specificationId:entry?.id||'',
+          specificationUsage:entry?'floor':'',specificationOrigin:entry?'manual':'',specificationSignature:entry?specificationSignature(entry):''};
+        updateItem(item.id,{material,work,materialSource:'choix estimateur',status:'à valider',...(item.tiling?{tiling:null}:{})});
+      };
+      input.onchange=()=>apply(input.value);
+      if($('#takeoffUsePlanFinish'))$('#takeoffUsePlanFinish').onclick=()=>apply(suggestion.key);
+    }
     if($('#itemSpaceType'))$('#itemSpaceType').onchange=event=>updateItem(item.id,{spaceType:event.target.value,bathroom:event.target.value==='bathroom'});
     if($('#itemWaste'))$('#itemWaste').onchange=event=>updateItem(item.id,{waste:+event.target.value});
     $('#itemStatus').onchange=event=>{if(updateItem(item.id,{status:event.target.value})===false)event.target.value=item.status;};
@@ -20736,7 +21066,7 @@ function drawReference(context) {
   drawCoteLabel(context,a,b,reference.feet,'#123e70',-1);
 }
 function hitItem(point) {
-  return [...S.items].reverse().find(item=>visibleOnPlan(item)&&((item.kind==='area'||isKitchenElevation(item))?insideItem(point,item):item.kind==='count'?
+  return [...S.items].reverse().find(item=>visibleOnPlan(item)&&((item.kind==='area'||isKitchenElevation(item))?insideItem(point,item):item.kind==='count'||isMouldingPoint(item)?
     item.points.some(marker=>dist(marker,point)<=10/S.zoom):lineSections(item.points,item.sectionStarts).some(section=>
       section.slice(1).some((p,index)=>distanceToSegment(point,section[index],p)<=8/S.zoom))));
 }
@@ -20828,12 +21158,12 @@ async function indexDocument(pdf,options={}) {
     if(token===S.indexToken&&S.pdf===pdf&&S.documentKey===key){S.indexing=false;specificationFinish(specificationJob);save();refresh();}
   }
 }
+let decoratePlanSheets=()=>{};
 function renderPages() {
   renderWorkbenchProgress();
   const host=$('#sheetList');if(!host)return;
-  const query=normalizeName($('#sheetSearch')?.value||'');
   const sheets=!S.plan&&S.documentKey==='legacy'?[]:availableSheetNumbers();
-  host.innerHTML=sheets.filter(n=>!query||normalizeName(pageName(n)).includes(query)||String(n)===query).map(n=>{
+  host.innerHTML=sheets.map(n=>{
     const meta=S.scaleMeta[n],scale=S.scales[n];
     return `<button class="sheet-row ${n===S.page?'active':''}" type="button" data-sheet="${n}" aria-current="${n===S.page?'page':'false'}" title="${esc(pageName(n))}"><span class="sheet-number">${n}</span><span><b>${esc(pageName(n))}</b><small>${scale?esc(meta?.label||'Cote manuelle')+(meta?.verified?' · vérifiée':' · à vérifier'):S.pageInfo[n]?.ambiguous?'Échelles multiples':S.indexing&&!S.pageInfo[n]?'Lecture…':'Échelle à régler'}</small></span></button>`;
   }).join('');
@@ -20841,6 +21171,7 @@ function renderPages() {
   $$('[data-sheet]',host).forEach(button=>button.onclick=()=>{if(S.pdf&&!S.loading){if(planTabsUI)planTabsUI.navigateSheet(+button.dataset.sheet);else showPage(+button.dataset.sheet);}});
   const status=$('#sheetIndexStatus');if(status)status.textContent=!sheets.length?'Aucune feuille':S.indexing?`Lecture des feuilles ${S.indexedPages||0} / ${S.pages}`:`${sheets.length} feuille${sheets.length>1?'s':''}`;
   planTabsUI?.renderSelection();
+  decoratePlanSheets();
 }
 function renameSelectedMeasure() {
   const items=S.items.filter(item=>item.page===S.page&&S.selection.has(item.id));
@@ -21592,7 +21923,7 @@ function finishArea(points,method='Tracé polygonal') {
   }else applyActiveSpecification([item]);
   const items=structuredClone(S.items),result=integrateCandidate(items,item);
   if(!result.ok)return toast(result.reason+'. Modifiez la surface avant de l’ajouter.');
-  remember();S.items=[...items,item];setSelection([item.id]);S.draft=[];S.tool='select';save();refresh();
+  remember();S.items=[...items,item];setSelection([item.id]);S.draft=[];S.tool='select';save();refresh();revealTakeoffProperties();
 }
 function forgetAutomaticMeasures(ids) {
   // The review pack is transient. A reopened draft still retains its original
@@ -21651,9 +21982,9 @@ function recalculatePage(page) {
   const scale=S.scales[page];
   S.items=S.items.map(item=>{
     if(item.page!==page)return item;
-    if(item.kind!=='count'&&(!Number.isFinite(scale)||scale<=0))return item;
+    if(item.kind!=='count'&&!isMouldingPoint(item)&&(!Number.isFinite(scale)||scale<=0))return item;
     if(isKitchenElevation(item)&&item.wallTakeoff.elevation.heightSource==='configured-on-vector-run'&&!item.wallTakeoff.elevation.geometryEdited)item={...item,points:kitchenBacksplashes.templatePoints(item.wallTakeoff.elevation,scale)};
-    const calculated=item.kind==='count'?item.points.length:item.kind==='area'?netArea(item)*scale*scale:lineLength(item.points,item.sectionStarts)*scale;
+    const calculated=isMouldingPoint(item)?item.mouldingPointFeet:item.kind==='count'?item.points.length:item.kind==='area'?netArea(item)*scale*scale:lineLength(item.points,item.sectionStarts)*scale;
     // Conserver une quantité sauvegardée si seule l'association des opérations
     // flottantes diffère. Toute différence au-delà de quatre arrondis est recalculée.
     const sameRounding=item.kind!=='count'&&Number.isFinite(item.qty)&&Math.abs(calculated-item.qty)<=Number.EPSILON*Math.max(Math.abs(calculated),Math.abs(item.qty))*4,
@@ -21700,6 +22031,7 @@ function activateTool(tool,resumeId=null,gridTrace=null,moulding=null) {
   if(S.loading)return;
   if(tool==='tileOrigin')return activateOrigin();
   S.linearTraceId=null;
+  S.newLinearTraceId=null;
   S.areaTraceId=null;
   S.gridTrace=tool==='area'?gridTrace:null;
   S.unitBaseboardTrace=null;
@@ -21721,7 +22053,7 @@ function activateTool(tool,resumeId=null,gridTrace=null,moulding=null) {
     S.linearTraceId=tool==='linear'?resumeId:null;
     S.anchorId=resumeId;setSelection([resumeId]);
   }
-  S.tool=tool;S.activeMoulding=tool==='linear'?moulding:null;S.draft=[];refresh();canvas.focus();
+  S.tool=tool;S.activeMoulding=tool==='linear'||tool==='mouldingPoint'?moulding:null;S.draft=[];refresh();canvas.focus();
 }
 function installMovableWindow(panel,handle) {
   handle.dataset.dialogHandle='';
@@ -22210,9 +22542,17 @@ function renderInspector() {
   }
   appendTileInspector(host,item);
   if(item?.wasteConfirmed===false&&!usesTileCalculation(item)&&vinylDefaultWaste(item)===null){host.insertAdjacentHTML('beforeend','<section class="v4-properties"><p>Le taux de perte est provisoire. Saisissez votre taux ou confirmez explicitement 0 %.</p><button id="confirmZeroWaste" type="button">Confirmer 0 % de perte</button></section>');$('#confirmZeroWaste').onclick=()=>updateItem(item.id,{waste:0});}
+  if(S.selection.size===1&&item&&!item.measureOnly)appendTakeoffClassification(host,item);
   appendMouldingPlacement(host,item);estimateInspector(host,item);appendSurfaceInspector(host,item);appendWallTakeoffInspector(host,item);renderFolderInspector(item);
   specificationUI?.render();
-  if(S.selection.size===1)workspaceAppearance?.organizeInspector(host,item?{...item,scaleVerified:item.kind==='count'||S.scaleMeta[item.page]?.verified,viewLocation:quantityTransfer.locationFor(item,S,workOf(item))}:null);
+  if(S.selection.size===1)workspaceAppearance?.organizeInspector(host,item?{...item,scaleVerified:item.kind==='count'||isMouldingPoint(item)||S.scaleMeta[item.page]?.verified,viewLocation:quantityTransfer.locationFor(item,S,workOf(item))}:null);
+}
+function revealTakeoffProperties() {
+  if(!specificationUI||S.reviewOpen)return;
+  $('#inspector').hidden=false;$('#reopen').hidden=true;
+  specificationUI.setTab('properties');
+  const classification=$('#inspector [data-inspector-section="finish"]');if(classification)classification.open=true;
+  draw();
 }
 function refresh() {
   draw();
@@ -22237,7 +22577,7 @@ function refresh() {
 function downloadBlob(blob,name) {
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
-function projectRecordVersion(items) {return items?.some(item=>item.extraContours!==undefined)?12:items?.some(item=>item.sectionStarts!==undefined)?11:10;}
+function projectRecordVersion(items) {return items?.some(isMouldingPoint)?13:items?.some(item=>item.extraContours!==undefined)?12:items?.some(item=>item.sectionStarts!==undefined)?11:10;}
 function exportProject() {
   save();if(!S.plan)return toast('Ouvrez un plan avant de sauvegarder un relevé.');
   const data={format:'quantif-plancher',version:projectRecordVersion(S.items),documentKey:S.documentKey,fileName:S.fileName,pages:S.pages,project:S.project,
@@ -22255,19 +22595,23 @@ function validateAutomaticMetadata(item,documentKey) {
       (item.sanitarySource.geometryTypeNeedsReview!==true||item.sanitarySource.sourceKind!=='vector-shape'))throw new Error('Le statut du comptage vectoriel est invalide.');
 }
 function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
-  if(data.format!=='quantif-plancher'||![4,5,6,7,8,9,10,11,12].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V12 valide.');
+  if(data.format!=='quantif-plancher'||![4,5,6,7,8,9,10,11,12,13].includes(data.version)||!Array.isArray(data.items)||data.items.length>3000)throw new Error('Ce fichier n’est pas un relevé Quantif V4 à V13 valide.');
   if(data.documentKey!==documentKey||data.pages!==pages)throw new Error('Ouvrez le PDF ou l’image d’origine avant de restaurer ce relevé.');
   if(data.version>=5)validateEstimation(data.estimation);
   const surfaceCodes=new Set(materialsFor(data.estimation||null).map(m=>m.code));
   const points=(ring,min=2)=>Array.isArray(ring)&&ring.length>=min&&ring.length<=20000&&ring.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&Math.abs(p.x)<100000&&Math.abs(p.y)<100000);
   const ids=new Set();
   for(const item of data.items) {
-    const minPoints=item.kind==='count'?1:item.kind==='area'?3:2;
+    const pointMoulding=isMouldingPoint(item),minPoints=item.kind==='count'||pointMoulding?1:item.kind==='area'?3:2;
     if(!/^[a-z0-9_-]{1,60}$/i.test(item.id)||ids.has(item.id)||!Number.isInteger(item.page)||item.page<1||item.page>pages||!['area','linear','count'].includes(item.kind)||!points(item.points,minPoints)||
       !['confirmée','estimée','à valider'].includes(item.status)||!Number.isFinite(item.waste)||item.waste<0||item.waste>1000||
       typeof item.name!=='string'||item.name.length>300||typeof item.method!=='string'||item.method.length>300||
       !(item.kind==='count'?item.material==='QT-01':item.kind==='linear'?item.material==='PL-01'||!item.measureOnly&&!isWallTakeoff(item)&&!!mouldingOf(item.material,data.estimation||null):surfaceCodes.has(item.material)))throw new Error('Le relevé contient une mesure invalide.');
     if(item.measureOnly!==undefined&&(typeof item.measureOnly!=='boolean'||item.measureOnly&&item.kind!=='linear'))throw new Error('Une cote de référence doit être une ligne.');
+    if(pointMoulding&&(data.version<13||item.kind!=='linear'||item.measureOnly||item.wallTakeoff||item.points.length!==1||item.sectionStarts!==undefined||
+      !mouldingOf(item.material,data.estimation||null)||!finiteRange(item.mouldingPointFeet,0.01,500)||!item.work?.mouldingPlacement||
+      item.holes?.length||item.layout||item.tiling!==undefined||item.fixtureCuts!==undefined||item.fixturePending!==undefined||item.parentId||
+      Object.keys(item.subzones||{}).length))throw new Error('Le point de moulure est invalide.');
     if(item.sectionStarts!==undefined) {
       const starts=item.sectionStarts;
       if(data.version<11||item.kind!=='linear'||item.measureOnly||isKitchenElevation(item)||!Array.isArray(starts)||!starts.length||starts.length>item.points.length/2-1||
@@ -22288,7 +22632,7 @@ function validateProject(data,documentKey=S.documentKey,pages=S.pages) {
     if(item.layout&&(!points([item.layout.origin,item.layout.origin])||!Number.isFinite(item.layout.angle)||!Number.isFinite(item.layout.joint)||item.layout.joint<0||item.layout.joint>1||item.layout.autoRotation!==undefined&&![0,90,180,270].includes(item.layout.autoRotation)||item.layout.manualOrigin!==undefined&&typeof item.layout.manualOrigin!=='boolean'))throw new Error('Un départ de calepinage est invalide.');
   }
   for(const [page,scale]of Object.entries(data.scales||{}))if(!/^\d+$/.test(page)||+page<1||+page>pages||!Number.isFinite(scale)||scale<=0)throw new Error('Une échelle est invalide.');
-  for(const item of data.items)if(item.kind!=='count'&&!data.scales?.[item.page])throw new Error('L’échelle d’une mesure manque.');
+  for(const item of data.items)if(item.kind!=='count'&&!isMouldingPoint(item)&&!data.scales?.[item.page])throw new Error('L’échelle d’une mesure manque.');
   for(const [page,list]of Object.entries(data.dividers||{}))if(!/^\d+$/.test(page)||+page<1||+page>pages||!Array.isArray(list)||list.length>500||!list.every(divider=>points(divider.points)&&divider.points.length===2))throw new Error('Une séparation est invalide.');
   for(const rect of Object.values(data.detectBounds||{}))if(!['x','y','right','bottom'].every(key=>Number.isFinite(rect[key])))throw new Error('Un cadre est invalide.');
   if(data.settings?.pageRotations)for(const [page,rotation]of Object.entries(data.settings.pageRotations))if(!/^\d+$/.test(page)||+page<1||+page>pages||![0,90,180,270].includes(rotation))throw new Error('Rotation de vue invalide.');
@@ -22300,7 +22644,7 @@ async function importProject(file) {
     if(!S.plan)throw new Error('Ouvrez d’abord le PDF ou l’image d’origine.');
     if(file.size>20000000)throw new Error('Le relevé dépasse 20 Mo.');
     const data=validateProject(JSON.parse(await file.text()));remember();
-    if(S.tool==='linear'||activeAreaTrace()){S.tool='select';S.draft=[];S.linearTraceId=null;S.areaTraceId=null;S.unitBaseboardTrace=null;}
+    if(S.tool==='linear'||S.tool==='mouldingPoint'||activeAreaTrace()){S.tool='select';S.draft=[];S.linearTraceId=null;S.areaTraceId=null;S.unitBaseboardTrace=null;}
     S.items=data.items;S.folders=data.folders||[];S.scales=data.scales;S.scaleMeta=data.scaleMeta||{};S.sheetNames=data.sheetNames||{};
     S.dividers=data.dividers||{};S.detectBounds=data.detectBounds||{};S.estimation=data.version>=5?data.estimation:{catalog:{},group:'project'};
     if(data.settings&&[0,24,30,36,42,48].includes(data.settings.doorInches)&&['CER-01','CER-12X24'].includes(data.settings.bathroomMaterial)&&[135,180,215].includes(data.settings.threshold)&&data.settings.minArea>=1&&data.settings.minArea<=500)S.settings={surfaceDisplay:'materials',surfaceLabels:true,...data.settings};
@@ -22539,7 +22883,7 @@ function surfaceForEdit(point) {
 function openItemEditor(id) {
   const item=S.items.find(i=>i.id===id&&i.page===S.page);if(!item||S.loading)return;
   setSelection([id]);S.tool='select';S.draft=[];S.fixtureDrawing=null;S.fixtureEditing=null;$('#inspector').hidden=false;$('#reopen').hidden=true;refresh();
-  if(item.kind==='area')surfaceEditor(id);else workDialog(id);
+  if(item.kind==='area')surfaceEditor(id);else if(mouldingOf(item.material))mouldingPlacementDialog(item);else workDialog(id);
 }
 function bindMeasureRowEvents() {
   $$('[data-item]').forEach(row=>{
@@ -22594,6 +22938,57 @@ function baseboardOptions(code) {
     `<option value="${esc(code)}" selected>${esc(profile(code).name||code)} · Référence actuelle</option>`:'';
   return kept+(documented?`<optgroup label="Plinthes du devis">${documented}</optgroup><optgroup label="Plinthes par défaut">${defaults}</optgroup>`:defaults);
 }
+function classificationLocation(work,context,scope,unit) {
+  const newUnit=scope==='unit'?unit:scope==='auto'?context.recognized:'';
+  const next={...work,roomId:'',unitId:'',unit:newUnit,type:context.unitRows.find(row=>row.code===newUnit)?.type||'',level:context.location.level};
+  if(scope==='auto')delete next.locationScope;else next.locationScope=scope;
+  return next;
+}
+function appendTakeoffClassification(host,item) {
+  if(mouldingOf(item.material))return;
+  const work=workOf(item);
+  const section=document.createElement('div');section.className='takeoff-classification';host.append(section);
+  const context=surfaceLocation(item,work),{scope,known,recognized,unitRows}=context;
+  const placeOptions=[['auto',recognized?'Selon le plan · unité '+recognized:'Selon le plan'],['unit','Logement'],['common','Espace commun']];
+  section.innerHTML=`<label>Localisation<select id="takeoffLocationScope">${placeOptions.map(([value,label])=>`<option value="${value}" ${scope===value?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+    <label id="takeoffUnitField" ${scope==='unit'?'':'hidden'}>N° du logement<input id="takeoffUnit" maxlength="80" list="takeoffKnownUnits" value="${esc(known||'')}"></label>
+    <datalist id="takeoffKnownUnits">${unitRows.map(row=>`<option value="${esc(row.code)}" label="${esc(row.type||'')}"></option>`).join('')}</datalist>`;
+  const scopeInput=$('#takeoffLocationScope',section),unit=$('#takeoffUnit',section),unitField=$('#takeoffUnitField',section);
+  const saveLocation=()=>{
+    const nextScope=scopeInput.value,nextUnit=unit.value.trim();
+    unitField.hidden=nextScope!=='unit';
+    if(nextScope==='unit'&&!nextUnit){unit.focus();return;}
+    if(nextScope!==scope||nextScope==='unit'&&nextUnit!==known){
+      try{setWork(item.id,classificationLocation(work,context,nextScope,nextUnit));}
+      catch(error){scopeInput.value=scope;unit.value=known||'';unitField.hidden=scope!=='unit';toast(error.message);}
+    }
+  };
+  scopeInput.onchange=unit.onchange=saveLocation;
+  if(item.kind==='area'){
+    const code=work.baseboard.enabled?work.baseboard.code:'';
+    section.insertAdjacentHTML('beforeend',`<label>Plinthe associée<select id="takeoffBaseboard"><option value="">Sans plinthe</option>${baseboardOptions(code)}</select></label>`);
+    $('#takeoffBaseboard',section).onchange=event=>{
+      const next=event.target.value;
+      try{setWork(item.id,{...work,baseboard:{...work.baseboard,enabled:!!next,code:next||'PL-01'}});}
+      catch(error){event.target.value=code;toast(error.message);}
+    };
+  }else if(!item.sanitarySource){
+    const entries=specificationCatalog.entries(specificationData()).filter(entry=>!entry.ignored&&!entry.workingDraft&&entry.usages.includes(specificationUsage(item,entry)));
+    const current=entries.find(entry=>entry.aliases.includes(work.specificationId));
+    const profiles=item.kind==='linear'&&!isWallTakeoff(item)?materialLibrary.profiles(S.estimation.materialLibrary,MATERIALS):[];
+    section.insertAdjacentHTML('beforeend',`<label>Fini<select id="takeoffLinearFinish"><option value="">${esc(labelForItem(item))} · par défaut</option>
+      ${entries.map(entry=>`<option value="devis:${esc(entry.id)}" ${current===entry?'selected':''}>${esc(specificationCatalog.displayLabel(entry,specificationUsage(item,entry)))}</option>`).join('')}
+      ${profiles.map(profile=>`<option value="${profile.code}">${esc(profile.name)}</option>`).join('')}</select></label>`);
+    $('#takeoffLinearFinish',section).onchange=event=>{
+      const choice=event.target.value;
+      if(choice.startsWith('devis:'))return assignSpecificationSelection(choice.slice(6));
+      if(!choice&&!work.specificationId&&!work.productId)return;
+      const next={...work,productId:'',productSignature:'',specificationId:'',specificationUsage:'',specificationOrigin:'',specificationSignature:''};
+      if(choice)next.mouldingPlacement={location:'',finish:''};
+      updateItem(item.id,{material:choice||item.material,work:next,status:'à valider'});
+    };
+  }
+}
 function surfaceEditor(id,showDetails=false) {
   const item=S.items.find(i=>i.id===id&&i.kind==='area'&&i.page===S.page);if(!item)return;
   const q=fixtureSummary(item),bathroom=item.bathroom||isBathroom(item.name),cuts=item.fixtureCuts||[],pending=item.fixturePending||[],work=workOf(item),
@@ -22606,7 +23001,7 @@ function surfaceEditor(id,showDetails=false) {
     loss=calculated?(calculation?.wastePercent??null):defaultLoss??(item.wasteConfirmed===false?null:item.waste),
     need=pending.length?null:calculated?(calculation?.complete?calculation.requiredSqft:null):loss===null?null:q.net*(1+loss/100),
     productLine=[displayCodeForItem(item),item.tiling&&format?tileDimensions(format):product?.format||entry?.formatText||(format?tileDimensions(format):''),product?.color||entry?.color].filter(Boolean).join(' · '),
-    keepFinish=work.specificationId&&![...documentFinishes.values()].some(entry=>entry.aliases.includes(work.specificationId)),
+    keepFinish=work.specificationId&&![...documentFinishes.values()].some(entry=>entry.aliases.includes(work.specificationId)),detectedFinish=surfaceFinishOnPlan(item,documentFinishes),
     unitBoard=known&&scope!=='common'?unitBaseboards.select(specificationCatalog.entries(specificationData()),{bathroom,unit:known}):null,
     nameValue=suggestion&&/^(?:SALLE DE BAINS? PROPOSEE|PIECE DETECTEE|ZONE \d+\b)/.test(normalizeName(item.name))?suggestion.name:item.name;
   openDialog('Modifier la surface',`<form id="surfaceEditForm" class="aite-surface-editor"><div class="surface-editor-body">
@@ -22625,6 +23020,7 @@ function surfaceEditor(id,showDetails=false) {
       <label class="surface-editor-finish"><span class="sr-only">Fini de plancher</span><select id="surfaceMaterial" title="Fini de plancher">${keepFinish?`<option value="__keep_surface_finish__" selected>${esc(specificationEntry(item)?.code||item.material)} · Référence actuelle</option>`:''}${finishMaterialOptions(keepFinish?null:item.material,work.specificationId,documentFinishes)}</select></label>
       <label class="surface-editor-baseboard"><span class="sr-only">Plinthe</span><select id="surfaceBaseboard" title="Plinthe"><option value="">Sans plinthe</option>${baseboardOptions(baseCode)}</select></label>
     </div>
+    ${finishOnPlanNotice(detectedFinish,'surfaceUsePlanFinish')}
     ${tileSurface?`<section class="surface-editor-tiles" id="surfaceTileCalculation" aria-labelledby="surfaceTileHeading">
       <div class="surface-editor-section-heading"><h3 id="surfaceTileHeading">Calepinage et pertes</h3><button type="button" id="surfaceOpenTileCalculation">Ouvrir le calepinage</button></div>
       <p>Perte (%) = 100 × (1 − surface nette ÷ surface avec perte)</p>
@@ -22676,6 +23072,7 @@ function surfaceEditor(id,showDetails=false) {
     };
   }
   if(suggestion)$('#surfaceUseName').onclick=()=>{$('#surfaceName').value=suggestion.name;$('#surfaceName').focus();};
+  if($('#surfaceUsePlanFinish'))$('#surfaceUsePlanFinish').onclick=()=>{const field=$('#surfaceMaterial');field.value=detectedFinish.key;field.dispatchEvent(new Event('change',{bubbles:true}));field.focus();};
   if(unitBoard?.entry)$('#surfaceTraceBaseboard').onclick=()=>{
     if($('#surfaceLocation').value!==scope||scope==='unit'&&$('#surfaceUnitNumber').value.trim()!==known||($('#surfaceBathroom')?.checked??bathroom)!==bathroom){$('#surfaceEditError').textContent='Enregistrez la localisation et le type de pièce avant de tracer la plinthe.';return;}
     if(!S.scale){$('#surfaceEditError').textContent='Calibrez cette feuille avant de tracer une plinthe.';return;}
@@ -22697,11 +23094,7 @@ function surfaceEditor(id,showDetails=false) {
     if(!['auto','unit','common'].includes(selectedScope)||selectedScope==='unit'&&(!selectedUnit||selectedUnit.length>80))throw new Error('Précisez le numéro du logement.');
     const changedLocation=selectedScope!==scope||selectedScope==='unit'&&selectedUnit!==known,
       newUnit=selectedScope==='unit'?selectedUnit:selectedScope==='auto'?recognized:'',
-      nextWork={...work,baseboard:{...work.baseboard}};
-    if(changedLocation||selectedScope==='auto'&&newUnit&&!location.unit){
-      Object.assign(nextWork,{roomId:'',unitId:'',unit:newUnit,type:unitRows.find(row=>row.code===newUnit)?.type||'',level:location.level});
-      if(selectedScope==='auto')delete nextWork.locationScope;else nextWork.locationScope=selectedScope;
-    }
+      nextWork=changedLocation||selectedScope==='auto'&&newUnit&&!location.unit?classificationLocation(work,{location,recognized,unitRows},selectedScope,selectedUnit):{...work};
     if(board!==baseCode)nextWork.baseboard={...nextWork.baseboard,enabled:!!board,code:board||'PL-01'};
     const changedFinish=!keepsReference&&(entry?!entry.aliases.includes(work.specificationId):!!work.specificationId||material!==item.material);
     if(changedFinish)Object.assign(nextWork,{productId:'',productSignature:'',specificationId:entry?.id||'',specificationUsage:entry?'floor':'',specificationOrigin:entry?'manual':'',specificationSignature:entry?specificationSignature(entry):''});
@@ -22911,6 +23304,7 @@ function setProfile(code,value) {
 }
 function measureForEstimate(item,state=S) {
   if(item.kind==='count')return item.points.length;
+  if(isMouldingPoint(item))return item.mouldingPointFeet;
   const scale=state.scales[item.page];
   if(!Number.isFinite(scale)||scale<=0||hasPendingFixtures(item))return null;
   return item.kind==='area'?Math.max(0,netArea(item))*scale*scale:lineLength(item.points,item.sectionStarts)*scale;
@@ -22921,7 +23315,7 @@ function estimateLines(state=S) {
     const w=workOf(item,state);if(item.measureOnly||!w.included||!(item.status==='confirmée'&&confirmationIssues(item,state).length===0))continue;
     const measured=measureForEstimate(item,state),scale=state.scales[item.page],issues=[],calculation=usesTileCalculation(item,state)?tileCalculation(item,state):null;
     if(measured===null)issues.push(hasPendingFixtures(item)?'Bain/douche à délimiter':'Échelle manquante');
-    else if(item.kind!=='count'&&!state.scaleMeta[item.page]?.verified)issues.push('Échelle à vérifier');
+    else if(item.kind!=='count'&&!isMouldingPoint(item)&&!state.scaleMeta[item.page]?.verified)issues.push('Échelle à vérifier');
     if(item.status!=='confirmée')issues.push('Mesure '+item.status);
     if(w.repeat>1)issues.push('Répétition ×'+w.repeat+' à confirmer');
     const emit=(category,code,base,waste,extra=[])=>result.push({id:item.id,page:item.page,name:item.name,category,code,
@@ -23078,8 +23472,57 @@ function estimationSheets() {
 
 function quantityOrUnknown(n,unit='') {return n===null?'À vérifier':fmt(n,2)+(unit?' '+unit:'');}
 function moneyOrUnknown(n) {return n===null?'À saisir':fmt(n,2)+' $';}
-function mouldingPlacementDialog(item) {
+function mouldingTakeoffDialog() {
+  if(!S.plan||S.loading||S.detectJob)return toast('Ouvrez une feuille avant de relever les moulures.');
+  if(S.draft.length)return toast('Terminez le tracé en cours avant de relever les moulures.');
+  const profiles=materialLibrary.profiles(S.estimation.materialLibrary,MATERIALS),selected=mouldingOf(S.activeMoulding)?.code||profiles[0].code;
+  openDialog('Relever les moulures',`<form id="mouldingTakeoffForm">
+    <label>Profilé<select id="mouldingTakeoffProfile">${profiles.map(profile=>`<option value="${profile.code}" ${selected===profile.code?'selected':''}>${esc(profile.name)}</option>`).join('')}</select></label>
+    <label>Longueur d’une barre (pi)<input id="mouldingBarLength" type="number" min="0.01" max="100" step="any" value="8" required></label>
+    <dl class="moulding-totals" aria-live="polite"><div><dt>Longueur nette sur ce plan</dt><dd id="mouldingTakeoffNet"></dd></div><div><dt>Barres · minimum théorique</dt><dd id="mouldingBarCount"></dd></div></dl>
+    <p>Brouillons inclus. Le nombre réel dépend des coupes et du réemploi des chutes.</p>
+    ${S.scale?'':'<p>Réglez l’échelle de la feuille pour tracer une ligne.</p>'}
+    <details class="moulding-placements" id="mouldingPointList" hidden><summary>Emplacements pointés</summary><ul></ul></details>
+    <div class="modal-actions"><button type="button" id="mouldingByPoint">Pointer un emplacement</button><button type="button" id="mouldingByLine">Tracer une ligne</button></div>
+  </form>`,'moulding-takeoff-dialog');
+  const pick=$('#mouldingTakeoffProfile'),bar=$('#mouldingBarLength'),placements=$('#mouldingPointList');
+  $('#mouldingTakeoffForm').onsubmit=event=>event.preventDefault();
+  const refreshTotals=()=>{
+    const items=activePlanItems().filter(item=>item.kind==='linear'&&item.material===pick.value&&!item.measureOnly&&!isWallTakeoff(item));
+    const net=items.reduce((sum,item)=>sum+(measureForEstimate(item)??0),0);
+    $('#mouldingTakeoffNet').textContent=fmt(net,2)+' pi';
+    const ratio=net/bar.valueAsNumber;
+    $('#mouldingBarCount').textContent=!bar.validity.valid?'—':String(net>0?Math.max(1,Math.ceil(ratio-4*Number.EPSILON*ratio)):0);
+    const points=items.filter(isMouldingPoint);
+    placements.hidden=!points.length;
+    $('summary',placements).textContent=`Emplacements pointés (${points.length})`;
+    $('ul',placements).innerHTML=points.map(item=>`<li>${esc(item.work.mouldingPlacement.location)} · ${esc(mouldingFinishChoice(item.work.mouldingPlacement.finish)||'Fini à vérifier')} · ${fmt(item.mouldingPointFeet,2)} pi</li>`).join('');
+  };
+  pick.onchange=bar.oninput=refreshTotals;
+  $('#mouldingByPoint').onclick=()=>{
+    const code=pick.value;closeDialog();S.activeSpecification=null;activateTool('mouldingPoint',null,null,code);
+  };
+  $('#mouldingByLine').onclick=()=>{
+    const code=pick.value;closeDialog();
+    if(!S.scale){S.activeMoulding=code;return calibrationModal();}
+    S.activeSpecification=null;activateTool('linear',null,null,code);
+  };
+  refreshTotals();
+}
+function placeMouldingPoint(point) {
+  const profile=mouldingOf(S.activeMoulding);
+  if(!profile||point.x<0||point.y<0||point.x>S.plan.width||point.y>S.plan.height)return toast('Cliquez un emplacement sur la feuille.');
+  if(S.items.length>=3000)return toast('Le relevé a atteint la limite de 3 000 mesures.');
+  const number=S.items.filter(item=>item.material===profile.code).length+1;
+  const item={id:uid(),kind:'linear',material:profile.code,name:profile.name+' '+number,page:S.page,points:[point],
+    mouldingPointFeet:null,qty:0,waste:5,status:'à valider',method:'Longueur saisie à un point de pose'};
+  S.tool='select';refreshManualUI();
+  mouldingPlacementDialog(item,S.plan);
+}
+function mouldingPlacementDialog(item,draftPlan=null) {
   const work=workOf(item),placement=work.mouldingPlacement||{location:'',finish:''};
+  const point=isMouldingPoint(item),profile=mouldingOf(item.material),oldFolder=item.folderId||'';
+  const documentKey=S.documentKey;
   const locations=[...new Set(S.items.filter(row=>row.kind==='area'&&row.page===item.page)
     .map(row=>row.name.trim()).filter(Boolean))].slice(0,300);
   const references=[...materialsFor().map(row=>row.code),'MUR-01',
@@ -23089,29 +23532,75 @@ function mouldingPlacementDialog(item) {
   if(placement.finish&&!options.some(row=>row.reference===placement.finish)) {
     options.push({reference:placement.finish,label:'Référence actuelle à vérifier · '+placement.finish});
   }
-  openDialog('Emplacement et fini de la moulure',`<form id="mouldingPlacementForm">
-    <p>${esc(labelForItem(item))} · ${esc(pageName(item.page))} · ${itemQuantityText(item)}</p>
-    <label>Pièce ou emplacement de pose<input id="mouldingLocation" list="mouldingLocations" maxlength="160" value="${esc(placement.location)}" placeholder="Ex. Escalier E2, palier du 3e"></label>
+  const candidates=!placement.finish?S.items.filter(area=>area.kind==='area'&&area.page===item.page&&!area.work?.roomBoundary&&
+    (!area.work?.layer||area.work.layer==='finish')&&item.points.every(point=>insideItem(point,area))):[];
+  const owner=candidates.length===1?candidates[0]:null,ownerFinish=owner&&specificationEntry(owner);
+  const reference=owner&&(owner.work?.productId?'produit:'+owner.work.productId:ownerFinish?'devis:'+ownerFinish.id:owner.material);
+  const suggestedFinish=options.find(row=>row.reference===reference);
+  openDialog(draftPlan?'Relever un emplacement':'Pose de la moulure',`<form id="mouldingPlacementForm">
+    <p>${esc(labelForItem(item))} · ${esc(pageName(item.page))}${draftPlan?'':' · '+itemQuantityText(item)}</p>
+    <div class="v4-fields">
+      <label>Dossier<select id="mouldingFolder">${folderOptions(oldFolder)}${S.folders.length<200?'<option value="__new_moulding_folder__">Créer un dossier…</option>':''}</select></label>
+      <label>Localisation<input id="mouldingLocation" list="mouldingLocations" maxlength="160" ${point?'required':''} value="${esc(placement.location)}" placeholder="Ex. Gymnase, porte nord"></label>
+      <label class="moulding-folder-name" id="mouldingFolderNameField" hidden>Nom du nouveau dossier<input id="mouldingFolderName" maxlength="80" autocomplete="off"></label>
+      <label>Fini associé<select id="mouldingFinish" ${point?'required':''}><option value="">Choisir le fini</option>${options.map(({reference,label})=>`<option value="${esc(reference)}" ${reference===(placement.finish||suggestedFinish?.reference)?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+      ${point?`<label>Longueur à poser (pi)<input id="mouldingPointLength" type="number" min="0.01" max="500" step="any" required value="${item.mouldingPointFeet??''}"></label>`:''}
+    </div>
+    ${suggestedFinish?`<p class="takeoff-finish-notice">Fini suggéré d’après la surface ${esc(owner.name)}.</p>`:''}
     <datalist id="mouldingLocations">${locations.map(name=>`<option value="${esc(name)}"></option>`).join('')}</datalist>
-    <label>Fini associé<select id="mouldingFinish"><option value="">Choisir le fini</option>${options.map(({reference,label})=>`<option value="${esc(reference)}" ${reference===placement.finish?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+    ${traceColorField(profile.color,'Couleur du profilé')}
     <p id="mouldingPlacementError" class="v4-error" role="alert"></p>
-    <div class="modal-actions"><button type="button" id="cancelMouldingPlacement">Annuler</button><button type="submit" class="primary">Enregistrer</button></div>
-  </form>`);
+    <div class="modal-actions"><button type="button" id="cancelMouldingPlacement">Annuler</button><button type="submit" class="primary">${draftPlan?'Ajouter le point':'Enregistrer'}</button></div>
+  </form>`,'moulding-takeoff-dialog');
+  const form=$('#mouldingPlacementForm'),folder=$('#mouldingFolder'),newFolderField=$('#mouldingFolderNameField'),{input:color}=bindTraceColorField(form);
+  folder.onchange=()=>{newFolderField.hidden=folder.value!=='__new_moulding_folder__';if(!newFolderField.hidden)$('#mouldingFolderName').focus();};
   $('#cancelMouldingPlacement').onclick=closeDialog;
-  $('#mouldingPlacementForm').onsubmit=event=>{
+  if(point)$('#mouldingPointLength').focus();
+  form.onsubmit=event=>{
     event.preventDefault();
     try {
-      setWork(item.id,{...work,mouldingPlacement:{location:$('#mouldingLocation').value.trim(),finish:$('#mouldingFinish').value}});
-      closeDialog();toast('Emplacement et fini de la moulure enregistrés.');
+      if(S.loading||S.documentKey!==documentKey||S.page!==item.page||
+        (draftPlan?S.plan!==draftPlan:!S.items.includes(item)))throw new Error('La feuille a changé. Ouvrez de nouveau la fiche de la moulure.');
+      const nextPlacement={location:$('#mouldingLocation').value.trim(),finish:$('#mouldingFinish').value};
+      const nextWork={...work,mouldingPlacement:nextPlacement};
+      const length=point?$('#mouldingPointLength').valueAsNumber:item.qty;
+      if(point) {
+        if(!finiteRange(length,0.01,500))throw new Error('Saisissez une longueur de 0,01 à 500 pi.');
+        if(!nextPlacement.location||!mouldingFinishChoice(nextPlacement.finish))throw new Error('Précisez la localisation et le fini associé.');
+      }
+      validateWork(nextWork,item.kind);
+      let folderId=folder.value,createdFolder;
+      if(folderId==='__new_moulding_folder__'){
+        const name=$('#mouldingFolderName').value.trim(),error=folderNameError(name);
+        if(error||S.folders.length>=200)throw new Error(error||'Le projet contient déjà 200 dossiers.');
+        createdFolder={id:uid(),name,collapsed:false};folderId=createdFolder.id;
+      }else if(folderId&&!S.folders.some(entry=>entry.id===folderId))throw new Error('Ce dossier n’existe plus.');
+      const folderChanged=oldFolder!==folderId;
+      const measurementChanged=nextPlacement.location!==placement.location||nextPlacement.finish!==placement.finish||point&&length!==item.mouldingPointFeet;
+      const library=color.value!==profile.color.toLowerCase()?materialLibrary.edit(S.estimation.materialLibrary,MATERIALS,{code:profile.code,name:profile.name,color:color.value}):null;
+      if(draftPlan||measurementChanged||folderChanged||library){
+        remember();
+        if(createdFolder)S.folders.push(createdFolder);
+        if(library)S.estimation.materialLibrary=library;
+        if(measurementChanged){item.work=nextWork;item.status='à valider';if(point){item.mouldingPointFeet=length;item.qty=length;}}
+        if(folderChanged){
+          if(folderId)item.folderId=folderId;else delete item.folderId;
+          item.takeoffFiling={mode:'manual'};
+          for(const ancestor of measureFolders.path(S.folders,folderId))ancestor.collapsed=false;
+        }
+        if(draftPlan){S.items.push(item);setSelection([item.id]);}
+        save();
+      }
+      closeDialog();refresh();if(draftPlan)revealTakeoffProperties();toast('Pose de la moulure enregistrée.');
     } catch(error) {$('#mouldingPlacementError').textContent=error.message;}
   };
 }
 function appendMouldingPlacement(host,item) {
   if(item?.kind!=='linear'||item.measureOnly||!mouldingOf(item.material))return;
   const placement=item.work?.mouldingPlacement;
-  host.insertAdjacentHTML('beforeend',`<section class="v4-properties"><h3>Pose de la moulure</h3>
-    <p>${esc(placement?.location||'Emplacement à préciser')} · ${esc(mouldingFinishChoice(placement?.finish)||'Fini à associer')}</p>
-    <button type="button" id="mouldingPlacementBtn" class="selection-action">Emplacement et fini associé</button></section>`);
+  host.insertAdjacentHTML('beforeend',`<section class="takeoff-classification v4-properties"><h3>Pose de la moulure</h3>
+    <p><b>Localisation</b> ${esc(placement?.location||'À préciser')} · <b>Fini associé</b> ${esc(mouldingFinishChoice(placement?.finish)||'À choisir')}</p>
+    <button type="button" id="mouldingPlacementBtn" class="selection-action">Dossier, localisation et fini</button></section>`);
   $('#mouldingPlacementBtn').onclick=()=>mouldingPlacementDialog(item);
 }
 function estimateInspector(host,item) {
@@ -23229,6 +23718,7 @@ canvas.onclick=event=>{
   if(exclusionVertex(focusedSurfaceEdit()?.item,canvasPoint(event)))return;
   if(planOverlayUI?.pick(canvasPoint(event)))return;
   if(S.tool==='mergeSurface')return finishSurfaceMerge(canvasPoint(event));
+  if(S.tool==='mouldingPoint')return placeMouldingPoint(canvasPoint(event));
   const point=snapPoint(canvasPoint(event),event);
   if(S.tool==='sanitaryPoint'){placeManualSanitary(point);return;}
   if(S.tool==='wallSamples'){recordWallSample(point);return;}
@@ -23290,7 +23780,11 @@ const measurementContextMenu=measurementContextMenuFactory({
   openLocation:id=>{workDialog(id);$('#workBlock')?.focus();},
   openTileSettings:()=>{tileModal();$('#tileFormat')?.focus();},
   activateOrigin,canSetOrigin:canSetTileOrigin,
-  additionalEntries:(item,point)=>canResumeLine(item)?[{id:'custom-resume-line',label:'Reprendre le tracé',run:()=>resumeLine(item.id)}]:sanitaryMenuEntries(item,point),
+  additionalEntries:(item,point)=>{
+    const entries=canResumeLine(item)?[{id:'custom-resume-line',label:'Reprendre le tracé',run:()=>resumeLine(item.id)}]:sanitaryMenuEntries(item,point);
+    if(mouldingOf(item.material))entries.push({id:'custom-moulding-placement',label:'Dossier, localisation et fini…',run:()=>mouldingPlacementDialog(item)});
+    return entries;
+  },
   pageEntries:()=>sanitaryMenuEntries(null),
   drawingEntries:state=>{
     if(state.tool==='finishAlign')return {title:'Aligner le sens de pose',entries:[{id:'custom-stop-finish-alignment',label:'Annuler',run:()=>activateTool('select')}]};
@@ -23466,7 +23960,7 @@ $('#reopen').onclick=$('#showProperties').onclick=()=>{if(S.reviewOpen)closeRevi
 $('#togglePages').onclick=()=>$('.app').classList.toggle('pages-folded');
 $('.sidebar .pane-title button').onclick=()=>$('.app').classList.add('pages-folded');
 $('#collapseGrid').onclick=()=>{const grid=$('.quantity-grid');grid.classList.toggle('collapsed');const h=grid.classList.contains('collapsed')?'32px':'176px';grid.style.height=h;grid.style.flexBasis=h;};
-$('#sheetSearch').oninput=renderPages;$('#stageFile').ondblclick=renameSheet;
+$('#stageFile').ondblclick=renameSheet;
 window.onkeydown=event=>{updateTraceShift(event);keyboard(event);};
 window.onkeyup=event=>{updateTraceShift(event);if(event.key===' '){S.spaceHeld=false;canvas.style.cursor=S.tool==='hand'?'grab':'crosshair';}};
 window.onblur=()=>{S.spaceHeld=false;if(S.dragging){const before=S.dragging.before;S.dragging=null;restoreSnapshot(before);}S.selectionBox=null;S.panning=null;draw();};
@@ -23479,6 +23973,7 @@ $('.canvas-wrap').after($('#takeoffSummary'));
 initEstimationUI();initV7();initManualUI();initFoldersUI();
 const workspaceUI=workspaceUIFactory({getState:()=>S,remember,save,refresh,openDialog,closeDialog,toast,esc,uid,
   planLibrary,planLibraryUIFactory,projectSession,openComparison:openPlanComparison,closeCurrentPlan,renamePage:renameSheet,pageName,folderIcon:measureFolders.folderIcon,
+  registerSheetDecorator:decorate=>{decoratePlanSheets=decorate;},sheetFloorContext:page=>quantityTransfer.floorContext(S.sheetNames[page],page,S.pageInfo[page]),
   ensureActiveSheet,pageRemovalBlock:planTabNavigationBlock,
   openPlanTabs:context=>planTabsUI?.openFromLibrary(context),planTabsMenuLabel:(kind,id)=>planTabsUI?.menuLabel(kind,id),navigatePlanDocument:id=>planTabsUI?.previewDocument(id),
   getPurchaseRows:lines=>purchasing.purchaseRows(lines??estimateProjectLines(),profile,orderGroup),getEstimateLines:estimateProjectLines,getQuoteLines:manualCosts=>calculateProjectOrders(manualCosts).quoteLines,getMeasurementState:measurementState,getWork:item=>workOf(item,measurementState(item)),setMeasurementWork:setWork,setMeasurementProduct,setRoomBoundary,geometry,rolls,quotation,projects,documents,offcuts,branding,getProjectStates:projectStates,isMeasurementIncluded:(item,state)=>estimateLines(state).some(line=>line.id===item.id&&line.category==='Sol'),
