@@ -953,7 +953,30 @@ body[data-aite-theme="nuit"] .app.aite-workspace :is(.review-panel, .advanced-to
 .material-library details {margin-top:6px}
 .material-library summary {padding:8px 3px;font-weight:650;cursor:pointer}
 .material-library .stairs-heading {margin:8px 3px 2px;font-size:12px;font-weight:650;color:var(--aite-theme-ink,var(--ink))}
-#overlay .v4-dialog:is(.material-color-dialog,.moulding-takeoff-dialog) {width:min(432px,calc(100vw - 24px))}
+#overlay .v4-dialog.material-color-dialog {width:min(432px,calc(100vw - 24px))}
+#overlay .v4-dialog.moulding-takeoff-dialog {width:min(370px,calc(100vw - 24px));padding:12px}
+#overlay .moulding-takeoff-dialog > header {min-height:34px;margin:0 0 8px;padding:3px 7px}
+#overlay .moulding-takeoff-dialog > header h2 {font-size:15px}
+#overlay .moulding-takeoff-dialog > header button {min-height:26px;height:26px;width:26px}
+#overlay .moulding-takeoff-dialog .v4-fields {gap:7px 9px;margin:0}
+#overlay .moulding-takeoff-dialog :is(.moulding-intro,.takeoff-finish-notice) {margin:0 0 7px;font-size:11px}
+#overlay .moulding-takeoff-dialog .v4-fields label {min-width:0;margin:0;font-size:11px}
+#overlay .moulding-takeoff-dialog .v4-fields :is(select,input) {min-width:0;height:32px;min-height:32px;margin:2px 0 0;padding:4px 7px;font-size:12px}
+#overlay .moulding-takeoff-dialog .modal-actions {margin:8px 0 0;gap:6px}
+#overlay .moulding-takeoff-dialog .modal-actions button {min-height:32px;padding:4px 9px;font-size:12px}
+#overlay .moulding-form-span {grid-column:1/-1}
+#overlay .moulding-compact-options {display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px}
+#overlay .moulding-compact-options details[open] {flex-basis:100%}
+#overlay .moulding-compact-options summary {width:fit-content;min-height:27px;padding:4px 0;font-size:11px;cursor:pointer}
+#overlay .moulding-color-summary span {display:inline-block;width:15px;height:15px;margin-inline-start:5px;vertical-align:middle;border:1px solid var(--aite-theme-border,#818792);border-radius:50%;background:var(--trace-color)}
+#overlay .moulding-takeoff-dialog .material-color-field {margin:0 0 5px}
+#overlay .moulding-takeoff-dialog .material-color-field legend {position:absolute;clip-path:inset(50%)}
+#overlay .moulding-takeoff-dialog .material-color-palette {grid-template-columns:repeat(9,26px);gap:5px}
+#overlay .moulding-takeoff-dialog .material-color-palette label {width:26px;height:26px}
+#overlay .moulding-takeoff-dialog .material-color-palette span {width:16px;height:16px}
+#overlay .moulding-takeoff-dialog #mouldingBarLength {width:72px}
+#overlay .moulding-takeoff-dialog .v4-error:empty {display:none}
+@media(max-width:320px){#overlay .moulding-takeoff-dialog .material-color-palette {grid-template-columns:repeat(6,26px)}}
 #overlay .material-color-field {margin:12px 0;padding:0;border:0;min-width:0}
 #overlay .material-color-field legend {font-size:12px;padding:0;color:var(--aite-theme-ink,var(--ink))}
 #overlay .material-color-palette {display:grid;grid-template-columns:repeat(9,30px);gap:5px 6px;margin:6px 0 9px}
@@ -978,7 +1001,6 @@ body[data-aite-theme="nuit"] .app.aite-workspace :is(.review-panel, .advanced-to
 #overlay .moulding-placements {border-block-start:1px solid var(--aite-theme-line,var(--line));padding-block:7px;font-size:12px}
 #overlay .moulding-placements summary {cursor:pointer}
 #overlay .moulding-placements ul {margin:6px 0 0;padding-inline-start:18px}
-#overlay .moulding-folder-name {grid-column:1/-1}
 .takeoff-finish-notice {margin:4px 0 8px;color:var(--aite-theme-muted,var(--muted));font-size:12px}
 .takeoff-finish-notice button {color:var(--aite-theme-blue,#304454);border:0;background:transparent;padding:3px 4px;text-decoration:underline;cursor:pointer}
 .takeoff-classification p {margin:6px 0;font-size:12px}
@@ -3306,6 +3328,7 @@ function initManualUI() {
     manualButton('manualGrid','grid-3x3','Grille','Choisir le fini et le format de la grille','','manual-area'),
     manualButton('manualRectangle','square','Rectangle','Mesurer un rectangle en deux coins · P','rectangle','manual-area'),
     manualButton('manualLinear','ruler','Ligne','Mesurer une ligne ou une plinthe · L','linear','manual-line'),
+    manualButton('manualMoulding','corner-up-right','Moulures','Moulures','','manual-line'),
     manualButton('manualSegment','waypoints','Segments','Mesurer des segments indépendants · J','segment','manual-segment'),
     manualButton('manualCount','list-ordered','Comptage','Compter des éléments par clic, sans échelle · Q','count','manual-count')
   ].join('');
@@ -3359,6 +3382,7 @@ function initManualUI() {
   workflow.remove();legacy?.remove();$('.topbar .menu')?.remove();
   $$('[data-manual-tool]',$('#manualRibbon')).forEach(button=>button.onclick=()=>startManualTool(button.dataset.manualTool));
   $('#manualGrid').onclick=openGridTrace;
+  $('#manualMoulding').onclick=()=>mouldingTakeoffDialog();
   $('#manualFit').onclick=()=>{fitPlan();refresh();};
   $('#manualZoomIn').onclick=()=>zoomAt(S.zoom*1.2);
   $('#manualZoomOut').onclick=()=>zoomAt(S.zoom/1.2);
@@ -3369,7 +3393,7 @@ function initManualUI() {
     orthogonalTrace=button.dataset.traceDirection==='ortho';refreshManualUI();canvas.focus({preventScroll:true});
   };
   $('#manualFinish').onclick=()=>{finishManualTool();if(!$('#overlay').querySelector('[role="dialog"]'))canvas.focus();};
-  $('#manualCancel').onclick=()=>{S.draft=[];S.tool='select';refresh();canvas.focus();};
+  $('#manualCancel').onclick=()=>{S.draft=[];S.mouldingTrace=null;S.tool='select';refresh();canvas.focus();};
   lucide.createIcons({attrs:{width:18,height:18,'stroke-width':1.8}});
   initRibbonOverflow();
   refreshManualUI();
@@ -3387,7 +3411,7 @@ function initRibbonOverflow() {
   main.insertAdjacentHTML('afterend','<section id="advancedTools" class="advanced-tools" aria-label="Outils supplémentaires du ruban" hidden><header><strong>Autres outils</strong><button type="button" id="closeAdvanced" aria-label="Fermer les autres outils">×</button></header><div id="ribbonOverflowGroups"></div></section>');
   const panel=$('#advancedTools'),toggle=$('#advancedToggle'),holder=$('#manualOverflowHolder'),groups=$$('.manual-group',strip),entries=[];
   const lowPriority=['demoBtn','helpBtn','catalogNav','ordersBtn','tileOriginBtn','toggleTileGrid','tileSettings','manualZoomOut','manualZoomIn','manualSegment','manualRectangle','wallLayersToggle','manualPan','manualFit'];
-  const atelierEssentials=['manualRectangle','manualScale','manualDimension','manualArea','manualGrid','manualLinear','manualCount','stepDetect'];
+  const atelierEssentials=['manualMoulding','manualRectangle','manualScale','manualDimension','manualArea','manualGrid','manualLinear','manualCount','stepDetect'];
   const atelierAdditional=['manualExclude','deleteSelection','wallTakeoffBtn','traceWallBtn','wallLayersToggle','helpBtn','demoBtn','catalogNav','ordersBtn','manualSegment','wallSamplesBtn'];
   const middlePriority=['manualCount','manualLinear','manualExclude','manualRedo','manualUndo','wallTakeoffBtn','traceWallBtn'];
   groups.forEach((group,index)=>{
@@ -3512,6 +3536,9 @@ function refreshManualUI() {
     surface=typeof actionableSurface==='function'?actionableSurface():measuredArea?{item:measuredArea,preview:false}:null;
   const gridActive=S.tool==='area'&&(!!S.gridTrace||!!gridFamily(activeAreaTrace())),gridButton=$('#manualGrid');
   gridButton.disabled=busy;gridButton.setAttribute('aria-pressed',String(gridActive));gridButton.classList.toggle('active',gridActive);
+  const mouldingButton=$('#manualMoulding');
+  mouldingButton.disabled=busy||!!S.draft.length;
+  mouldingButton.title=busy?'Ouvrez une feuille pour relever les moulures.':S.draft.length?'Terminez le tracé en cours.':'Moulures · relevé par point ou par ligne';
   $$('[data-manual-tool]',ribbon).forEach(button=>{
     const tool=button.dataset.manualTool,selected=S.tool===tool&&(tool!=='area'||!gridActive);
     button.setAttribute('aria-pressed',String(selected));
@@ -16624,6 +16651,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
       manualScale:'<path d="m4 15 11-11 5 5L9 20zM8 11l2 2m1-5 2 2m1-5 2 2M5 16l2 2"/>',
       manualDimension:'<path d="M3 7v10m18-10v10M3 12h18M6 10l-3 2 3 2m12-4 3 2-3 2"/>',
       manualRectangle:'<rect x="4" y="6" width="16" height="12" rx="1"/>',
+      manualMoulding:'<path d="M3 17h11V6a2.5 2.5 0 0 1 5 0v15H3z"/><path d="M6.5 19h1m3 0h1"/>',
       manualCount:'<circle cx="6" cy="6" r="1.5"/><circle cx="18" cy="6" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="6" cy="18" r="1.5"/><circle cx="18" cy="18" r="1.5"/>',
       stepDetect:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
       manualSelect:'<path d="M5.1 3.4 19.7 12.2l-6.5 1.6-2.8 6.8Z" fill="currentColor" fill-opacity=".045"/><path d="m13.2 13.8 4.1 5.4"/>',
@@ -16677,7 +16705,7 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     .aite-ribbon-heading button{display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:2px 8px;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--aite-ink);font-size:11px}.aite-ribbon-heading button:hover,.aite-ribbon-heading button[aria-pressed=true]{background:var(--aite-selection);border-color:var(--aite-border)}
     .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main{min-height:43px;margin:5px 8px;padding:2px 4px;align-items:center;background:var(--aite-field);border:1px solid var(--aite-line);border-radius:10px}.aite-workspace .manual-ribbon-scroll{gap:3px;padding:0 3px;background:transparent}.aite-workspace .manual-group{border-color:var(--aite-line);padding-inline:6px}.aite-workspace .manual-ribbon-main .manual-group-label{display:none}.aite-workspace .manual-group-label{font-size:9px;letter-spacing:.02em;color:var(--aite-muted)}
     .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button{height:34px;min-height:34px;width:auto;min-width:32px;max-width:none;flex:0 0 auto;padding:4px;gap:5px;flex-direction:row;border-radius:5px;color:var(--aite-ink);border-color:transparent;background:transparent}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button span{font-size:12px;line-height:1.2;white-space:nowrap}.aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-button svg{width:17px;height:17px;color:var(--aite-muted)}
-    .aite-workspace #aiteRibbonTools :is(#manualUndo,#manualRedo,#tileSettings,#tileOriginBtn,#toggleTileGrid,#repairBathroom) span,.aite-workspace #ribbonZoomActions button span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .aite-workspace #aiteRibbonTools :is(#manualUndo,#manualRedo,#manualMoulding,#tileSettings,#tileOriginBtn,#toggleTileGrid,#repairBathroom) span,.aite-workspace #ribbonZoomActions button span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     .aite-workspace .atelier-ribbon-actions,.aite-workspace #ribbonZoomActions{display:flex;flex:none;align-items:center;gap:2px}
     .aite-workspace .atelier-ribbon-actions{margin-inline-start:auto}
     .aite-workspace .atelier-direct-tools{display:flex;flex:none;align-items:center;gap:2px;border-inline-start:1px solid var(--aite-line);padding-inline-start:3px;margin-inline-start:3px}
@@ -16686,7 +16714,10 @@ const workspaceAppearanceFactory = (function createWorkspaceAppearance({document
     @media(min-width:951px){
       .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-group{padding-inline:3px}
       .aite-workspace.layout-compact #manualRibbon .manual-ribbon-main .manual-ribbon-scroll .manual-button{gap:3px;padding-inline:3px}
-      .aite-workspace #aiteRibbonTools #manualScale span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+      .aite-workspace #aiteRibbonTools :is(#manualScale,#manualCount) span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    }
+    @media(min-width:951px) and (max-width:1550px){
+      .aite-workspace #aiteRibbonTools :is(#manualGrid,#manualLinear) span{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     }
     .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden]))){flex:none;padding:0}
     .aite-workspace .manual-ribbon-scroll:not(:has(.manual-group:not([hidden])))+.manual-overflow-holder{border-left:0}
@@ -20241,6 +20272,7 @@ function finishLine(points, continueDrawing=false) {
     const completed=S.newLinearTraceId&&S.newLinearTraceId===activeLinearTrace()?.id;
     S.draft=[];S.linearTraceId=null;S.newLinearTraceId=null;S.unitBaseboardTrace=null;S.tool='select';refresh();
     if(completed)revealTakeoffProperties();
+    S.mouldingTrace=null;
     if(points.length)toast('La section incomplète a été ignorée.');
     return;
   }
@@ -20253,7 +20285,15 @@ function finishLine(points, continueDrawing=false) {
   const item=current?{...current,points:[...current.points,...points],sectionStarts:[...(current.sectionStarts||[]),current.points.length],status:'à valider'}:
     {id:uid(),kind:'linear',name:`${moulding?.name||'Plinthe'} ${S.items.filter(i=>i.kind==='linear').length+1}`,material:moulding?.code||'PL-01',points:[...points],qty,waste:5,page:S.page,status:'à valider',method:'Tracé linéaire'};
   item.qty=lineLength(item.points,item.sectionStarts)*S.scale;
-  if(moulding&&!current)item.work={...workOf(item),mouldingPlacement:{location:'',finish:''}};
+  const setup=moulding&&!current&&mouldingTraceSetup(moulding.code);
+  let placement;
+  if(moulding&&!current){
+    item.work={...workOf(item),mouldingPlacement:{location:'',finish:''}};
+    if(setup){
+      try {placement=prepareMouldingPlacement(item,setup);}
+      catch(error){return toast(error.message);}
+    }
+  }
   if(trace){
     const entry=specificationCatalog.getEntry(specificationData(),trace.entryId),owner=S.items.find(row=>row.id===trace.itemId&&row.page===S.page);
     if(trace.key!==S.documentKey||trace.page!==S.page||!owner||!entry||entry.ignored||entry.workingDraft||entry.conflict||!entry.usages.includes('baseboard')){S.unitBaseboardTrace=null;S.draft=[];S.tool='select';refresh();return toast('Rouvrez la surface pour vérifier la référence de plinthe.');}
@@ -20268,7 +20308,9 @@ function finishLine(points, continueDrawing=false) {
     applySpecification(item,entry,'manual');item.folderId=folder.id;item.takeoffFiling={mode:'manual'};
     remember();if(!existing)S.folders.push(root);if(!existingLevel)S.folders.push(folder);S.items.push(item);S.unitBaseboardTrace=null;save();
   }else if(current){remember();S.items=S.items.map(row=>row.id===item.id?item:row);save();}
+  else if(placement){remember();applyMouldingPlacement(item,placement);S.items.push(item);save();}
   else pushItems([...S.items,item]);
+  if(!continueDrawing)S.mouldingTrace=null;
   const newlyTraced=!current||S.newLinearTraceId===item.id;
   setSelection([item.id]);S.draft=[];S.linearTraceId=continueDrawing?item.id:null;
   S.newLinearTraceId=continueDrawing&&newlyTraced?item.id:null;S.tool=continueDrawing?'linear':'select';refresh();
@@ -20357,10 +20399,10 @@ function renderPlanScene() {
   }
   if(S.draft.length&&!['count','rectangle','segment','dimension'].includes(S.tool)) {
     const profile=S.tool==='linear'?mouldingOf(activeLinearTrace()?.material||S.activeMoulding):null;
-    const color=profile?.marker?profile.color:'#df5e43';
+    const color=(profile&&mouldingTraceSetup(profile.code)?.color)||(profile?.marker?profile.color:'#df5e43');
     ctx.beginPath();S.draft.forEach((p,index)=>index?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.strokeStyle=color;ctx.lineWidth=2/S.zoom;ctx.setLineDash([8/S.zoom,5/S.zoom]);ctx.stroke();ctx.setLineDash([]);
     for(const p of S.draft){
-      if(profile?.marker)drawMouldingMarker(ctx,p,profile,rotation);
+      if(profile?.marker)drawMouldingMarker(ctx,p,{...profile,color},rotation);
       else {ctx.beginPath();ctx.arc(p.x,p.y,5/S.zoom,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=color;ctx.stroke();}
     }
   }
@@ -20461,6 +20503,8 @@ function bindTraceColorField(form) {
     for(const swatch of swatches)swatch.checked=swatch.value===input.value;
     const title=MATERIAL_TRACE_COLORS.find(([,color])=>color===input.value)?.[0]||'Personnalisée';
     name.textContent=title+' · '+input.value.toUpperCase();
+    const indicator=$('.moulding-color-summary span',form);
+    if(indicator){indicator.style.setProperty('--trace-color',input.value);indicator.title=name.textContent;}
   };
   swatches.forEach(swatch=>swatch.onchange=()=>{if(swatch.checked){input.value=swatch.value;sync();}});
   input.oninput=input.onchange=sync;
@@ -20816,7 +20860,7 @@ function openDocument(key,name,pdf,pages,importProgress=null) {
   S.scales=record.scales||{};S.scaleMeta=record.scaleMeta||{};S.pageInfo={};S.sheetNames=record.sheetNames||{};S.settings={doorInches:36,minArea:1,threshold:180,bathroomMaterial:'CER-12X24',surfaceDisplay:'materials',surfaceLabels:true,...record.settings};S.dividers=record.dividers||{};S.detectBounds=record.detectBounds||{};S.estimation=record.estimation||{catalog:{},group:'project'};S.detectorCache=null;S.preview=null;S.indexedPages=0;S.indexing=false;++S.indexToken;
   S.estimation=projectSession.attach(record)||S.estimation;
   if(!materialsFor().some(material=>material.code===S.material))S.material='VP-01';
-  S.activeMoulding=null;
+  S.activeMoulding=null;S.mouldingTrace=null;
   applyAutomaticFiling(S.items.filter(item=>item.autoTakeoff||item.sanitarySource||item.takeoffFiling?.mode==='auto').map(item=>item.id));
   S.project = S.estimation.workspace?.project.name || record.project || S.project; S.history = []; S.redo = []; S.draft = [];
   S.plan=null;S.scale=null;S.tool='select';setSelection([]);S.anchorId=null;S.dragging=null;S.panning=null;S.mouseWorld=null;S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;$('#overlay').innerHTML='';
@@ -22031,6 +22075,7 @@ function activateTool(tool,resumeId=null,gridTrace=null,moulding=null) {
   if(S.loading)return;
   if(tool==='tileOrigin')return activateOrigin();
   S.linearTraceId=null;
+  S.mouldingTrace=null;
   S.newLinearTraceId=null;
   S.areaTraceId=null;
   S.gridTrace=tool==='area'?gridTrace:null;
@@ -22179,7 +22224,7 @@ function keyboard(event) {
   if(key==='delete'||key==='backspace') {
     event.preventDefault();if(S.draft.length){S.draft.pop();refresh();}else if(S.tool!=='linear'&&!activeAreaTrace())deleteSelection();return;
   }
-  if(key==='escape'){event.preventDefault();S.roomRepairJob?.abort();S.sanitaryDraft=null;S.unitBaseboardTrace=null;if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
+  if(key==='escape'){event.preventDefault();S.roomRepairJob?.abort();S.sanitaryDraft=null;S.unitBaseboardTrace=null;S.mouldingTrace=null;if(S.reviewOpen)closeReview();S.previewFocus=null;S.previewSelection=new Set();S.fixtureDrawing=null;S.fixtureEditing=null;S.fixturePreview=null;S.draft=[];S.preview=null;setSelection([]);S.tool='select';refresh();if(document.activeElement===canvas)canvas.blur();return;}
   if(key==='enter') {
     if(finishManualTool()){event.preventDefault();return;}
     const row=event.target.closest?.('[data-item]');
@@ -23475,18 +23520,29 @@ function moneyOrUnknown(n) {return n===null?'À saisir':fmt(n,2)+' $';}
 function mouldingTakeoffDialog() {
   if(!S.plan||S.loading||S.detectJob)return toast('Ouvrez une feuille avant de relever les moulures.');
   if(S.draft.length)return toast('Terminez le tracé en cours avant de relever les moulures.');
-  const profiles=materialLibrary.profiles(S.estimation.materialLibrary,MATERIALS),selected=mouldingOf(S.activeMoulding)?.code||profiles[0].code;
+  const profiles=materialLibrary.profiles(S.estimation.materialLibrary,MATERIALS),selected=mouldingOf(S.activeMoulding)||profiles[0];
+  const plan=S.plan,page=S.page,documentKey=S.documentKey;
   openDialog('Relever les moulures',`<form id="mouldingTakeoffForm">
-    <label>Profilé<select id="mouldingTakeoffProfile">${profiles.map(profile=>`<option value="${profile.code}" ${selected===profile.code?'selected':''}>${esc(profile.name)}</option>`).join('')}</select></label>
-    <label>Longueur d’une barre (pi)<input id="mouldingBarLength" type="number" min="0.01" max="100" step="any" value="8" required></label>
-    <dl class="moulding-totals" aria-live="polite"><div><dt>Longueur nette sur ce plan</dt><dd id="mouldingTakeoffNet"></dd></div><div><dt>Barres · minimum théorique</dt><dd id="mouldingBarCount"></dd></div></dl>
-    <p>Brouillons inclus. Le nombre réel dépend des coupes et du réemploi des chutes.</p>
-    ${S.scale?'':'<p>Réglez l’échelle de la feuille pour tracer une ligne.</p>'}
-    <details class="moulding-placements" id="mouldingPointList" hidden><summary>Emplacements pointés</summary><ul></ul></details>
-    <div class="modal-actions"><button type="button" id="mouldingByPoint">Pointer un emplacement</button><button type="button" id="mouldingByLine">Tracer une ligne</button></div>
+    <div class="v4-fields">
+      <label class="moulding-form-span">Profilé<select id="mouldingTakeoffProfile">${[['finish','Moulures'],['stairs','Nez de marche']].map(([group,label])=>`<optgroup label="${label}">${profiles.filter(profile=>profile.group===group).map(profile=>`<option value="${profile.code}" ${selected.code===profile.code?'selected':''}>${esc(profile.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+      ${mouldingPlacementFields(page)}
+    </div>
+    <div class="moulding-compact-options">
+      ${mouldingColorDetails(selected.color)}
+      <details id="mouldingTakeoffSummary"><summary>Quantités et barres</summary>
+        <label>Longueur d’une barre (pi) <input id="mouldingBarLength" type="number" min="0.01" max="100" step="any" value="8" required></label>
+        <dl class="moulding-totals" aria-live="polite"><div><dt>Longueur nette sur ce plan</dt><dd id="mouldingTakeoffNet"></dd></div><div><dt>Barres · minimum théorique</dt><dd id="mouldingBarCount"></dd></div></dl>
+        <p class="moulding-intro">Brouillons inclus. Le nombre réel dépend des coupes et du réemploi des chutes.</p>
+        <details class="moulding-placements" id="mouldingPointList" hidden><summary>Emplacements pointés</summary><ul></ul></details>
+      </details>
+    </div>
+    ${S.scale?'':'<p class="moulding-intro">Réglez l’échelle de la feuille pour tracer une ligne.</p>'}
+    <p class="v4-error" role="alert"></p>
+    <div class="modal-actions"><button type="button" id="mouldingByPoint">Placer un point</button><button type="button" id="mouldingByLine" class="primary">${S.scale?'Tracer une ligne':'Régler l’échelle'}</button></div>
   </form>`,'moulding-takeoff-dialog');
-  const pick=$('#mouldingTakeoffProfile'),bar=$('#mouldingBarLength'),placements=$('#mouldingPointList');
-  $('#mouldingTakeoffForm').onsubmit=event=>event.preventDefault();
+  const form=$('#mouldingTakeoffForm'),pick=$('#mouldingTakeoffProfile'),bar=$('#mouldingBarLength'),placements=$('#mouldingPointList');
+  const {input:color,sync}=bindMouldingPlacement(form);
+  form.onsubmit=event=>event.preventDefault();
   const refreshTotals=()=>{
     const items=activePlanItems().filter(item=>item.kind==='linear'&&item.material===pick.value&&!item.measureOnly&&!isWallTakeoff(item));
     const net=items.reduce((sum,item)=>sum+(measureForEstimate(item)??0),0);
@@ -23498,16 +23554,27 @@ function mouldingTakeoffDialog() {
     $('summary',placements).textContent=`Emplacements pointés (${points.length})`;
     $('ul',placements).innerHTML=points.map(item=>`<li>${esc(item.work.mouldingPlacement.location)} · ${esc(mouldingFinishChoice(item.work.mouldingPlacement.finish)||'Fini à vérifier')} · ${fmt(item.mouldingPointFeet,2)} pi</li>`).join('');
   };
-  pick.onchange=bar.oninput=refreshTotals;
-  $('#mouldingByPoint').onclick=()=>{
-    const code=pick.value;closeDialog();S.activeSpecification=null;activateTool('mouldingPoint',null,null,code);
+  bar.oninput=refreshTotals;
+  pick.onchange=()=>{color.value=mouldingOf(pick.value).color;sync();refreshTotals();};
+  const start=tool=>{
+    const code=pick.value,details=readMouldingPlacement(form);
+    try {
+      if(S.loading||S.documentKey!==documentKey||S.page!==page||S.plan!==plan)throw new Error('La feuille a changé. Rouvrez la fiche de relevé.');
+      resolveMouldingFolder(details);
+    } catch(error){$('.v4-error',form).textContent=error.message;return;}
+    closeDialog();
+    if(tool==='linear'&&!S.scale){S.activeMoulding=code;return calibrationModal();}
+    S.activeSpecification=null;
+    activateTool(tool,null,null,code);
+    S.mouldingTrace={code,plan,page,documentKey,...details};
   };
-  $('#mouldingByLine').onclick=()=>{
-    const code=pick.value;closeDialog();
-    if(!S.scale){S.activeMoulding=code;return calibrationModal();}
-    S.activeSpecification=null;activateTool('linear',null,null,code);
-  };
+  $('#mouldingByPoint').onclick=()=>start('mouldingPoint');
+  $('#mouldingByLine').onclick=()=>start('linear');
   refreshTotals();
+}
+function mouldingTraceSetup(code) {
+  const setup=S.mouldingTrace;
+  return setup?.code===code&&setup.plan===S.plan&&setup.page===S.page&&setup.documentKey===S.documentKey?setup:null;
 }
 function placeMouldingPoint(point) {
   const profile=mouldingOf(S.activeMoulding);
@@ -23516,44 +23583,94 @@ function placeMouldingPoint(point) {
   const number=S.items.filter(item=>item.material===profile.code).length+1;
   const item={id:uid(),kind:'linear',material:profile.code,name:profile.name+' '+number,page:S.page,points:[point],
     mouldingPointFeet:null,qty:0,waste:5,status:'à valider',method:'Longueur saisie à un point de pose'};
-  S.tool='select';refreshManualUI();
-  mouldingPlacementDialog(item,S.plan);
+  const setup=mouldingTraceSetup(profile.code);
+  S.mouldingTrace=null;S.tool='select';refreshManualUI();
+  mouldingPlacementDialog(item,S.plan,setup);
 }
-function mouldingPlacementDialog(item,draftPlan=null) {
-  const work=workOf(item),placement=work.mouldingPlacement||{location:'',finish:''};
-  const point=isMouldingPoint(item),profile=mouldingOf(item.material),oldFolder=item.folderId||'';
-  const documentKey=S.documentKey;
-  const locations=[...new Set(S.items.filter(row=>row.kind==='area'&&row.page===item.page)
+function mouldingPlacementFields(page,{folderId='',folderName='',location='',finish='',point=false,length=''}={}) {
+  const locations=[...new Set(S.items.filter(row=>row.kind==='area'&&row.page===page)
     .map(row=>row.name.trim()).filter(Boolean))].slice(0,300);
   const references=[...materialsFor().map(row=>row.code),'MUR-01',
     ...specificationCatalog.entries(specificationData()).map(entry=>'devis:'+entry.id),
     ...(S.estimation.workspace?.products||[]).map(product=>'produit:'+product.id)];
   const options=references.map(reference=>({reference,label:mouldingFinishChoice(reference)})).filter(row=>row.label);
-  if(placement.finish&&!options.some(row=>row.reference===placement.finish)) {
-    options.push({reference:placement.finish,label:'Référence actuelle à vérifier · '+placement.finish});
+  if(finish&&!options.some(row=>row.reference===finish)) {
+    options.push({reference:finish,label:'Référence actuelle à vérifier · '+finish});
   }
-  const candidates=!placement.finish?S.items.filter(area=>area.kind==='area'&&area.page===item.page&&!area.work?.roomBoundary&&
-    (!area.work?.layer||area.work.layer==='finish')&&item.points.every(point=>insideItem(point,area))):[];
+  return `<label>Dossier<select id="mouldingFolder">${folderOptions(folderId)}${S.folders.length<200?`<option value="__new_moulding_folder__" ${folderId==='__new_moulding_folder__'?'selected':''}>Créer un dossier…</option>`:''}</select></label>
+    <label>Localisation<input id="mouldingLocation" list="mouldingLocations" maxlength="160" ${point?'required':''} value="${esc(location)}" placeholder="Ex. Gymnase, porte nord"></label>
+    <label class="moulding-form-span" id="mouldingFolderNameField" ${folderId==='__new_moulding_folder__'?'':'hidden'}>Nom du nouveau dossier<input id="mouldingFolderName" maxlength="80" autocomplete="off" value="${esc(folderName)}"></label>
+    <label class="${point?'':'moulding-form-span'}">Fini associé<select id="mouldingFinish" ${point?'required':''}><option value="">Choisir le fini</option>${options.map(({reference,label})=>`<option value="${esc(reference)}" ${reference===finish?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
+    ${point?`<label>Longueur à poser (pi)<input id="mouldingPointLength" type="number" min="0.01" max="500" step="any" required value="${length??''}"></label>`:''}
+    <datalist id="mouldingLocations">${locations.map(name=>`<option value="${esc(name)}"></option>`).join('')}</datalist>`;
+}
+function mouldingColorDetails(color) {
+  return `<details><summary class="moulding-color-summary">Couleur du profilé <span aria-hidden="true"></span></summary>${traceColorField(color,'Couleur du profilé')}</details>`;
+}
+function bindMouldingPlacement(form) {
+  const folder=$('#mouldingFolder',form),newFolderField=$('#mouldingFolderNameField',form);
+  folder.onchange=()=>{newFolderField.hidden=folder.value!=='__new_moulding_folder__';if(!newFolderField.hidden)$('#mouldingFolderName',form).focus();};
+  return bindTraceColorField(form);
+}
+function readMouldingPlacement(form) {
+  return {folderId:$('#mouldingFolder',form).value,folderName:$('#mouldingFolderName',form).value.trim(),
+    location:$('#mouldingLocation',form).value.trim(),finish:$('#mouldingFinish',form).value,color:$('#libraryMaterialColor',form).value};
+}
+function resolveMouldingFolder({folderId,folderName}) {
+  if(folderId==='__new_moulding_folder__'){
+    const error=folderNameError(folderName);
+    if(error||S.folders.length>=200)throw new Error(error||'Le projet contient déjà 200 dossiers.');
+    const createdFolder={id:uid(),name:folderName,collapsed:false};
+    return {folderId:createdFolder.id,createdFolder};
+  }
+  if(folderId&&!S.folders.some(entry=>entry.id===folderId))throw new Error('Ce dossier n’existe plus.');
+  return {folderId};
+}
+function suggestMouldingFinish(item) {
+  const candidates=S.items.filter(area=>area.kind==='area'&&area.page===item.page&&!area.work?.roomBoundary&&
+    (!area.work?.layer||area.work.layer==='finish')&&item.points.every(point=>insideItem(point,area)));
   const owner=candidates.length===1?candidates[0]:null,ownerFinish=owner&&specificationEntry(owner);
   const reference=owner&&(owner.work?.productId?'produit:'+owner.work.productId:ownerFinish?'devis:'+ownerFinish.id:owner.material);
-  const suggestedFinish=options.find(row=>row.reference===reference);
+  return reference&&mouldingFinishChoice(reference)?{reference,name:owner.name}:null;
+}
+function prepareMouldingPlacement(item,details,length=item.mouldingPointFeet) {
+  const work=workOf(item),profile=mouldingOf(item.material),point=isMouldingPoint(item);
+  const finish=details.finish,location=details.location;
+  if(point){
+    if(!finiteRange(length,0.01,500))throw new Error('Saisissez une longueur de 0,01 à 500 pi.');
+    if(!location||!mouldingFinishChoice(finish))throw new Error('Précisez la localisation et le fini associé.');
+  }
+  const nextWork={...work,mouldingPlacement:{location,finish}};
+  validateWork(nextWork,item.kind);
+  const folder=resolveMouldingFolder(details);
+  const library=details.color!==profile.color.toLowerCase()?materialLibrary.edit(S.estimation.materialLibrary,MATERIALS,{code:profile.code,name:profile.name,color:details.color}):null;
+  const measurementChanged=location!==(work.mouldingPlacement?.location||'')||finish!==(work.mouldingPlacement?.finish||'')||point&&length!==item.mouldingPointFeet;
+  return {...folder,nextWork,point,length,measurementChanged,library,folderChanged:(item.folderId||'')!==folder.folderId};
+}
+function applyMouldingPlacement(item,{folderId,createdFolder,library,measurementChanged,nextWork,point,length,folderChanged}) {
+  if(createdFolder)S.folders.push(createdFolder);
+  if(library)S.estimation.materialLibrary=library;
+  if(measurementChanged){item.work=nextWork;item.status='à valider';if(point){item.mouldingPointFeet=length;item.qty=length;}}
+  if(folderChanged){
+    if(folderId)item.folderId=folderId;else delete item.folderId;
+    item.takeoffFiling={mode:'manual'};
+    for(const ancestor of measureFolders.path(S.folders,folderId))ancestor.collapsed=false;
+  }
+}
+function mouldingPlacementDialog(item,draftPlan=null,setup=null) {
+  const placement=setup||workOf(item).mouldingPlacement||{};
+  const point=isMouldingPoint(item),profile=mouldingOf(item.material),documentKey=S.documentKey;
+  const suggestedFinish=!placement.finish?suggestMouldingFinish(item):null;
   openDialog(draftPlan?'Relever un emplacement':'Pose de la moulure',`<form id="mouldingPlacementForm">
-    <p>${esc(labelForItem(item))} · ${esc(pageName(item.page))}${draftPlan?'':' · '+itemQuantityText(item)}</p>
-    <div class="v4-fields">
-      <label>Dossier<select id="mouldingFolder">${folderOptions(oldFolder)}${S.folders.length<200?'<option value="__new_moulding_folder__">Créer un dossier…</option>':''}</select></label>
-      <label>Localisation<input id="mouldingLocation" list="mouldingLocations" maxlength="160" ${point?'required':''} value="${esc(placement.location)}" placeholder="Ex. Gymnase, porte nord"></label>
-      <label class="moulding-folder-name" id="mouldingFolderNameField" hidden>Nom du nouveau dossier<input id="mouldingFolderName" maxlength="80" autocomplete="off"></label>
-      <label>Fini associé<select id="mouldingFinish" ${point?'required':''}><option value="">Choisir le fini</option>${options.map(({reference,label})=>`<option value="${esc(reference)}" ${reference===(placement.finish||suggestedFinish?.reference)?'selected':''}>${esc(label)}</option>`).join('')}</select></label>
-      ${point?`<label>Longueur à poser (pi)<input id="mouldingPointLength" type="number" min="0.01" max="500" step="any" required value="${item.mouldingPointFeet??''}"></label>`:''}
-    </div>
-    ${suggestedFinish?`<p class="takeoff-finish-notice">Fini suggéré d’après la surface ${esc(owner.name)}.</p>`:''}
-    <datalist id="mouldingLocations">${locations.map(name=>`<option value="${esc(name)}"></option>`).join('')}</datalist>
-    ${traceColorField(profile.color,'Couleur du profilé')}
+    <p class="moulding-intro">${esc(labelForItem(item))} · ${esc(pageName(item.page))}${draftPlan?'':' · '+itemQuantityText(item)}</p>
+    <div class="v4-fields">${mouldingPlacementFields(item.page,{folderId:item.folderId,...placement,finish:placement.finish||suggestedFinish?.reference,point,length:item.mouldingPointFeet})}</div>
+    ${suggestedFinish?`<p class="takeoff-finish-notice">Fini suggéré d’après la surface ${esc(suggestedFinish.name)}.</p>`:''}
+    <div class="moulding-compact-options">${mouldingColorDetails(setup?.color||profile.color)}</div>
     <p id="mouldingPlacementError" class="v4-error" role="alert"></p>
     <div class="modal-actions"><button type="button" id="cancelMouldingPlacement">Annuler</button><button type="submit" class="primary">${draftPlan?'Ajouter le point':'Enregistrer'}</button></div>
   </form>`,'moulding-takeoff-dialog');
-  const form=$('#mouldingPlacementForm'),folder=$('#mouldingFolder'),newFolderField=$('#mouldingFolderNameField'),{input:color}=bindTraceColorField(form);
-  folder.onchange=()=>{newFolderField.hidden=folder.value!=='__new_moulding_folder__';if(!newFolderField.hidden)$('#mouldingFolderName').focus();};
+  const form=$('#mouldingPlacementForm');
+  bindMouldingPlacement(form);
   $('#cancelMouldingPlacement').onclick=closeDialog;
   if(point)$('#mouldingPointLength').focus();
   form.onsubmit=event=>{
@@ -23561,33 +23678,10 @@ function mouldingPlacementDialog(item,draftPlan=null) {
     try {
       if(S.loading||S.documentKey!==documentKey||S.page!==item.page||
         (draftPlan?S.plan!==draftPlan:!S.items.includes(item)))throw new Error('La feuille a changé. Ouvrez de nouveau la fiche de la moulure.');
-      const nextPlacement={location:$('#mouldingLocation').value.trim(),finish:$('#mouldingFinish').value};
-      const nextWork={...work,mouldingPlacement:nextPlacement};
-      const length=point?$('#mouldingPointLength').valueAsNumber:item.qty;
-      if(point) {
-        if(!finiteRange(length,0.01,500))throw new Error('Saisissez une longueur de 0,01 à 500 pi.');
-        if(!nextPlacement.location||!mouldingFinishChoice(nextPlacement.finish))throw new Error('Précisez la localisation et le fini associé.');
-      }
-      validateWork(nextWork,item.kind);
-      let folderId=folder.value,createdFolder;
-      if(folderId==='__new_moulding_folder__'){
-        const name=$('#mouldingFolderName').value.trim(),error=folderNameError(name);
-        if(error||S.folders.length>=200)throw new Error(error||'Le projet contient déjà 200 dossiers.');
-        createdFolder={id:uid(),name,collapsed:false};folderId=createdFolder.id;
-      }else if(folderId&&!S.folders.some(entry=>entry.id===folderId))throw new Error('Ce dossier n’existe plus.');
-      const folderChanged=oldFolder!==folderId;
-      const measurementChanged=nextPlacement.location!==placement.location||nextPlacement.finish!==placement.finish||point&&length!==item.mouldingPointFeet;
-      const library=color.value!==profile.color.toLowerCase()?materialLibrary.edit(S.estimation.materialLibrary,MATERIALS,{code:profile.code,name:profile.name,color:color.value}):null;
-      if(draftPlan||measurementChanged||folderChanged||library){
+      const changes=prepareMouldingPlacement(item,readMouldingPlacement(form),$('#mouldingPointLength',form)?.valueAsNumber);
+      if(draftPlan||changes.measurementChanged||changes.folderChanged||changes.library){
         remember();
-        if(createdFolder)S.folders.push(createdFolder);
-        if(library)S.estimation.materialLibrary=library;
-        if(measurementChanged){item.work=nextWork;item.status='à valider';if(point){item.mouldingPointFeet=length;item.qty=length;}}
-        if(folderChanged){
-          if(folderId)item.folderId=folderId;else delete item.folderId;
-          item.takeoffFiling={mode:'manual'};
-          for(const ancestor of measureFolders.path(S.folders,folderId))ancestor.collapsed=false;
-        }
+        applyMouldingPlacement(item,changes);
         if(draftPlan){S.items.push(item);setSelection([item.id]);}
         save();
       }
